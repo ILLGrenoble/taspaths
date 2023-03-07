@@ -79,8 +79,6 @@ local_bindings.txt
 !res/taspaths.svg
 
 # Libraries
-tlibs2
-tlibs2/**
 externals
 externals/**
 qcustomplot
