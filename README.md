@@ -31,7 +31,7 @@ Steps to try out the pathfinding functionality:
 - Get the external dependencies: `./setup/get_libs.sh`.
 - Get the external licenses (for a release package): `./setup/get_3rdparty_licenses.sh`.
 - Build the binaries using: `./setup/release_build.sh`.
-- In case of compilation errors involving QHull, get and compile the latest version directly [from its source](https://github.com/qhull/qhull). This is due to a C++20 compatibility issue that was solved in late 2022.
+- In case of compilation errors involving *QHull*, get and compile the latest version directly [from its source](https://github.com/qhull/qhull). This is due to a C++20 compatibility issue that was solved in late 2022.
 - Optionally create a package using either `./setup/deb/mk.sh`, `./setup/osx/mk.sh`, or `./setup/mingw/mk.sh`, depending on the system.
 - The application can be started via `./build/taspaths`.
 
