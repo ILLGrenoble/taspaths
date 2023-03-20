@@ -24,13 +24,14 @@ Steps to try out the pathfinding functionality:
 - A path from the start to the target position is calculated. It can be directly traced by clicking the "Go" button in the main window's "Path Properties" dock window.
 
 
-## Building
-- Install development versions of at least the following external libraries: [*Boost*](https://www.boost.org/), [*Qt*](https://www.qt.io/), and optionally [*Lapack(e)*](https://www.netlib.org/lapack/).
+## Building TAS-Paths
+- Install development versions of at least the following external libraries (full list below): [*Boost*](https://www.boost.org/), [*Qt*](https://www.qt.io/), [*CGAL*](https://www.cgal.org), [*QHull*](http://www.qhull.org), and optionally [*Lapack(e)*](https://www.netlib.org/lapack/).
 - Clone the source repository: `git clone https://code.ill.fr/scientific-software/takin/paths`.
 - Go to the repository's root directory: `cd paths`.
 - Get the external dependencies: `./setup/get_libs.sh`.
 - Get the external licenses (for a release package): `./setup/get_3rdparty_licenses.sh`.
 - Build the binaries using: `./setup/release_build.sh`.
+- In case of compilation errors involving QHull, get and compile the latest version directly [from its source](https://github.com/qhull/qhull). This is due to a C++20 compatibility issue that was solved in late 2022.
 - Optionally create a package using either `./setup/deb/mk.sh`, `./setup/osx/mk.sh`, or `./setup/mingw/mk.sh`, depending on the system.
 - The application can be started via `./build/taspaths`.
 
