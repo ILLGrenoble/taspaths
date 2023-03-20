@@ -15,8 +15,8 @@
     <key>CFBundleDisplayName</key>                  <string>TAS-Paths</string>
     <key>CFBundleIdentifier</key>                   <string>eu.ill.cs.takin.taspaths</string>
     <key>CFBundleExecutable</key>                   <string>taspaths</string>
-    <key>CFBundleVersion</key>                      <string>1410</string>
-    <key>CFBundleShortVersionString</key>           <string>1.4.1</string>
+    <key>CFBundleVersion</key>                      <string>1440</string>
+    <key>CFBundleShortVersionString</key>           <string>1.4.4</string>
     <key>CFBundleIconFile</key>                     <string>taspaths.icns</string>
 
     <key>NSPrincipalClass</key>                     <string>NSApplication</string>
