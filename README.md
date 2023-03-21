@@ -29,8 +29,8 @@ Steps to try out the pathfinding functionality:
 
 
 ## Building TAS-Paths
-## On [*Ubuntu*](https://ubuntu.com)
-- Install all required software for building: `sudo apt install git wget build-essential cmake libboost-all-dev qtbase5-dev libqt5svg5-dev libcgal-dev libqhull-dev libqcustomplot-dev swig libpython3-dev`
+### On [*Ubuntu*](https://ubuntu.com)
+- Install all required software for building: `sudo apt install git wget build-essential cmake libboost-all-dev qtbase5-dev libqt5svg5-dev libcgal-dev libqhull-dev libqcustomplot-dev swig libpython3-dev`.
 - Clone the source repository: `git clone https://github.com/ILLGrenoble/taspaths`.
 - Go to the repository's root directory: `cd taspaths`.
 - Get the external dependencies: `./setup/get_libs.sh`.
@@ -40,18 +40,19 @@ Steps to try out the pathfinding functionality:
 - Optionally create a package using `./setup/deb/mk.sh`.
 - The application can be started via `./build/taspaths`.
 
-## On *Mac*
+### On *Mac*
 - Install the [*Homebrew*](https://brew.sh) package manager.
-- Install development versions of at least the following external libraries (full list below): [*Boost*](https://www.boost.org/), [*Qt*](https://www.qt.io/), [*CGAL*](https://www.cgal.org), [*QHull*](http://www.qhull.org), and optionally [*Lapack(e)*](https://www.netlib.org/lapack/).
+- Install all required software for building: `brew install git wget gcc cmake boost boost-python3 qt@5 cgal qhull swig python`.
 - Clone the source repository: `git clone https://github.com/ILLGrenoble/taspaths`.
 - Go to the repository's root directory: `cd taspaths`.
 - Get the external dependencies: `./setup/get_libs.sh`.
+- Rebuild the latest versions of libraries which had C++20 issues (see below): `./setup/rebuild_libs.sh`.
 - Get the external licenses (for a release package): `./setup/get_3rdparty_licenses.sh`.
 - Build *TAS-Paths* using: `./setup/release_build.sh`.
 - Optionally create a package using `./setup/osx/mk.sh`.
 - The application can be started via `./build/taspaths`.
 
-### Possible compile errors
+### Possible Compile Errors
 Because *TAS-Paths* uses the still relatively new C++20 standard, there may be compatibility issues with older versions of some libraries.
 - In case of compilation errors involving *QHull*, get and compile the latest version directly [from its source](https://github.com/qhull/qhull).
   This C++20 compatibility issue was solved [in late 2022](https://github.com/qhull/qhull/commit/bdd99371b995e02d6b39acc93221c477aafd284a).
