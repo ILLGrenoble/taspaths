@@ -142,6 +142,13 @@ if ! wget https://raw.githubusercontent.com/sethtroisi/libgmp/master/COPYINGv3 -
 	exit -1
 fi
 
+# homebrew
+if ! wget https://raw.githubusercontent.com/Homebrew/brew/master/LICENSE.txt -O ${LICDIR}/Homebrew_license.txt; then
+	echo -e "Error: Cannot download Homebrew license.";
+	exit -1
+fi
+
+
 # TODO: mpfr, freetype
 
 
