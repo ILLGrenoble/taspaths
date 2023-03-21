@@ -29,15 +29,26 @@ Steps to try out the pathfinding functionality:
 
 
 ## Building TAS-Paths
-Steps to compile *TAS-Paths*:
-- For building on a *Mac*, install [*Homebrew*](https://brew.sh).
+## On [*Ubuntu*](https://ubuntu.com)
+- Install all required software for building: `sudo apt install git wget build-essential cmake libboost-all-dev qtbase5-dev libqt5svg5-dev libcgal-dev libqhull-dev libqcustomplot-dev swig libpython3-dev`
+- Clone the source repository: `git clone https://github.com/ILLGrenoble/taspaths`.
+- Go to the repository's root directory: `cd taspaths`.
+- Get the external dependencies: `./setup/get_libs.sh`.
+- Rebuild the latest version of the libraries: './setup/rebuild_libs.sh'
+- Get the external licenses (for a release package): `./setup/get_3rdparty_licenses.sh`.
+- Build *TAS-Paths* using: `./setup/release_build.sh`.
+- Optionally create a package using `./setup/deb/mk.sh`.
+- The application can be started via `./build/taspaths`.
+
+## On *Mac*
+- Install the [*Homebrew*](https://brew.sh) package manager.
 - Install development versions of at least the following external libraries (full list below): [*Boost*](https://www.boost.org/), [*Qt*](https://www.qt.io/), [*CGAL*](https://www.cgal.org), [*QHull*](http://www.qhull.org), and optionally [*Lapack(e)*](https://www.netlib.org/lapack/).
 - Clone the source repository: `git clone https://github.com/ILLGrenoble/taspaths`.
 - Go to the repository's root directory: `cd taspaths`.
 - Get the external dependencies: `./setup/get_libs.sh`.
 - Get the external licenses (for a release package): `./setup/get_3rdparty_licenses.sh`.
-- Build the binaries using: `./setup/release_build.sh`.
-- Optionally create a package using either `./setup/deb/mk.sh`, `./setup/osx/mk.sh`, or `./setup/mingw/mk.sh`, depending on the system.
+- Build *TAS-Paths* using: `./setup/release_build.sh`.
+- Optionally create a package using `./setup/osx/mk.sh`.
 - The application can be started via `./build/taspaths`.
 
 ### Possible compile errors
