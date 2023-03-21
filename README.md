@@ -31,9 +31,16 @@ Steps to try out the pathfinding functionality:
 - Get the external dependencies: `./setup/get_libs.sh`.
 - Get the external licenses (for a release package): `./setup/get_3rdparty_licenses.sh`.
 - Build the binaries using: `./setup/release_build.sh`.
-- In case of compilation errors involving *QHull*, get and compile the latest version directly [from its source](https://github.com/qhull/qhull). This is due to a C++20 compatibility issue that was solved in late 2022.
 - Optionally create a package using either `./setup/deb/mk.sh`, `./setup/osx/mk.sh`, or `./setup/mingw/mk.sh`, depending on the system.
 - The application can be started via `./build/taspaths`.
+
+### Possible compile errors
+Because *TAS-Paths* uses the still relatively new C++20 standard, there may be compatibility issues with older versions of some libraries.
+- In case of compilation errors involving *QHull*, get and compile the latest version directly [from its source](https://github.com/qhull/qhull).
+  This C++20 compatibility issue was solved [in late 2022](https://github.com/qhull/qhull/commit/bdd99371b995e02d6b39acc93221c477aafd284a).
+- In case of *Boost* compilation errors, e.g. if *Boost's* auto_buffer.hpp complains that std::allocator<...>::pointer is missing (which was removed in C++20),
+  get and compile the latest version directly [from its source](http://www.boost.org).
+  This C++20 compatibility issue was solved [in early 2020](https://github.com/boostorg/signals2/commit/15fcf213563718d2378b6b83a1614680a4fa8cec).
 
 
 ## External Dependencies
