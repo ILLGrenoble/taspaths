@@ -26,8 +26,8 @@ Steps to try out the pathfinding functionality:
 
 ## Building TAS-Paths
 - Install development versions of at least the following external libraries (full list below): [*Boost*](https://www.boost.org/), [*Qt*](https://www.qt.io/), [*CGAL*](https://www.cgal.org), [*QHull*](http://www.qhull.org), and optionally [*Lapack(e)*](https://www.netlib.org/lapack/).
-- Clone the source repository: `git clone https://code.ill.fr/scientific-software/takin/paths`.
-- Go to the repository's root directory: `cd paths`.
+- Clone the source repository: `git clone https://github.com/ILLGrenoble/taspaths`.
+- Go to the repository's root directory: `cd taspaths`.
 - Get the external dependencies: `./setup/get_libs.sh`.
 - Get the external licenses (for a release package): `./setup/get_3rdparty_licenses.sh`.
 - Build the binaries using: `./setup/release_build.sh`.
