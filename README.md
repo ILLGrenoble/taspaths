@@ -34,7 +34,7 @@ Steps to try out the pathfinding functionality:
 - Clone the source repository: `git clone https://github.com/ILLGrenoble/taspaths`.
 - Go to the repository's root directory: `cd taspaths`.
 - Get the external dependencies: `./setup/get_libs.sh`.
-- Rebuild the latest version of the libraries: `./setup/rebuild_libs.sh`.
+- Rebuild the latest versions of libraries which had C++20 issues (see below): `./setup/rebuild_libs.sh`.
 - Get the external licenses (for a release package): `./setup/get_3rdparty_licenses.sh`.
 - Build *TAS-Paths* using: `./setup/release_build.sh`.
 - Optionally create a package using `./setup/deb/mk.sh`.
