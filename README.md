@@ -7,7 +7,11 @@ Pathfinding software for triple-axis spectrometers.
 ## Online Resources
 
 ### Website
-The software's website can be found under [www.ill.eu/tas-paths](http://www.ill.eu/tas-paths).
+*TAS-Path's* website can be found under [www.ill.eu/tas-paths](http://www.ill.eu/tas-paths).
+
+### Downloads
+The *Mac* version of *TAS-Paths* can be [downloaded from the App Store](https://apps.apple.com/app/id1594199491).
+Versions for other systems are available on the software's website.
 
 ### Demonstration Videos
 Basic tutorial videos are available here:
@@ -15,7 +19,7 @@ Basic tutorial videos are available here:
 - [Visualising the instrument's angular configuration space](https://youtu.be/WPUCVzMDKDc).
 
 
-## Pathfinding
+## Pathfinding Workflow
 Steps to try out the pathfinding functionality:
 - Move existing or add new walls or obstacles to the scene.
 - Open the configuration space dialog using the "Calculation" -> "Angular Configuration Space..." menu item.
@@ -25,6 +29,8 @@ Steps to try out the pathfinding functionality:
 
 
 ## Building TAS-Paths
+Steps to compile *TAS-Paths*:
+- For building on a *Mac*, install [*Homebrew*](https://brew.sh).
 - Install development versions of at least the following external libraries (full list below): [*Boost*](https://www.boost.org/), [*Qt*](https://www.qt.io/), [*CGAL*](https://www.cgal.org), [*QHull*](http://www.qhull.org), and optionally [*Lapack(e)*](https://www.netlib.org/lapack/).
 - Clone the source repository: `git clone https://github.com/ILLGrenoble/taspaths`.
 - Go to the repository's root directory: `cd taspaths`.
