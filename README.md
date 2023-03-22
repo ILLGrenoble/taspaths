@@ -29,15 +29,17 @@ Steps to try out the pathfinding functionality:
 
 
 ## Building TAS-Paths
-### On [*Ubuntu*](https://ubuntu.com)
-- Install all required software for building: `sudo apt install git wget build-essential cmake libboost-all-dev qtbase5-dev libqt5svg5-dev libcgal-dev libqhull-dev libqcustomplot-dev swig libpython3-dev`.
+### On *GNU/Linux*
+- Install all required software for building (see list of external dependencies below):
+  - On [*Ubuntu*](https://ubuntu.com): `sudo apt install git wget build-essential cmake libboost-all-dev qtbase5-dev libqt5svg5-dev libcgal-dev libqhull-dev libqcustomplot-dev swig libpython3-dev`.
+  - On [*Fedora*](https://getfedora.org): `sudo dnf install git wget gcc cmake boost-devel qt5-qtbase-devel qt5-qtsvg-devel CGAL-devel qhull-devel qcustomplot-qt5-devel swig python3-devel`.
 - Clone the source repository: `git clone https://github.com/ILLGrenoble/taspaths`.
 - Go to the repository's root directory: `cd taspaths`.
 - Get the external dependencies: `./setup/get_libs.sh`.
-- Rebuild the latest versions of libraries which had C++20 issues (see below): `./setup/rebuild_libs.sh`.
+- Rebuild the latest versions of libraries with possible C++20 issues (see below): `./setup/rebuild_libs.sh`.
 - Get the external licenses (for a release package): `./setup/get_3rdparty_licenses.sh`.
 - Build *TAS-Paths* using: `./setup/release_build.sh`.
-- Optionally create a package using `./setup/deb/mk.sh`.
+- Optionally create a package on *Ubuntu* using `./setup/deb/mk.sh`.
 - The application can be started via `./build/taspaths`.
 
 ### On *Mac*
@@ -46,7 +48,7 @@ Steps to try out the pathfinding functionality:
 - Clone the source repository: `git clone https://github.com/ILLGrenoble/taspaths`.
 - Go to the repository's root directory: `cd taspaths`.
 - Get the external dependencies: `./setup/get_libs.sh`.
-- Rebuild the latest versions of libraries which had C++20 issues (see below): `./setup/rebuild_libs.sh`.
+- Rebuild the latest versions of libraries with possible C++20 issues (see below): `./setup/rebuild_libs.sh`.
 - Get the external licenses (for a release package): `./setup/get_3rdparty_licenses.sh`.
 - Build *TAS-Paths* using: `./setup/release_build.sh`.
 - Optionally create a package using `./setup/osx/mk.sh`.
