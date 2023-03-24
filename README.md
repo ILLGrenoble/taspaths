@@ -54,9 +54,10 @@ Steps to try out the pathfinding functionality:
 - Optionally create a package using `./setup/osx/mk.sh`.
 - The application can be started via `./build/taspaths`.
 
+<!--
 ### For *MinGW* using *Fedora*
 - Install all required software for building: `dnf install mingw64-gcc mingw64-gcc-c++ mingw64-boost mingw64-qt5-qtbase-devel mingw64-qt5-qtsvg mingw64-python3`.
-- TODO
+-->
 
 ### Possible Compile Errors
 Because *TAS-Paths* uses the still relatively new C++20 standard, there may be compatibility issues with older versions of some libraries.
