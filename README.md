@@ -18,7 +18,7 @@ Basic tutorial videos are available here:
 - [Basic pathfinding workflow](https://youtu.be/xs2BLuppQPQ).
 - [Visualising the instrument's angular configuration space](https://youtu.be/WPUCVzMDKDc).
 
-First instrumental test at [MIRA](https://doi.org/10.1016/j.nima.2017.09.063):
+First instrumental test at the [MIRA spectrometer](https://doi.org/10.1016/j.nima.2017.09.063):
 - [Moving the instrument around an obstacle](https://youtu.be/F0SAQp00he4).
 
 
