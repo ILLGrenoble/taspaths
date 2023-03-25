@@ -7,7 +7,7 @@ Pathfinding software for triple-axis spectrometers.
 ## Online Resources
 
 ### Website
-*TAS-Path's* website can be found under [www.ill.eu/tas-paths](http://www.ill.eu/tas-paths).
+*TAS-Paths'* website can be found under [www.ill.eu/tas-paths](http://www.ill.eu/tas-paths).
 
 ### Downloads
 The *Mac* version of *TAS-Paths* can be [downloaded from the App Store](https://apps.apple.com/app/id1594199491).
