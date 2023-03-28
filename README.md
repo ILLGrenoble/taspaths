@@ -13,7 +13,7 @@ A pre-print of our paper [is available  here](https://doi.org/10.48550/arXiv.230
 ## Compiling
 Instructions for building the software for different systems [are given here](https://github.com/ILLGrenoble/taspaths/wiki/Compiling-TAS-Paths).
 
-## Demonstration Videos
+## Tutorial Videos
 Basic tutorial videos are available here:
 - [Basic pathfinding workflow](https://youtu.be/xs2BLuppQPQ).
 - [Visualising the instrument's angular configuration space](https://youtu.be/WPUCVzMDKDc).
