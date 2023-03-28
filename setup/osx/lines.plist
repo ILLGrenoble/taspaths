@@ -9,8 +9,8 @@
     <key>CFBundleDisplayName</key>         <string>TAS-Paths</string>
     <key>CFBundleIdentifier</key>          <string>eu.ill.cs.takin.taspaths-lines</string>
 
-    <key>CFBundleVersion</key>             <string>1440</string>
-    <key>CFBundleShortVersionString</key>  <string>1.4.4</string>
+    <key>CFBundleVersion</key>             <string>1450</string>
+    <key>CFBundleShortVersionString</key>  <string>1.4.5</string>
     <key>CFBundleIconFile</key>            <string>taspaths.icns</string>
 
     <key>CFBundleSupportedPlatforms</key>  <array> <string>MacOSX</string> </array>

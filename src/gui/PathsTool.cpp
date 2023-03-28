@@ -831,10 +831,11 @@ PathsTool::PathsTool(QWidget* pParent) : QMainWindow{pParent}
 	if(dev_docfile = g_res.FindFile("dev_doc/html/index.html"); dev_docfile.empty())
 		show_dev_doc = false;
 
+	QAction *actionDoc = new QAction(QIcon::fromTheme("help-contents"), "Software Documentation", menuHelp);
+	QAction *actionWebsite = new QAction(QIcon::fromTheme("applications-internet"), TASPATHS_TITLE " Website...", menuHelp);
 	QAction *actionDevDoc = nullptr;
 	if(show_dev_doc)
 		actionDevDoc = new QAction(QIcon::fromTheme("help-contents"), "Developer Documentation...", menuHelp);
-	QAction *actionWebsite = new QAction(QIcon::fromTheme("applications-internet"), TASPATHS_TITLE " Website...", menuHelp);
 	QAction *actionLicenses = new QAction("Licenses...", menuHelp);
 	QAction *actionBug = new QAction("Report Bug...", menuHelp);
 	QAction *actionAboutQt = new QAction(QIcon::fromTheme("help-about"), "About Qt Libraries...", menuHelp);
@@ -855,6 +856,14 @@ PathsTool::PathsTool(QWidget* pParent) : QMainWindow{pParent}
 				QMessageBox::critical(this, "Error", "Could not open developer documentation.");
 		});
 	}
+
+	// show documentation
+	connect(actionDoc, &QAction::triggered, this, [this]()
+	{
+		QUrl url("https://github.com/ILLGrenoble/taspaths/wiki");
+		if(!QDesktopServices::openUrl(url))
+			QMessageBox::critical(this, "Error", "Could not open documentation.");
+	});
 
 	// show website
 	connect(actionWebsite, &QAction::triggered, this, [this]()
@@ -910,6 +919,7 @@ PathsTool::PathsTool(QWidget* pParent) : QMainWindow{pParent}
 			QMessageBox::critical(this, "Error", "Could not open bug report website.");
 	});
 
+	menuHelp->addAction(actionDoc);
 	menuHelp->addAction(actionWebsite);
 	if(actionDevDoc)
 		menuHelp->addAction(actionDevDoc);
