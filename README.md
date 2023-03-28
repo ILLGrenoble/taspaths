@@ -1,6 +1,5 @@
 # TAS-Paths
-Pathfinding software for triple-axis spectrometers.
-
+Pathfinding software for triple-axis spectrometers.  
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4625649.svg)](https://doi.org/10.5281/zenodo.4625649)
 
 ## Downloads
