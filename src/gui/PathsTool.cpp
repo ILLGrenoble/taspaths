@@ -831,7 +831,7 @@ PathsTool::PathsTool(QWidget* pParent) : QMainWindow{pParent}
 	if(dev_docfile = g_res.FindFile("dev_doc/html/index.html"); dev_docfile.empty())
 		show_dev_doc = false;
 
-	QAction *actionDoc = new QAction(QIcon::fromTheme("help-contents"), "Software Documentation", menuHelp);
+	QAction *actionDoc = new QAction(QIcon::fromTheme("help-contents"), "Software Documentation...", menuHelp);
 	QAction *actionWebsite = new QAction(QIcon::fromTheme("applications-internet"), TASPATHS_TITLE " Website...", menuHelp);
 	QAction *actionDevDoc = nullptr;
 	if(show_dev_doc)
