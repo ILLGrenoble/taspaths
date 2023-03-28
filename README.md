@@ -10,6 +10,9 @@ Pathfinding software for triple-axis spectrometers.
 The *Mac* version of *TAS-Paths* can be [downloaded from the App Store](https://apps.apple.com/app/id1594199491).
 Versions for other systems are available on the software's website: [www.ill.eu/tas-paths](http://www.ill.eu/tas-paths).
 
+### Documentation
+A pre-print of our paper is available [here](https://doi.org/10.48550/arXiv.2303.14041).
+
 ### Demonstration Videos
 Basic tutorial videos are available here:
 - [Basic pathfinding workflow](https://youtu.be/xs2BLuppQPQ).
