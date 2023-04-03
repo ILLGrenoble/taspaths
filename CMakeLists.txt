@@ -48,7 +48,7 @@ option(USE_QT6 "use qt 6" FALSE)
 option(USE_LAPACK "use lapack" TRUE)
 option(USE_OVD "use openvoronoi" FALSE)
 option(USE_CGAL "use cgal" TRUE)
-option(USE_PY "use python scripting" FALSE)
+option(USE_PY "use python scripting" TRUE)
 option(BUILD_TEST_TOOLS "build test tools" FALSE)
 option(UNIT_TESTS "build unit tests" FALSE)
 
@@ -154,9 +154,14 @@ if(Qhull_FOUND)
 endif()
 
 
-find_package(QCP)
-if(QCP_FOUND)
-	include_directories("${QCP_INCLUDE_DIRS}")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+	# hard-code the library path for mingw
+	set(QCP_LIBRARIES "${PROJECT_SOURCE_DIR}/externals/qcustomplot/libqcustomplot_local.dll")
+else()
+	find_package(QCP)
+	if(QCP_FOUND)
+		include_directories("${QCP_INCLUDE_DIRS}")
+	endif()
 endif()
 
 
@@ -193,28 +198,31 @@ endif()
 
 
 if(USE_PY)
-	find_package(Python3 REQUIRED COMPONENTS Interpreter Development REQUIRED)
-	message("Python version ${Python3_VERSION} enabled; packages: ${Python3_SITEARCH}.")
+	find_package(Python3 COMPONENTS Interpreter Development)
+	find_package(SWIG COMPONENTS python)
 
-	cmake_policy(SET CMP0078 NEW)
-	cmake_policy(SET CMP0086 NEW)
+	if(SWIG_FOUND AND SWIG_python_FOUND)
+		message("Scripting using python version ${Python3_VERSION} enabled; packages: ${Python3_SITEARCH}.")
 
-	find_package(SWIG REQUIRED)
-	set(UseSWIG_TARGET_NAME_PREFERENCE STANDARD)
-	include(${SWIG_USE_FILE})
+		cmake_policy(SET CMP0078 NEW)
+		cmake_policy(SET CMP0086 NEW)
 
-	set_source_files_properties(scripting/taspaths.i PROPERTIES CPLUSPLUS TRUE)
-	set_source_files_properties(scripting/taspaths.i PROPERTIES SWIG_FLAGS "-I ${PROJECT_SOURCE_DIR}")
+		set(UseSWIG_TARGET_NAME_PREFERENCE STANDARD)
+		include(${SWIG_USE_FILE})
 
-	swig_add_library(taspaths_py LANGUAGE python SOURCES scripting/taspaths.i)
+		set_source_files_properties(scripting/taspaths.i PROPERTIES CPLUSPLUS TRUE)
+		set_source_files_properties(scripting/taspaths.i PROPERTIES SWIG_FLAGS "-I ${PROJECT_SOURCE_DIR}")
 
-	target_link_libraries(taspaths_py
-		taspaths_core
-		Python3::Python Threads::Threads
-		"${Boost_LIBRARIES}" "${Lapacke_LIBRARIES}"
-	)
+		swig_add_library(taspaths_py LANGUAGE python SOURCES scripting/taspaths.i)
+
+		target_link_libraries(taspaths_py
+			taspaths_core
+			Python3::Python Threads::Threads
+			"${Boost_LIBRARIES}" "${Lapacke_LIBRARIES}"
+		)
+	endif()
 else()
-	message("Python disabled.")
+	message("Python scripting disabled.")
 endif()
 
 

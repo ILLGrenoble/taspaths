@@ -31,6 +31,13 @@
 git_tool=git
 cmake_tool=cmake
 make_tool=make
+
+if [ "$1" == "mingw" ]; then
+	cmake_tool=mingw64-cmake
+	make_tool=mingw64-make
+
+	echo -e "Building using mingw."
+fi
 # -----------------------------------------------------------------------------
 
 

@@ -57,8 +57,10 @@ if [ $create_appdir -ne 0 ]; then
 	echo -e "Description: TAS pathfinding software" >> ${APPDIRNAME}/DEBIAN/control
 	echo -e "Maintainer: tweber@ill.fr" >> ${APPDIRNAME}/DEBIAN/control
 
-	if [ $new_libs -ne 0 ]; then
-		# new versions of dependent libraries
+	# qcustomplot dependency is not needed if it's anyway installed in externals
+	if [ "$1" == "jammy" ] || [  "$1" == "" ]; then
+		echo -e "Choosing debendencies for Jammy..."
+
 		echo -e "Depends:"\
 			"libstdc++6 (>=10.0.0),"\
 			"libboost-system1.74.0 (>=1.74.0),"\
@@ -73,10 +75,9 @@ if [ $create_appdir -ne 0 ]; then
 			"libqcustomplot2.0 (>=2.0.0),"\
 			"libopengl0 (>=1.3.0)\n" \
 				>> ${APPDIRNAME}/DEBIAN/control
-	else
-		# old versions of dependent libraries
-		# qcustomplot dependency is not needed if it's
-		# anyway installed in externals
+	elif [ "$1" == "focal" ]; then
+		echo -e "Choosing debendencies for Focal..."
+
 		echo -e "Depends:"\
 			"libstdc++6 (>=10.0.0),"\
 			"libboost-system1.71.0 (>=1.71.0),"\
@@ -91,6 +92,9 @@ if [ $create_appdir -ne 0 ]; then
 			"libqcustomplot2.0 (>=2.0.0),"\
 			"libopengl0 (>=1.3.0)\n" \
 				>> ${APPDIRNAME}/DEBIAN/control
+	else
+		echo -e "Invalid target system: ${1}."
+		exit -1
 	fi
 
 
