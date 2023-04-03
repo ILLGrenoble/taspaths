@@ -2,7 +2,7 @@
 Pathfinding software for triple-axis spectrometers.  
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4625649.svg)](https://doi.org/10.5281/zenodo.4625649)
 
-## Downloads
+## Installation
 The *Mac* version of *TAS-Paths* can be [downloaded from the App Store](https://apps.apple.com/app/id1594199491).  
 Versions for other systems are available [on the software's website](http://www.ill.eu/tas-paths).
 
