@@ -24,15 +24,21 @@
 # -----------------------------------------------------------------------------
 #
 
+# options
 create_appdir=1
 create_deb=1
-new_libs=0
-
 
 # defines
 APPNAME="taspaths"
 APPDIRNAME="${APPNAME}"
 APPDEBNAME="${APPNAME}.deb"
+
+# install directories
+BINDIR=/usr/local/bin
+LIBDIR=/usr/local/lib
+SHAREDIR=/usr/local/share
+PY_DISTDIR=/usr/local/lib/python3.10/dist-packages
+#PY_DISTDIR=/usr/lib/python3/dist-packages
 
 
 #
@@ -43,10 +49,11 @@ if [ $create_appdir -ne 0 ]; then
 	rm -rfv "${APPDIRNAME}"
 
 	# directories
-	mkdir -p ${APPDIRNAME}/usr/local/bin
-	mkdir -p ${APPDIRNAME}/usr/local/lib
-	mkdir -p ${APPDIRNAME}/usr/local/share/${APPNAME}/res
-	mkdir -p ${APPDIRNAME}/usr/local/share/${APPNAME}/3rdparty_licenses
+	mkdir -p ${APPDIRNAME}${BINDIR}
+	mkdir -p ${APPDIRNAME}${LIBDIR}
+	mkdir -p ${APPDIRNAME}${PY_DISTDIR}
+	mkdir -p ${APPDIRNAME}${SHAREDIR}/${APPNAME}/res
+	mkdir -p ${APPDIRNAME}${SHAREDIR}/${APPNAME}/3rdparty_licenses
 	mkdir -p ${APPDIRNAME}/usr/share/applications
 	mkdir -p ${APPDIRNAME}/DEBIAN
 
@@ -75,6 +82,8 @@ if [ $create_appdir -ne 0 ]; then
 			"libqcustomplot2.0 (>=2.0.0),"\
 			"libopengl0 (>=1.3.0)\n" \
 				>> ${APPDIRNAME}/DEBIAN/control
+
+		PY_DISTDIR=/usr/local/lib/python3.10/dist-packages
 	elif [ "$1" == "focal" ]; then
 		echo -e "Choosing debendencies for Focal..."
 
@@ -92,6 +101,8 @@ if [ $create_appdir -ne 0 ]; then
 			"libqcustomplot2.0 (>=2.0.0),"\
 			"libopengl0 (>=1.3.0)\n" \
 				>> ${APPDIRNAME}/DEBIAN/control
+
+		PY_DISTDIR=/usr/local/lib/python3.8/dist-packages
 	else
 		echo -e "Invalid target system: ${1}."
 		exit -1
@@ -99,25 +110,32 @@ if [ $create_appdir -ne 0 ]; then
 
 
 	# binaries
-	cp -v build/taspaths		${APPDIRNAME}/usr/local/bin
-	cp -v build/taspaths-lines	${APPDIRNAME}/usr/local/bin
-	cp -v build/taspaths-hull	${APPDIRNAME}/usr/local/bin
-	cp -v build/taspaths-poly	${APPDIRNAME}/usr/local/bin
+	cp -v build/taspaths		${APPDIRNAME}${BINDIR}
+	cp -v build/taspaths-lines	${APPDIRNAME}${BINDIR}
+	cp -v build/taspaths-hull	${APPDIRNAME}${BINDIR}
+	cp -v build/taspaths-poly	${APPDIRNAME}${BINDIR}
 
 	# libraries
-	cp -v build/*.so		${APPDIRNAME}/usr/local/lib
+	cp -v build/*.so		${APPDIRNAME}${LIBDIR}
+
+	# py scripting files
+	cp -v build/_taspaths_py.so	${APPDIRNAME}${PY_DISTDIR}
+	cp -v build/taspaths.py		${APPDIRNAME}${PY_DISTDIR}
 
 	# resources
-	cp -rv res/*			${APPDIRNAME}/usr/local/share/${APPNAME}/res/
-	cp -v AUTHORS			${APPDIRNAME}/usr/local/share/${APPNAME}/
-	cp -v LICENSE			${APPDIRNAME}/usr/local/share/${APPNAME}/
-	cp -rv 3rdparty_licenses/*	${APPDIRNAME}/usr/local/share/${APPNAME}/3rdparty_licenses/
+	cp -rv res/*			${APPDIRNAME}${SHAREDIR}/${APPNAME}/res/
+	cp -v AUTHORS			${APPDIRNAME}${SHAREDIR}/${APPNAME}/
+	cp -v LICENSE			${APPDIRNAME}${SHAREDIR}/${APPNAME}/
+	cp -rv 3rdparty_licenses/*	${APPDIRNAME}${SHAREDIR}/${APPNAME}/3rdparty_licenses/
 	cp -v setup/deb/taspaths.desktop	${APPDIRNAME}/usr/share/applications
 
+	# cleanups
+	rm -v ${APPDIRNAME}${LIBDIR}/_taspaths_py.so
+
 	# binary permissions & stripping
-	chmod a+x ${APPDIRNAME}/usr/local/bin/*
-	strip -v ${APPDIRNAME}/usr/local/bin/*
-	strip -v ${APPDIRNAME}/usr/local/lib/*
+	chmod a+x ${APPDIRNAME}${BINDIR}/*
+	strip -v ${APPDIRNAME}${BINDIR}/*
+	strip -v ${APPDIRNAME}${LIBDIR}/*
 fi
 
 

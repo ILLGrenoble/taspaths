@@ -52,7 +52,11 @@ def warning(msg):
 write_pathmesh = False
 write_path = False
 show_plot = True
-file_name = "../res/mira.taspaths"
+file_names = [  # possible instrument file paths
+	"./res/mira.taspaths",
+	"../res/mira.taspaths",
+	"/usr/local/share/taspaths/res/mira.taspaths"
+]
 # -----------------------------------------------------------------------------
 
 
@@ -63,13 +67,15 @@ print("Loading instrument definition...")
 
 # create the instrument space and load an instrument definition
 instrspace = tas.InstrumentSpace()
-[file_ok, file_date] = tas.InstrumentSpace.load(file_name, instrspace)
+for file_name in file_names:
+	[file_ok, file_date] = tas.InstrumentSpace.load(file_name, instrspace)
 
-if file_ok:
-	print("Loaded \"%s\", dated %s." % (file_name, file_date))
-else:
-	error("Could not load \"%s\"." % (file_name))
+	if file_ok:
+		print("Loaded \"%s\", dated %s." % (file_name, file_date))
+		break
 
+if not file_ok:
+	error("Could not load \"%s\"." % (file_names[0]))
 print("Instrument definition loaded.\n")
 # -----------------------------------------------------------------------------
 
