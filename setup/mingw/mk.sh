@@ -31,20 +31,24 @@ APPDIRNAME="taspaths"
 APPICON="res/taspaths.svg"
 APPICON_ICO="${APPICON%\.svg}.ico"
 
+MINGW_ROOT=/usr/x86_64-w64-mingw32/sys-root/mingw/bin
+MINGW_QT_ROOT=/usr/x86_64-w64-mingw32/sys-root/mingw/lib/qt5
+
 
 # third-party libraries
 EXT_LIBS=( \
 	Qt5Core.dll Qt5Gui.dll Qt5Widgets.dll \
 	Qt5DBus.dll Qt5PrintSupport.dll Qt5Svg.dll \
 	libboost_system-x64.dll libboost_filesystem-x64.dll \
+	libqhull_r.dll \
 	libqcustomplot.dll \
 	libstdc++-6.dll libwinpthread-1.dll libglib-2.0-0.dll \
 	libgcc_s_sjlj-1.dll libgcc_s_seh-1.dll \
 	libbz2-1.dll zlib1.dll \
 	libpng16-16.dll \
 	libfreetype-6.dll \
-	libpcre2-16-0.dll libpcre-1.dll libssp-0.dll \
-	libharfbuzz-0.dll \
+	libpcre2-16-0.dll libpcre2-8-0.dll libpcre-1.dll \
+	libssp-0.dll libharfbuzz-0.dll \
 	iconv.dll libintl-8.dll \
 	libgmp-10.dll \
 )
@@ -105,14 +109,14 @@ cp -rv 3rdparty_licenses   ${APPDIRNAME}/
 
 # copy third-party libraries
 for THELIB in ${EXT_LIBS[@]}; do
-	cp -v /usr/x86_64-w64-mingw32/sys-root/mingw/bin/${THELIB} ${APPDIRNAME}/
+	cp -v ${MINGW_ROOT}/bin/${THELIB} ${APPDIRNAME}/
 done
 
 # copy qt plugins
 for THELIB in ${QT_PLUGINS[@]}; do
 	LIBDIRNAME=$(dirname ${THELIB})
 	mkdir -p ${APPDIRNAME}/qt_plugins/${LIBDIRNAME}
-	cp -v /usr/x86_64-w64-mingw32/sys-root/mingw/lib/qt5/plugins/${THELIB} \
+	cp -v ${MINGW_QT_ROOT}/plugins/${THELIB} \
 		${APPDIRNAME}/qt_plugins/${LIBDIRNAME}
 done
 
@@ -121,3 +125,6 @@ echo -e "[Paths]\n\tPlugins = qt_plugins\n" > ${APPDIRNAME}/qt.conf
 
 # stripping
 find ${APPDIRNAME} -type f \( -name "*.exe" -o -name "*.dll" \) -exec strip -v {} \;
+
+# create archive
+zip -9 -r ${APPDIRNAME}.zip ${APPDIRNAME}
