@@ -24,12 +24,15 @@
 # -----------------------------------------------------------------------------
 #
 
+# settings
 create_icon=1
 create_appdir=1
 create_dmg=1
 strip_binaries=1
 clean_frameworks=1
 
+
+# application name
 APPNAME="TAS-Paths"
 APPDIRNAME="${APPNAME}.app"
 APPDMGNAME="${APPNAME}.dmg"
@@ -38,16 +41,40 @@ APPICON="res/taspaths.svg"
 APPICON_ICNS="${APPICON%\.svg}.icns"
 
 
-declare -a QT_LIBS=(QtCore QtGui QtWidgets QtDBus QtPrintSupport QtSvg)
+# directories
+QT_PLUGIN_DIR=/usr/local/opt/qt@5/plugins
+LOCAL_DIR=/usr/local
+LOCAL_LIB_DIR=/usr/local/lib
+LOCAL_OPT_DIR=/usr/local/opt
+LOCAL_FRAMEWORKS_DIR=/usr/local/Frameworks
 
 
+# libraries
+declare -a QT_LIBS=(
+	QtCore QtGui QtWidgets
+	QtDBus QtPrintSupport QtSvg
+)
+
+declare -a LOCAL_LIBS=(
+	libboost_filesystem-mt.dylib libboost_atomic-mt.dylib
+	libqhull_r.8.0.dylib
+	libpcre2-8.0.dylib libpcre2-16.0.dylib
+	libglib-2.0.0.dylib libgthread-2.0.0.dylib libintl.8.dylib
+	libgmp.10.dylib
+	libzstd.1.dylib
+	libpng16.16.dylib
+	libfreetype.6.dylib
+)
+
+
+# ansi colours
 COL_ERR="\033[1;31m"
 COL_WARN="\033[1;31m"
 COL_NORM="\033[0m"
 
 
 #
-# test if the given file is a binary image
+# tests if the given file is a binary image
 #
 function is_binary()
 {
@@ -68,7 +95,7 @@ function is_binary()
 
 
 #
-# tests if the given binary still has remaining bindings to /usr/local/
+# tests if the given binary still has remaining bindings to LOCAL_DIR
 #
 function check_local_bindings()
 {
@@ -79,7 +106,7 @@ function check_local_bindings()
 		return
 	fi
 
-	local local_binding=$(otool -L ${cfile} | grep --color /usr/local)
+	local local_binding=$(otool -L ${cfile} | grep --color ${LOCAL_DIR})
 	local num_local_bindings=$(echo -e "${local_binding}" | wc -l)
 
 	if [ "${num_local_bindings}" -gt "1" ]; then
@@ -95,12 +122,12 @@ function check_local_bindings()
 
 
 #
-# change a /usr/local linker path to an @rpath
+# changes a LOCAL_DIR linker path to an @rpath
 #
 function change_to_rpath()
 {
 	local binary="$1"
-	local old_paths=$(otool -L ${binary} | grep /usr/local | sed -e "s/(.*)//p" -n | sed -e "s/\t//p" -n)
+	local old_paths=$(otool -L ${binary} | grep ${LOCAL_DIR} | sed -e "s/(.*)//p" -n | sed -e "s/\t//p" -n)
 
 	is_binary ${binary}
 	if [[ $? == 0 ]]; then
@@ -139,7 +166,7 @@ function change_to_rpath()
 
 
 #
-# create a png icon with the specified size out of an svg
+# creates a png icon with the specified size out of an svg
 #
 function svg_to_png()
 {
@@ -158,7 +185,7 @@ function svg_to_png()
 
 
 #
-# create the application icon
+# creates the application icon
 #
 if [ $create_icon -ne 0 ]; then
 	echo -e "\nCreating icons from ${APPICON}..."
@@ -174,7 +201,7 @@ fi
 
 
 #
-# create the application directory
+# creates the application directory
 #
 if [ $create_appdir -ne 0 ]; then
 	echo -e "\nCleaning and (re)creating directories..."
@@ -206,19 +233,24 @@ if [ $create_appdir -ne 0 ]; then
 	cp -v LICENSE "${APPDIRNAME}/Contents/Resources/LICENSE.txt"
 	cp -rv 3rdparty_licenses "${APPDIRNAME}/Contents/Resources/"
 
-	# libraries
-	cp -v /usr/local/lib/libboost_filesystem-mt.dylib "${APPDIRNAME}/Contents/Libraries/"
-	cp -v /usr/local/lib/libqhull_r.8.0.dylib "${APPDIRNAME}/Contents/Libraries/"
-	cp -v /usr/local/lib/libgmp.10.dylib "${APPDIRNAME}/Contents/Libraries/"
-	#cp -v /usr/local/opt/lapack/lib/liblapacke.3.dylib "${APPDIRNAME}/Contents/Libraries/"
-	#cp -v /usr/local/opt/lapack/lib/liblapack.3.dylib "${APPDIRNAME}/Contents/Libraries/"
+	# local libraries
+	for (( libidx=0; libidx<${#LOCAL_LIBS[@]}; ++libidx )); do
+		LOCAL_LIB=${LOCAL_LIBS[$libidx]}
+
+		cp -v ${LOCAL_LIB_DIR}/${LOCAL_LIB} \
+			"${APPDIRNAME}/Contents/Libraries/"
+	done
+
+	# more libraries
+	#cp -v ${LOCAL_OPT_DIR}/lapack/lib/liblapacke.3.dylib "${APPDIRNAME}/Contents/Libraries/"
+	#cp -v ${LOCAL_OPT_DIR}/lapack/lib/liblapack.3.dylib "${APPDIRNAME}/Contents/Libraries/"
 	cp -v build/libqcustomplot_local.dylib "${APPDIRNAME}/Contents/Libraries/"
 
 	# frameworks
 	for (( libidx=0; libidx<${#QT_LIBS[@]}; ++libidx )); do
 		QT_LIB=${QT_LIBS[$libidx]}
 
-		cp -rv /usr/local/Frameworks/${QT_LIB}.framework/ \
+		cp -rv ${LOCAL_FRAMEWORKS_DIR}/${QT_LIB}.framework/ \
 			"${APPDIRNAME}/Contents/Frameworks/"
 	done
 
@@ -231,13 +263,13 @@ if [ $create_appdir -ne 0 ]; then
 	fi
 
 	# qt plugins
-	cp -rv /usr/local/opt/qt@5/plugins/platforms "${APPDIRNAME}/Contents/Libraries/Qt_Plugins/"
-	cp -rv /usr/local/opt/qt@5/plugins/styles "${APPDIRNAME}/Contents/Libraries/Qt_Plugins/"
-	#cp -rv /usr/local/opt/qt@5/plugins/renderers "${APPDIRNAME}/Contents/Libraries/Qt_Plugins/"
-	cp -rv /usr/local/opt/qt@5/plugins/imageformats "${APPDIRNAME}/Contents/Libraries/Qt_Plugins/"
-	cp -rv /usr/local/opt/qt@5/plugins/iconengines "${APPDIRNAME}/Contents/Libraries/Qt_Plugins/"
-	#cp -rv /usr/local/opt/qt@5/plugins/printsupport "${APPDIRNAME}/Contents/Libraries/Qt_Plugins/"
-	#cp -rv /usr/local/opt/qt@5/plugins/platformthemes "${APPDIRNAME}/Contents/Libraries/Qt_Plugins/"
+	cp -rv ${QT_PLUGIN_DIR}/platforms "${APPDIRNAME}/Contents/Libraries/Qt_Plugins/"
+	cp -rv ${QT_PLUGIN_DIR}/styles "${APPDIRNAME}/Contents/Libraries/Qt_Plugins/"
+	#cp -rv ${QT_PLUGIN_DIR}/renderers "${APPDIRNAME}/Contents/Libraries/Qt_Plugins/"
+	cp -rv ${QT_PLUGIN_DIR}/imageformats "${APPDIRNAME}/Contents/Libraries/Qt_Plugins/"
+	cp -rv ${QT_PLUGIN_DIR}/iconengines "${APPDIRNAME}/Contents/Libraries/Qt_Plugins/"
+	#cp -rv ${QT_PLUGIN_DIR}/printsupport "${APPDIRNAME}/Contents/Libraries/Qt_Plugins/"
+	#cp -rv ${QT_PLUGIN_DIR}/platformthemes "${APPDIRNAME}/Contents/Libraries/Qt_Plugins/"
 
 	rm -fv ${APPDIRNAME}/Contents/Libraries/Qt_Plugins/platforms/libqoffscreen.dylib
 	rm -fv ${APPDIRNAME}/Contents/Libraries/Qt_Plugins/platforms/libqwebgl.dylib
@@ -299,13 +331,13 @@ if [ $create_appdir -ne 0 ]; then
 		fi
 	done
 
-	#install_name_tool -id "/usr/local/lib/libqcustomplot_local.dylib" "${APPDIRNAME}/Contents/Libraries/libqcustomplot_local.dylib"
+	#install_name_tool -id "${LOCAL_LIB_DIR}/libqcustomplot_local.dylib" "${APPDIRNAME}/Contents/Libraries/libqcustomplot_local.dylib"
 	echo -e "--------------------------------------------------------------------------------"
 fi
 
 
 #
-# create a dmg image
+# creates a dmg image
 #
 if [ $create_dmg -ne 0 ]; then
 	echo -e "\nCreating ${APPDMGNAME} from ${APPDIRNAME}..."

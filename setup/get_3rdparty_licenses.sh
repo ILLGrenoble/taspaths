@@ -71,7 +71,8 @@ if ! wget https://raw.githubusercontent.com/qhull/qhull/master/COPYING.txt -O ${
 fi
 
 # qt
-if ! wget https://raw.githubusercontent.com/qt/qt5/dev/LICENSE.QT-LICENSE-AGREEMENT -O ${LICDIR}/Qt_license.txt; then
+#if ! wget https://raw.githubusercontent.com/qt/qt5/dev/LICENSE.QT-LICENSE-AGREEMENT -O ${LICDIR}/Qt_license.txt; then
+if ! wget https://raw.githubusercontent.com/qt/qt5/dev/LICENSE.GPL3 -O ${LICDIR}/Qt_license.txt; then
 	echo -e "Error: Cannot download Qt license.";
 	exit -1
 fi
@@ -118,6 +119,12 @@ if ! wget https://raw.githubusercontent.com/dejavu-fonts/dejavu-fonts/master/LIC
 	exit -1
 fi
 
+# glibc
+if ! wget "https://sourceware.org/git/?p=glibc.git;a=blob_plain;f=COPYING.LIB;hb=HEAD" -O ${LICDIR}/glibc_license.txt; then
+	echo -e "Error: Cannot download glibc license.";
+	exit -1
+fi
+
 # libjpeg
 if ! wget https://raw.githubusercontent.com/freedesktop/libjpeg/master/README -O ${LICDIR}/libjpeg_license.txt; then
 	echo -e "Error: Cannot download libjpg license.";
@@ -142,6 +149,24 @@ if ! wget https://raw.githubusercontent.com/sethtroisi/libgmp/master/COPYINGv3 -
 	exit -1
 fi
 
+# pcre
+if ! wget https://raw.githubusercontent.com/PCRE2Project/pcre2/master/LICENCE -O ${LICDIR}/libpcre2_license.txt; then
+	echo -e "Error: Cannot download libpcre2 license.";
+	exit -1
+fi
+
+# zstd
+if ! wget https://raw.githubusercontent.com/facebook/zstd/dev/LICENSE -O ${LICDIR}/Zstandard_license.txt; then
+	echo -e "Error: Cannot download libzstd license.";
+	exit -1
+fi
+
+# freetype
+if ! wget https://raw.githubusercontent.com/freetype/freetype/master/LICENSE.TXT -O ${LICDIR}/Freetype_license.txt; then
+	echo -e "Error: Cannot download Freetype license.";
+	exit -1
+fi
+
 # homebrew
 if ! wget https://raw.githubusercontent.com/Homebrew/brew/master/LICENSE.txt -O ${LICDIR}/Homebrew_license.txt; then
 	echo -e "Error: Cannot download Homebrew license.";
@@ -149,7 +174,7 @@ if ! wget https://raw.githubusercontent.com/Homebrew/brew/master/LICENSE.txt -O 
 fi
 
 
-# TODO: mpfr, freetype
+# TODO: mpfr
 
 
 echo -e "\nAll OK.\n"
