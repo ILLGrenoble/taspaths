@@ -51,7 +51,6 @@ if [ $create_appdir -ne 0 ]; then
 	# directories
 	mkdir -p ${APPDIRNAME}${BINDIR}
 	mkdir -p ${APPDIRNAME}${LIBDIR}
-	mkdir -p ${APPDIRNAME}${PY_DISTDIR}
 	mkdir -p ${APPDIRNAME}${SHAREDIR}/${APPNAME}/res
 	mkdir -p ${APPDIRNAME}${SHAREDIR}/${APPNAME}/3rdparty_licenses
 	mkdir -p ${APPDIRNAME}/usr/share/applications
@@ -80,6 +79,8 @@ if [ $create_appdir -ne 0 ]; then
 			"libqt5svg5 (>=5.12.0),"\
 			"libqt5printsupport5 (>=5.12.0),"\
 			"libqcustomplot2.0 (>=2.0.0),"\
+			"python3 (>=3.10.0),"\
+			"python3-matplotlib,"\
 			"libopengl0 (>=1.3.0)\n" \
 				>> ${APPDIRNAME}/DEBIAN/control
 
@@ -99,6 +100,8 @@ if [ $create_appdir -ne 0 ]; then
 			"libqt5svg5 (>=5.12.0),"\
 			"libqt5printsupport5 (>=5.12.0),"\
 			"libqcustomplot2.0 (>=2.0.0),"\
+			"python3 (>=3.8.0),"\
+			"python3-matplotlib,"\
 			"libopengl0 (>=1.3.0)\n" \
 				>> ${APPDIRNAME}/DEBIAN/control
 
@@ -108,6 +111,8 @@ if [ $create_appdir -ne 0 ]; then
 		exit -1
 	fi
 
+	# py directory
+	mkdir -p ${APPDIRNAME}${PY_DISTDIR}
 
 	# binaries
 	cp -v build/taspaths		${APPDIRNAME}${BINDIR}
@@ -136,6 +141,7 @@ if [ $create_appdir -ne 0 ]; then
 	chmod a+x ${APPDIRNAME}${BINDIR}/*
 	strip -v ${APPDIRNAME}${BINDIR}/*
 	strip -v ${APPDIRNAME}${LIBDIR}/*
+	strip -v ${APPDIRNAME}${PY_DISTDIR}/*.so
 fi
 
 
