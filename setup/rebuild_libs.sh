@@ -76,7 +76,10 @@ function rebuild_qhull()
 
 	cd qhull
 
-	if ! ${cmake_tool} -DCMAKE_BUILD_TYPE=Release; then
+	if ! ${cmake_tool} -DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_VERBOSE_MAKEFILE=True \
+		-DCMAKE_C_FLAGS="-fPIC" \
+		-DCMAKE_CXX_FLAGS="-fPIC"; then
 		echo -e "cmake failed for qhull."
 		exit -1
 	fi
