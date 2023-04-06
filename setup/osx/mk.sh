@@ -30,6 +30,7 @@ create_appdir=1
 create_dmg=1
 strip_binaries=1
 clean_frameworks=1
+use_qt6=0
 
 
 # application name
@@ -49,12 +50,26 @@ LOCAL_OPT_DIR=/usr/local/opt
 LOCAL_FRAMEWORKS_DIR=/usr/local/Frameworks
 
 
-# libraries
-declare -a QT_LIBS=(
-	QtCore QtGui QtWidgets
-	QtDBus QtPrintSupport QtSvg
-)
+# qt libraries
+if [ $use_qt6 -ne 0 ]; then
+	echo -e "Using Qt6 libs."
 
+	declare -a QT_LIBS=(
+		QtCore QtGui QtWidgets
+		QtOpenGL QtOpenGLWidgets
+		QtDBus QtPrintSupport QtSvg
+	)
+else
+	echo -e "Using Qt5 libs."
+
+	declare -a QT_LIBS=(
+		QtCore QtGui QtWidgets
+		QtDBus QtPrintSupport QtSvg
+	)
+fi
+
+
+# libraries
 declare -a LOCAL_LIBS=(
 	libboost_filesystem-mt.dylib libboost_atomic-mt.dylib
 	libqhull_r.8.0.dylib
@@ -283,7 +298,7 @@ if [ $create_appdir -ne 0 ]; then
 
 	# binaries
 	for binary in $(ls "${APPDIRNAME}/Contents/MacOS/"); do
-		echo -e "\nProcessing ${binary}..."
+		echo -e "\nProcessing binary ${binary}..."
 
 		install_name_tool \
 			-add_rpath @executable_path/../Libraries \
@@ -292,6 +307,8 @@ if [ $create_appdir -ne 0 ]; then
 
 		change_to_rpath "${APPDIRNAME}/Contents/MacOS/${binary}"
 		check_local_bindings "${APPDIRNAME}/Contents/MacOS/${binary}"
+
+		chmod a+xr-w "${APPDIRNAME}/Contents/MacOS/${binary}"
 
 		if [ $strip_binaries -ne 0 ]; then
 			llvm-strip "${APPDIRNAME}/Contents/MacOS/${binary}"
@@ -307,7 +324,7 @@ if [ $create_appdir -ne 0 ]; then
 			continue
 		fi
 
-		echo -e "\nProcessing ${library}..."
+		echo -e "\nProcessing library ${library}..."
 
 		#install_name_tool \
 		#	-add_rpath @executable_path/../Libraries \
@@ -325,6 +342,8 @@ if [ $create_appdir -ne 0 ]; then
 		#		@executable_path/../Libraries/${otherlibrary} \
 		#		"${library}"
 		#done
+
+		chmod a-wx+r "${library}"
 
 		if [ $strip_binaries -ne 0 ]; then
 			llvm-strip "${library}"

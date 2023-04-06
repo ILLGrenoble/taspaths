@@ -59,7 +59,7 @@ get_filename_from_url() {
 # URLs for external libraries
 # -----------------------------------------------------------------------------
 TLIBS2=https://code.ill.fr/scientific-software/takin/tlibs2/-/archive/master/tlibs2-master.zip
-PLOTTER=https://www.qcustomplot.com/release/2.1.0fixed/QCustomPlot-source.tar.gz
+PLOTTER=https://www.qcustomplot.com/release/2.1.1/QCustomPlot-source.tar.gz
 BOOST_POLY_UTIL=https://raw.githubusercontent.com/boostorg/polygon/develop/example/voronoi_visual_utils.hpp
 # -----------------------------------------------------------------------------
 
