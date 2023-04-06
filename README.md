@@ -4,7 +4,7 @@ Motion-planning software for triple-axis spectrometers.
 
 *TAS-Paths* finds safe paths for moving triple-axis spectrometers from one set of crystal coordinates (or direct axis angles) to another.
 
-## Installation
+## Installation and Compilation
 - The *Mac* version of *TAS-Paths* can be [downloaded from the App Store](https://apps.apple.com/app/id1594199491).  
 - Versions for other systems are available [on the software's website](http://www.ill.eu/tas-paths).
 - Instructions for building the software for different systems [are given here](https://github.com/ILLGrenoble/taspaths/wiki/Compiling-TAS-Paths).
