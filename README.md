@@ -1,5 +1,5 @@
 # TAS-Paths
-Motion-planning software for triple-axis spectrometers.  
+Motion planning software for triple-axis spectrometers.  
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4625649.svg)](https://doi.org/10.5281/zenodo.4625649)
 
 *TAS-Paths* finds safe paths for moving triple-axis spectrometers from one set of crystal coordinates (or direct axis angles) to another.
