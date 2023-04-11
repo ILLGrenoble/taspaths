@@ -32,6 +32,20 @@ git_tool=git
 cmake_tool=cmake
 make_tool=make
 
+
+# number of build processes
+nproc_tool=$(which nproc)
+
+if [ $? -ne 0 ]; then
+	NUM_PROCS=4
+else
+	NUM_PROCS=$(($(${nproc_tool})/2+1))
+fi
+
+echo -e "Number of build processes: ${NUM_PROCS}."
+
+
+# mingw build tools
 if [ "$1" == "mingw" ]; then
 	cmake_tool=mingw64-cmake
 	make_tool=mingw64-make
@@ -41,11 +55,13 @@ fi
 # -----------------------------------------------------------------------------
 
 
+
 # -----------------------------------------------------------------------------
 # URLs for external libraries
 # -----------------------------------------------------------------------------
 QHULL_REPO=https://github.com/qhull/qhull
 # -----------------------------------------------------------------------------
+
 
 
 # -----------------------------------------------------------------------------
@@ -62,6 +78,7 @@ function clean_dirs()
 	#fi
 }
 # -----------------------------------------------------------------------------
+
 
 
 # -----------------------------------------------------------------------------
@@ -84,7 +101,7 @@ function rebuild_qhull()
 		exit -1
 	fi
 
-	if ! ${make_tool} -j4; then
+	if ! ${make_tool} -j${NUM_PROCS}; then
 		echo -e "make failed for qhull."
 		exit -1
 	fi
@@ -97,6 +114,7 @@ function rebuild_qhull()
 	popd
 }
 # -----------------------------------------------------------------------------
+
 
 
 echo -e "--------------------------------------------------------------------------------"

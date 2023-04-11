@@ -36,12 +36,27 @@ BUILD_EXTERNALS=1
 # -----------------------------------------------------------------------------
 
 
+
 # -----------------------------------------------------------------------------
 # tools
 # -----------------------------------------------------------------------------
 cmake_tool=cmake
 make_tool=make
 
+
+# number of build processes
+nproc_tool=$(which nproc)
+
+if [ $? -ne 0 ]; then
+	NUM_PROCS=4
+else
+	NUM_PROCS=$(($(${nproc_tool})/2+1))
+fi
+
+echo -e "Number of build processes: ${NUM_PROCS}."
+
+
+# mingw build tools
 if [ "$1" == "mingw" ]; then
 	cmake_tool=mingw64-cmake
 	make_tool=mingw64-make
@@ -74,8 +89,8 @@ if [ $BUILD_EXTERNALS -ne 0 ]; then
 		exit -1
 	fi
 
-	#if ! ${cmake_tool} --build . --parallel 4; then
-	if ! ${make_tool} -j4; then
+	#if ! ${cmake_tool} --build . --parallel ${NUM_PROCS}; then
+	if ! ${make_tool} -j${NUM_PROCS}; then
 		echo -e "make failed (external libraries)."
 		exit -1
 	fi
@@ -116,8 +131,8 @@ then
 	exit -1
 fi
 
-#if ! ${cmake_tool} --build . --parallel 4; then
-if ! ${make_tool} -j4; then
+#if ! ${cmake_tool} --build . --parallel ${NUM_PROCS}; then
+if ! ${make_tool} -j${NUM_PROCS}; then
 	echo -e "make failed."
 	exit -1
 fi
