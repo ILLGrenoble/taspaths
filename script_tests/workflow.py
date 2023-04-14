@@ -31,7 +31,11 @@ cwd = os.getcwd()
 sys.path.append(cwd)
 #print(sys.path)
 
-import taspaths as tas
+try:
+	import taspaths as tas
+except ModuleNotFoundError as err:
+	print("Error: " + str(err) + " The TAS-Paths Python module was not installed correctly.")
+	exit(-1)
 
 
 # -----------------------------------------------------------------------------
@@ -216,7 +220,11 @@ if write_path:
 
 # plot the angular configuration space
 if show_plot:
-	import matplotlib.pyplot as plt
+	try:
+		import matplotlib.pyplot as plt
+	except ModuleNotFoundError as err:
+		print("Error: " + str(err) + " Please install matplotlib to plot.")
+		exit(-1)
 
 	# plot obstacles
 	numgroups = builder.GetNumberOfLineSegmentRegions()
