@@ -126,8 +126,8 @@ if ! wget "https://sourceware.org/git/?p=glibc.git;a=blob_plain;f=COPYING.LIB;hb
 fi
 
 # libjpeg
-if ! wget https://raw.githubusercontent.com/freedesktop/libjpeg/master/README -O ${LICDIR}/libjpeg_license.txt; then
-	echo -e "Error: Cannot download libjpg license.";
+if ! wget https://raw.githubusercontent.com/LuaDist/libjpeg/master/README -O ${LICDIR}/libjpeg_license.txt; then
+	echo -e "Error: Cannot download libjpeg license.";
 	exit -1
 fi
 

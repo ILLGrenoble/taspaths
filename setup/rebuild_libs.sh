@@ -26,6 +26,15 @@
 
 
 # -----------------------------------------------------------------------------
+# options
+# -----------------------------------------------------------------------------
+# install libraries to the system lib directory
+install_as_sys_libs=0
+# -----------------------------------------------------------------------------
+
+
+
+# -----------------------------------------------------------------------------
 # tools
 # -----------------------------------------------------------------------------
 git_tool=git
@@ -85,6 +94,7 @@ function clean_dirs()
 function rebuild_qhull()
 {
 	pushd externals
+	local externals_dir=$(pwd)
 
 	if ! ${git_tool} clone ${QHULL_REPO}; then
 		echo -e "QHull could not be cloned."
@@ -106,10 +116,17 @@ function rebuild_qhull()
 		exit -1
 	fi
 
+if [ $install_as_sys_libs -ne 0 ]; then
 	if ! sudo ${make_tool} install; then
-		echo -e "QHull could not be installed."
+		echo -e "QHull could not be installed to ${CMAKE_INSTALL_PREFIX}."
 		exit -1
 	fi
+else
+	if ! ${make_tool} DESTDIR=${externals_dir}/qhull-inst install; then
+		echo -e "QHull could not be locally installed to ${CMAKE_INSTALL_PREFIX}."
+		exit -1
+	fi
+fi
 
 	popd
 }

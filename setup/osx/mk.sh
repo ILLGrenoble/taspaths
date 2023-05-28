@@ -142,7 +142,19 @@ function check_local_bindings()
 function change_to_rpath()
 {
 	local binary="$1"
-	local old_paths=$(otool -L ${binary} | grep ${LOCAL_DIR} | sed -e "s/(.*)//p" -n | sed -e "s/\t//p" -n)
+
+	# local lib paths
+	local old_paths1=$(otool -L ${binary} | \
+		grep "${LOCAL_DIR}" | \
+		sed -e "s/(.*)//p" -n | sed -e "s/\t//p" -n)
+
+	# locally compiled files beginning with "lib/"
+	local old_paths2=$(otool -L ${binary} | \
+		grep "lib/" | \
+		sed -e "s/(.*)//p" -n | sed -e "s/\t//p" -n | \
+		grep "^lib/")
+
+	local old_paths=("$old_paths1[@] $old_paths2[@]")
 
 	is_binary ${binary}
 	if [[ $? == 0 ]]; then
@@ -259,7 +271,10 @@ if [ $create_appdir -ne 0 ]; then
 	# more libraries
 	#cp -v ${LOCAL_OPT_DIR}/lapack/lib/liblapacke.3.dylib "${APPDIRNAME}/Contents/Libraries/"
 	#cp -v ${LOCAL_OPT_DIR}/lapack/lib/liblapack.3.dylib "${APPDIRNAME}/Contents/Libraries/"
+
+	# locally built libraries
 	cp -v build/libqcustomplot_local.dylib "${APPDIRNAME}/Contents/Libraries/"
+	cp -v externals/qhull-inst/usr/local/lib/libqhull_r.8.1.dylib "${APPDIRNAME}/Contents/Libraries/"
 
 	# frameworks
 	for (( libidx=0; libidx<${#QT_LIBS[@]}; ++libidx )); do
