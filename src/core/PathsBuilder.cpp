@@ -80,7 +80,7 @@ t_real PathsBuilder::GetPathLength(const t_vec2& _vec) const
 
 /**
  * find a path from an initial (a2, a4) to a final (a2, a4)
- * the monochromator a2/a3 variables can alternatively refer to the analyser a5/a6 in case kf is not fixed
+ * the monochromator a1/a2 variables can alternatively refer to the analyser a5/a6 in case kf is not fixed
  */
 InstrumentPath PathsBuilder::FindPath(
 	t_real a2_i, t_real a4_i,
