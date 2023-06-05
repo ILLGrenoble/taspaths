@@ -233,7 +233,7 @@ void PathsBuilder::FinishPathMeshWorkflow(bool success)
 
 /**
  * calculate the obstacle regions in the angular configuration space
- * the monochromator a2/a3 variables can alternatively refer to the analyser a5/a6 in case kf is not fixed
+ * the monochromator a1/a2 variables can alternatively refer to the analyser a5/a6 in case kf is not fixed
  */
 bool PathsBuilder::CalculateConfigSpace(
 	t_real da2, t_real da4,
