@@ -1,5 +1,5 @@
 # TAS-Paths
-Motion planning software for triple-axis spectrometers, version 1.4.5 (for paper).  
+Motion planning software for triple-axis spectrometers, version 1.4.6 (for paper).  
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4625649.svg)](https://doi.org/10.5281/zenodo.4625649)
 
 <img src="https://raw.githubusercontent.com/ILLGrenoble/taspaths/master/res/taspaths.svg" width="10%" height="10%" title="Logo" alt="">
