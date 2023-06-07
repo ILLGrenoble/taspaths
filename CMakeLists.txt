@@ -150,7 +150,7 @@ include_directories("${Boost_INCLUDE_DIRS}/..")
 find_package(Qhull)
 if(Qhull_FOUND)
 	add_definitions(-DUSE_QHULL)
-	include_directories("${Qhull_INCLUDE_DIRS}")
+	include_directories(BEFORE SYSTEM "${Qhull_INCLUDE_DIRS}" "${Qhull_INCLUDE_DIRS}/..")
 endif()
 
 
