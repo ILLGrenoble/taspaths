@@ -44,8 +44,10 @@
 #include <libqhullcpp/QhullFacetSet.h>
 #include <libqhullcpp/QhullVertexSet.h>
 
-#include <boost/math/quaternion.hpp>
 #include <optional>
+#include <cstdio>
+
+#include <boost/math/quaternion.hpp>
 
 #include "tlibs2/libs/maths.h"
 #include "hull.h"
@@ -103,9 +105,21 @@ calc_delaunay(int dim, const std::vector<t_vec>& verts,
 			options << "v Qu Qbb";
 		if(triangulate)
 			options << " QJ";
+		//options << " Pp";  // suppress some errors
 
-		qh::Qhull qh{"triag", dim, int(_verts.size()/dim),
-			_verts.data(), options.str().c_str() };
+		qh::Qhull qh{};
+		// workaround because qhull seems to call the qh_fprintf function
+		// in libqhull_r instead of the correct one in libqhullcpp
+		std::FILE *ferr = /*stderr*/ std::fopen("/dev/null", "w");
+		qh.qh()->ferr = ferr;
+		qh.setOutputStream(nullptr);
+		qh.setErrorStream(nullptr);
+		qh.setFactorEpsilon(eps);
+
+		qh.runQhull("triag", dim, int(_verts.size()/dim),
+			_verts.data(), options.str().c_str());
+		std::fclose(ferr);
+
 		if(qh.hasQhullMessage())
 			std::cout << qh.qhullMessage() << std::endl;
 
@@ -521,7 +535,18 @@ calc_delaunay_parabolic(const std::vector<t_vec>& verts)
 			_verts.push_back(t_real_qhull{vert[0]*vert[0] + vert[1]*vert[1]});
 		}
 
-		qh::Qhull qh{"triag", dim+1, int(_verts.size()/(dim+1)), _verts.data(), "Qt"};
+		qh::Qhull qh{};
+		// workaround because qhull seems to call the qh_fprintf function
+		// in libqhull_r instead of the correct one in libqhullcpp
+		std::FILE *ferr = /*stderr*/ std::fopen("/dev/null", "w");
+		qh.qh()->ferr = ferr;
+		qh.setOutputStream(nullptr);
+		qh.setErrorStream(nullptr);
+		//qh.setFactorEpsilon(eps);
+
+		qh.runQhull("triag", dim+1, int(_verts.size()/(dim+1)), _verts.data(), "Qt");
+		std::fclose(ferr);
+
 		if(qh.hasQhullMessage())
 			std::cout << qh.qhullMessage() << std::endl;
 
