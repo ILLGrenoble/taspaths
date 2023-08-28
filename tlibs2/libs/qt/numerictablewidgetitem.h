@@ -47,7 +47,7 @@ public:
 	 * construct a numeric table widget item from a numeric value
 	 */
 	explicit NumericTableWidgetItem(const T& val, std::streamsize prec = 6)
-		: QTableWidgetItem(tl2::var_to_str(val, prec).c_str()),
+		: QTableWidgetItem(var_to_str(val, prec).c_str()),
 		  m_prec{prec}
 	{}
 
@@ -74,7 +74,7 @@ public:
 	virtual bool operator<(const QTableWidgetItem& item) const override
 	{
 		T val1 = GetValue();
-		T val2 = tl2::str_to_var_parse<T>(item.text().toStdString());
+		T val2 = str_to_var_parse<T>(item.text().toStdString());
 
 		return val1 < val2;
 	}
@@ -97,9 +97,16 @@ public:
 	/**
 	 * get the numerical value
 	 */
-	T GetValue() const
+	T GetValue(bool *valid = nullptr) const
 	{
-		return tl2::str_to_var_parse<T>(text().toStdString());
+		std::string str = text().toStdString();
+		std::pair<bool, T> pairResult = eval_expr<std::string, T>(str);
+
+		if(valid)
+			*valid = pairResult.first;
+		if(!pairResult.first)
+			return T(0);
+		return pairResult.second;
 	}
 
 
@@ -108,7 +115,7 @@ public:
 	 */
 	void SetValue(T val)
 	{
-		QString str = tl2::var_to_str(val, m_prec).c_str();
+		QString str = var_to_str(val, m_prec).c_str();
 		setText(str);
 	}
 

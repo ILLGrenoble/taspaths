@@ -149,12 +149,36 @@ namespace tl2 {
 
 // ----------------------------------------------------------------------------
 // types
-using t_real_gl = GLfloat;
-//using t_real_gl = GLdouble;
-using t_vec2_gl = tl2::qvecN_adapter<int, 2, t_real_gl, QVector2D>;
-using t_vec3_gl = tl2::qvecN_adapter<int, 3, t_real_gl, QVector3D>;
-using t_vec_gl = tl2::qvecN_adapter<int, 4, t_real_gl, QVector4D>;
-using t_mat_gl = tl2::qmatNN_adapter<int, 4, 4, t_real_gl, QMatrix4x4>;
+#ifdef _T_REAL_GL
+	using t_real_gl _T_REAL_GL;
+#else
+	using t_real_gl = GLfloat;
+	//using t_real_gl = GLdouble;
+#endif
+
+#ifdef _T_VEC2_GL
+	using t_vec2_gl _T_VEC2_GL;
+#else
+	using t_vec2_gl = tl2::qvecN_adapter<int, 2, t_real_gl, QVector2D>;
+#endif
+
+#ifdef _T_VEC3_GL
+	using t_vec3_gl _T_VEC3_GL;
+#else
+	using t_vec3_gl = tl2::qvecN_adapter<int, 3, t_real_gl, QVector3D>;
+#endif
+
+#ifdef _T_VEC_GL
+	using t_vec_gl _T_VEC_GL;
+#else
+	using t_vec_gl = tl2::qvecN_adapter<int, 4, t_real_gl, QVector4D>;
+#endif
+
+#ifdef _T_MAT_GL
+	using t_mat_gl _T_MAT_GL;
+#else
+	using t_mat_gl = tl2::qmatNN_adapter<int, 4, 4, t_real_gl, QMatrix4x4>;
+#endif
 // ----------------------------------------------------------------------------
 
 

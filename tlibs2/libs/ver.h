@@ -28,6 +28,6 @@
 #ifndef __TLIBS2_VER_H__
 #define __TLIBS2_VER_H__
 
-#define TLIBS2_VER "2.5"
+#define TLIBS2_VER "2.5.4"
 
 #endif

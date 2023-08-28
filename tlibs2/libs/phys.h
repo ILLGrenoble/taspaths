@@ -2,7 +2,7 @@
  * tlibs2
  * physics library
  * @author Tobias Weber <tobias.weber@tum.de>, <tweber@ill.fr>
- * @date 2012-2022
+ * @date 2012 - 2023
  * @license GPLv3, see 'LICENSE' file
  *
  * @note Forked on 7-Nov-2018 from my privately and TUM-PhD-developed "tlibs" project (https://github.com/t-weber/tlibs).
@@ -13,7 +13,7 @@
  *
  * ----------------------------------------------------------------------------
  * tlibs
- * Copyright (C) 2017-2022  Tobias WEBER (Institut Laue-Langevin (ILL),
+ * Copyright (C) 2017-2023  Tobias WEBER (Institut Laue-Langevin (ILL),
  *                          Grenoble, France).
  * Copyright (C) 2015-2017  Tobias WEBER (Technische Universitaet Muenchen
  *                          (TUM), Garching, Germany).
@@ -157,22 +157,43 @@ t_energy<Sys,Y> kinematic_plane(bool bFixedKi, bool bBranch,
 // --------------------------------------------------------------------------------
 
 /**
- * angle between ki and kf in the scattering triangle
+ * angle between ki and kf in the scattering triangle (a4)
  * @returns nullopt if the angle can't be reached
  *
  * |Q> = |ki> - |kf>
  * Q^2 = ki^2 + kf^2 - 2*<ki|kf>
  * 2*<ki|kf> = ki^2 + kf^2 - Q^2
- * cos phi = (ki^2 + kf^2 - Q^2) / (2 ki*kf)
+ * cos phi = (ki^2 + kf^2 - Q^2) / (2 ki kf)
  */
 template<typename t_real>
 std::optional<t_real> calc_tas_angle_ki_kf(
-	t_real ki, t_real kf, t_real Q, t_real sense=1)
+	t_real ki, t_real kf, t_real Q, t_real sense = 1)
 {
 	t_real c = (ki*ki + kf*kf - Q*Q) / (t_real(2)*ki*kf);
 	if(std::abs(c) > t_real(1))
 		return std::nullopt;
 	return sense*std::acos(c);
+}
+
+
+/**
+ * angle between ki and kf in the scattering triangle (a4)
+ * (version with units)
+ */
+template<class Sys, class Y>
+t_angle<Sys,Y> calc_tas_angle_ki_kf(const t_wavenumber<Sys,Y>& ki,
+	const t_wavenumber<Sys,Y>& kf, const t_wavenumber<Sys,Y>& Q,
+	bool bPosSense = true)
+{
+	t_dimensionless<Sys,Y> ttCos = (ki*ki + kf*kf - Q*Q)/(Y(2.)*ki*kf);
+	if(units::abs(ttCos) > Y(1.))
+		throw Err("Scattering triangle not closed.");
+
+	t_angle<Sys,Y> tt = units::acos(ttCos);
+
+	if(!bPosSense)
+		tt = -tt;
+	return tt;
 }
 
 
@@ -188,7 +209,7 @@ std::optional<t_real> calc_tas_angle_ki_kf(
  */
 template<typename t_real>
 std::optional<t_real> calc_tas_angle_ki_Q(
-	t_real ki, t_real kf, t_real Q, t_real sense=1)
+	t_real ki, t_real kf, t_real Q, t_real sense = 1)
 {
 	t_real c = (ki*ki + Q*Q - kf*kf) / (t_real(2)*ki*Q);
 	if(std::abs(c) > t_real(1))
@@ -205,7 +226,8 @@ template<class Sys, class Y>
 t_angle<Sys,Y> calc_tas_angle_ki_Q(const t_wavenumber<Sys,Y>& ki,
 	const t_wavenumber<Sys,Y>& kf,
 	const t_wavenumber<Sys,Y>& Q,
-	bool bPosSense=1, bool bAngleOutsideTriag=0)
+	bool bPosSense = true,
+	bool bAngleOutsideTriag = false)
 {
 	t_angle<Sys,Y> angle;
 
@@ -222,8 +244,10 @@ t_angle<Sys,Y> calc_tas_angle_ki_Q(const t_wavenumber<Sys,Y>& ki,
 		angle = units::acos(c);
 	}
 
-	if(bAngleOutsideTriag) angle = pi<Y>*radians<Y> - angle;
-	if(!bPosSense) angle = -angle;
+	if(bAngleOutsideTriag)
+		angle = pi<Y>*radians<Y> - angle;
+	if(!bPosSense)
+		angle = -angle;
 
 	return angle;
 }
@@ -242,7 +266,8 @@ template<class Sys, class Y>
 t_angle<Sys,Y> calc_tas_angle_kf_Q(const t_wavenumber<Sys,Y>& ki,
 	const t_wavenumber<Sys,Y>& kf,
 	const t_wavenumber<Sys,Y>& Q,
-	bool bPosSense=1, bool bAngleOutsideTriag=1)
+	bool bPosSense = true,
+	bool bAngleOutsideTriag = true)
 {
 	t_angle<Sys,Y> angle;
 
@@ -257,8 +282,10 @@ t_angle<Sys,Y> calc_tas_angle_kf_Q(const t_wavenumber<Sys,Y>& ki,
 		angle = units::acos(c);
 	}
 
-	if(!bAngleOutsideTriag) angle = pi<Y>*radians<Y> - angle;
-	if(!bPosSense) angle = -angle;
+	if(!bAngleOutsideTriag)
+		angle = pi<Y>*radians<Y> - angle;
+	if(!bPosSense)
+		angle = -angle;
 
 	return angle;
 }
@@ -279,11 +306,7 @@ t_real calc_tas_Q_len(t_real ki, t_real kf, t_real a4)
 
 
 /**
- * get length of Q
- * (version with units)
- * |Q> = |ki> - |kf>
- * Q^2 = ki^2 + kf^2 - 2*<ki|kf>
- * Q^2 = ki^2 + kf^2 - 2*ki*kf*cos(a4)
+ * get length of Q (version with units)
  */
 template<class Sys, class Y>
 t_wavenumber<Sys,Y>
@@ -302,30 +325,6 @@ calc_tas_Q_len(const t_wavenumber<Sys,Y>& ki,
 	//t_wavenumber<Sys,Y> Q = units::sqrt(Qsq);
 	t_wavenumber<Sys,Y> Q = my_units_sqrt<t_wavenumber<Sys,Y>>(Qsq);
 	return Q;
-}
-
-
-/**
- * get tas a4 angles
- * (version with units)
- * Q_vec = ki_vec - kf_vec
- * Q^2 = ki^2 + kf^2 - 2ki kf cos 2th
- * cos 2th = (-Q^2 + ki^2 + kf^2) / (2ki kf)
- */
-template<class Sys, class Y>
-t_angle<Sys,Y> calc_tas_a4(const t_wavenumber<Sys,Y>& ki,
-	const t_wavenumber<Sys,Y>& kf, const t_wavenumber<Sys,Y>& Q,
-	bool bPosSense=1)
-{
-	t_dimensionless<Sys,Y> ttCos = (ki*ki + kf*kf - Q*Q)/(Y(2.)*ki*kf);
-	if(units::abs(ttCos) > Y(1.))
-		throw Err("Scattering triangle not closed.");
-
-	t_angle<Sys,Y> tt;
-	tt = units::acos(ttCos);
-
-	if(!bPosSense) tt = -tt;
-	return tt;
 }
 
 
@@ -443,7 +442,7 @@ std::optional<t_real> calc_tas_a1(t_real k, t_real d)
  */
 template<class Sys, class Y>
 t_angle<Sys,Y> calc_tas_a1(const t_wavenumber<Sys,Y>& k,
-	const t_length<Sys,Y>& d, bool bPosSense=1)
+	const t_length<Sys,Y>& d, bool bPosSense = true)
 {
 	const Y order = Y(1.);
 	t_length<Sys,Y> lam = Y(2.)*pi<Y> / k;
@@ -479,7 +478,7 @@ t_real calc_tas_k(t_real theta, t_real d)
  */
 template<class Sys, class Y>
 t_wavenumber<Sys,Y> calc_tas_k(const t_angle<Sys,Y>& _theta,
-	const t_length<Sys,Y>& d, bool bPosSense=1)
+	const t_length<Sys,Y>& d, bool bPosSense = true)
 {
 	t_angle<Sys,Y> theta = _theta;
 	if(!bPosSense)
@@ -567,7 +566,8 @@ t_wavenumber<Sys,Y> get_other_k(const t_energy<Sys,Y>& E,
 	const t_wavenumber<Sys,Y>& kfix, bool bFixedKi)
 {
 	auto kE_sq = E*Y(2.)*(m_n<Y>/hbar<Y>)/hbar<Y>;
-	if(bFixedKi) kE_sq = -kE_sq;
+	if(bFixedKi)
+		kE_sq = -kE_sq;
 
 	auto k_sq = kE_sq + kfix*kfix;
 	if(k_sq*angstrom<Y>*angstrom<Y> < Y(0.))
@@ -767,7 +767,7 @@ t_length<Sys, Y> foc_curv(const t_length<Sys, Y>& lenBefore, const t_length<Sys,
 template<class Sys, class Y=double>
 t_time<Sys,Y> burst_time(const t_length<Sys,Y>& r,
 	const t_length<Sys,Y>& L, const t_freq<Sys,Y>& om, bool bCounterRot,
-	bool bSigma=1)
+	bool bSigma = true)
 {
 	const Y tSig = bSigma ? FWHM2SIGMA<Y> : Y(1);
 	Y tScale = bCounterRot ? Y(2) : Y(1);
@@ -782,7 +782,7 @@ t_time<Sys,Y> burst_time(const t_length<Sys,Y>& r,
 template<class Sys, class Y=double>
 t_length<Sys,Y> burst_time_L(const t_length<Sys,Y>& r,
 	const t_time<Sys,Y>& dt, const t_freq<Sys,Y>& om, bool bCounterRot,
-	bool bSigma=1)
+	bool bSigma = true)
 {
 	const Y tSig = bSigma ? FWHM2SIGMA<Y> : Y(1);
 	Y tScale = bCounterRot ? Y(2) : Y(1);
@@ -797,7 +797,7 @@ t_length<Sys,Y> burst_time_L(const t_length<Sys,Y>& r,
 template<class Sys, class Y=double>
 t_length<Sys,Y> burst_time_r(const t_time<Sys,Y>& dt,
 	const t_length<Sys,Y>& L, const t_freq<Sys,Y>& om, bool bCounterRot,
-	bool bSigma=1)
+	bool bSigma = true)
 {
 	const Y tSig = bSigma ? FWHM2SIGMA<Y> : Y(1);
 	Y tScale = bCounterRot ? Y(2) : Y(1);
@@ -812,7 +812,7 @@ t_length<Sys,Y> burst_time_r(const t_time<Sys,Y>& dt,
 template<class Sys, class Y=double>
 t_freq<Sys,Y> burst_time_om(const t_length<Sys,Y>& r,
 	const t_length<Sys,Y>& L, const t_time<Sys,Y>& dt, bool bCounterRot,
-	bool bSigma=1)
+	bool bSigma = true)
 {
 	const Y tSig = bSigma ? FWHM2SIGMA<Y> : Y(1);
 	Y tScale = bCounterRot ? Y(2) : Y(1);
@@ -833,7 +833,7 @@ t_freq<Sys,Y> burst_time_om(const t_length<Sys,Y>& r,
  * @see (Shirane 2002), Ch. 3.3
  */
 template<class Sys, class Y=double>
-t_angle<Sys,Y> colli_div(const t_length<Sys,Y>& L, const t_length<Sys,Y>& w, bool bSigma=1)
+t_angle<Sys,Y> colli_div(const t_length<Sys,Y>& L, const t_length<Sys,Y>& w, bool bSigma = true)
 {
 	const Y tSig = bSigma ? FWHM2SIGMA<Y> : Y(1);
 	return units::atan(w/L) * tSig;
@@ -845,7 +845,7 @@ t_angle<Sys,Y> colli_div(const t_length<Sys,Y>& L, const t_length<Sys,Y>& w, boo
  * @see (Shirane 2002), Ch. 3.3
  */
 template<class Sys, class Y=double>
-t_length<Sys,Y> colli_div_L(const t_angle<Sys,Y>& ang, const t_length<Sys,Y>& w, bool bSigma=1)
+t_length<Sys,Y> colli_div_L(const t_angle<Sys,Y>& ang, const t_length<Sys,Y>& w, bool bSigma = true)
 {
 	const Y tSig = bSigma ? FWHM2SIGMA<Y> : Y(1);
 	return w/units::tan(ang/tSig);
@@ -857,7 +857,7 @@ t_length<Sys,Y> colli_div_L(const t_angle<Sys,Y>& ang, const t_length<Sys,Y>& w,
  * @see (Shirane 2002), Ch. 3.3
  */
 template<class Sys, class Y=double>
-t_length<Sys,Y> colli_div_w(const t_length<Sys,Y>& L, const t_angle<Sys,Y>& ang, bool bSigma=1)
+t_length<Sys,Y> colli_div_w(const t_length<Sys,Y>& L, const t_angle<Sys,Y>& ang, bool bSigma = true)
 {
 	const Y tSig = bSigma ? FWHM2SIGMA<Y> : Y(1);
 	return units::tan(ang/tSig) * L;

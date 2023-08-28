@@ -1238,7 +1238,7 @@ protected:
 			// variable lookup
 			else
 			{
-				// register the variable if it doesn't yet exist
+				// register the variable if it doesn't exist yet
 				if(m_vars.find(ident) == m_vars.end() &&
 					m_consts.find(ident) == m_consts.end() &&
 					m_autoregister_var)

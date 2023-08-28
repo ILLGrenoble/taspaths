@@ -87,132 +87,16 @@ static inline const std::string& wstr_to_str(const std::string& str) { return st
 template<class t_str = std::string>
 t_str str_to_upper(const t_str& str)
 {
-	t_str strOut;
 	std::locale loc;
-
-	strOut = boost::to_upper_copy(str, loc);
-	return strOut;
+	return boost::to_upper_copy(str, loc);
 }
 
 
 template<class t_str = std::string>
 t_str str_to_lower(const t_str& str)
 {
-	t_str strLower;
 	std::locale loc;
-
-	strLower = boost::to_lower_copy(str, loc);
-	return strLower;
-}
-
-
-// -----------------------------------------------------------------------------
-
-
-template<class t_str = std::string>
-t_str get_file_noext(const t_str& str, bool bToLower = false)
-{
-	std::size_t iPos = str.find_last_of('.');
-
-	if(iPos == t_str::npos)
-		return str;
-
-	t_str strRet = str.substr(0, iPos);
-	if(bToLower)
-		strRet = str_to_lower(strRet);
-
-	return strRet;
-}
-
-
-template<class t_str = std::string>
-t_str get_fileext(const t_str& str, bool bToLower = false)
-{
-	std::size_t iPos = str.find_last_of('.');
-
-	if(iPos == t_str::npos)
-		return t_str();
-
-	t_str strRet = str.substr(iPos+1);
-	if(bToLower)
-		strRet = str_to_lower(strRet);
-
-	return strRet;
-}
-
-
-/**
- *  e.g. returns "tof" for "123.tof.bz2"
- */
-template<class t_str = std::string>
-t_str get_fileext2(const t_str& str, bool bToLower = false)
-{
-	std::size_t iPos = str.find_last_of('.');
-	if(iPos == t_str::npos || iPos == 0)
-		return t_str();
-
-	t_str strFile = str.substr(0, iPos);
-	return get_fileext(strFile, bToLower);
-}
-
-
-/**
- * e.g. returns "tof" for "123.tof.bz2" and for "123.tof"
- */
-template<class t_str = std::string>
-t_str get_fileext_nocomp(const t_str& str, bool bToLower = false)
-{
-	std::size_t iCnt = std::count(str.begin(), str.end(), '.');
-	if(iCnt==0)
-		return t_str();
-	else if(iCnt==1)
-		return get_fileext(str, bToLower);
-	else
-		return get_fileext2(str, bToLower);
-}
-
-
-template<class t_str = std::string>
-t_str get_dir(const t_str& str, bool bToLower = false)
-{
-	using t_ch = typename t_str::value_type;
-	std::size_t iPos = std::string::npos;
-
-	if constexpr(std::is_same_v<t_ch, char>)
-		iPos = str.find_last_of("\\/");
-	else if constexpr(std::is_same_v<t_ch, wchar_t>)
-		iPos = str.find_last_of(L"\\/");
-
-	if(iPos == t_str::npos)
-		return t_str();
-
-	t_str strRet = str.substr(0, iPos);
-	if(bToLower)
-		strRet = str_to_lower(strRet);
-
-	return strRet;
-}
-
-
-template<class t_str = std::string>
-t_str get_file_nodir(const t_str& str, bool bToLower = false)
-{
-	using t_ch = typename t_str::value_type;
-	std::size_t iPos = std::string::npos;
-
-	if constexpr(std::is_same_v<t_ch, char>)
-		iPos = str.find_last_of("\\/");
-	else if constexpr(std::is_same_v<t_ch, wchar_t>)
-		iPos = str.find_last_of(L"\\/");
-
-	if(iPos == t_str::npos)
-		return str;
-
-	t_str strRet = str.substr(iPos+1);
-	if(bToLower)
-		strRet = str_to_lower(strRet);
-
-	return strRet;
+	return boost::to_lower_copy(str, loc);
 }
 
 
@@ -567,7 +451,7 @@ T str_to_var(const t_str& str)
 
 
 template<class T, class t_ch,
-	bool is_number_type=std::is_fundamental<T>::value>
+	bool is_number_type = std::is_fundamental<T>::value>
 struct _var_to_str_print_impl {};
 
 
@@ -691,7 +575,7 @@ t_str cont_to_str(const t_cont& cont, const char* pcDelim=",",
 template<typename t_char=char>
 bool skip_after_line(std::basic_istream<t_char>& istr,
 	const std::basic_string<t_char>& strLineBegin,
-	bool bTrim=true, bool bCase=0)
+	bool bTrim = true, bool bCase = false)
 {
 	while(!istr.eof())
 	{
@@ -713,10 +597,12 @@ bool skip_after_line(std::basic_istream<t_char>& istr,
 
 
 template<typename t_char=char>
-void skip_after_char(std::basic_istream<t_char>& istr, t_char ch, bool bCase=0)
+void skip_after_char(std::basic_istream<t_char>& istr, t_char ch,
+	bool bCase = false)
 {
 	std::locale loc;
-	if(!bCase) ch = std::tolower(ch, loc);
+	if(!bCase)
+		ch = std::tolower(ch, loc);
 
 	while(!istr.eof())
 	{
@@ -841,6 +727,7 @@ std::pair<bool, t_val> eval_expr(const t_str& str) noexcept
 	try
 	{
 		ExprParser<t_val> parser;
+		parser.SetAutoregisterVariables(false);
 		bool ok = parser.parse(wstr_to_str(str));
 		t_val valRes = parser.eval();
 		return std::make_pair(ok, valRes);

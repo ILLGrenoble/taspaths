@@ -33,6 +33,7 @@
 #include "llasm.h"
 #include "printast.h"
 #include "str.h"
+#include "file.h"
 
 #include <fstream>
 #include <locale>

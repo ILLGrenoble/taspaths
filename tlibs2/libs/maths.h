@@ -2,7 +2,7 @@
  * tlibs2
  * (container-agnostic) math library
  * @author Tobias Weber <tobias.weber@tum.de>, <tweber@ill.fr>
- * @date 2015-2022
+ * @date 2015 - 2023
  * @license GPLv3, see 'LICENSE' file
  *
  * @note The present version was forked on 8-Nov-2018 from my privately developed "magtools" project (https://github.com/t-weber/magtools).
@@ -14,7 +14,7 @@
  *
  * ----------------------------------------------------------------------------
  * tlibs
- * Copyright (C) 2017-2022  Tobias WEBER (Institut Laue-Langevin (ILL),
+ * Copyright (C) 2017-2023  Tobias WEBER (Institut Laue-Langevin (ILL),
  *                          Grenoble, France).
  * Copyright (C) 2015-2017  Tobias WEBER (Technische Universitaet Muenchen
  *                          (TUM), Garching, Germany).
@@ -128,7 +128,7 @@ namespace tl2 {
 // forward declarations
 // ----------------------------------------------------------------------------
 template<class t_mat>
-t_mat prod(const t_mat& mat1, const t_mat& mat2, bool assert_sizes=true)
+t_mat prod(const t_mat& mat1, const t_mat& mat2, bool assert_sizes = true)
 requires tl2::is_basic_mat<t_mat> && tl2::is_dyn_mat<t_mat>;
 
 template<class t_mat>
@@ -150,6 +150,10 @@ requires is_mat<t_mat>;
 template<class t_mat>
 typename t_mat::value_type det(const t_mat& mat)
 requires is_mat<t_mat>;
+
+template<class t_elem, template<class...> class t_cont = std::vector>
+t_elem mean(const t_cont<t_elem>& vec)
+requires is_basic_vec<t_cont<t_elem>>;
 // ----------------------------------------------------------------------------
 
 
@@ -785,26 +789,6 @@ std::tuple<T,T,T> cart_to_cyl(T x, T y, T z)
 }
 
 
-
-template<class T = double>
-std::tuple<T,T> crys_to_sph(T twophi_crys, T twotheta_crys)
-{
-	// converts the out-of-plane scattering angle '2theta' to the spherical theta
-	T theta_sph = pi<T>/T(2) - twotheta_crys;
-	// converts in-plane scattering angle '2phi' to the spherical phi
-	T phi_sph = twophi_crys - pi<T>/T(2);
-
-	return std::make_tuple(phi_sph, theta_sph);
-}
-
-
-template<class T = double>
-std::tuple<T,T> sph_to_crys(T phi, T theta)
-{
-	return crys_to_sph<T>(phi, theta);
-}
-
-
 /**
  * gnomonic projection (similar to perspective projection with fov=90°)
  * @return [x,y]
@@ -818,6 +802,7 @@ std::tuple<T,T> gnomonic_proj(T twophi_crys, T twotheta_crys)
 
 	return std::make_tuple(x, y);
 }
+
 
 /**
  * stereographic projection
@@ -1637,7 +1622,7 @@ bool is_integer(T val, T eps = std::numeric_limits<T>::epsilon())
 requires is_scalar<T>
 {
 	T val_diff = val - std::round(val);
-	return equals<T>(val_diff, T(0), eps);
+	return tl2::equals<T>(val_diff, T(0), eps);
 }
 
 
@@ -1655,7 +1640,7 @@ requires is_scalar<t_num>
 	{
 		div = std::floor(div);
 		t_num rest = std::fmod(num, granularity);
-		rest_is_0 = equals(rest, t_num{0});
+		rest_is_0 = tl2::equals(rest, t_num{0});
 	}
 	else
 	{
@@ -1715,7 +1700,7 @@ bool equals(const T& t1, const T& t2,
 template<class T> requires is_complex<T>
 bool equals(const T& t1, const T& t2, const T& eps)
 {
-	return equals<T>(t1, t2, eps.real());
+	return tl2::equals<T>(t1, t2, eps.real());
 }
 
 // ----------------------------------------------------------------------------
@@ -1748,12 +1733,12 @@ requires is_basic_vec<t_vec>
 	{
 		if constexpr(tl2::is_complex<t_num>)
 		{
-			if(!equals<t_num>(vec1[i], vec2[i], eps.real()))
+			if(!tl2::equals<t_num>(vec1[i], vec2[i], eps.real()))
 				return false;
 		}
 		else if constexpr(tl2::is_scalar<t_num>)
 		{
-			if(!equals<t_num>(vec1[i], vec2[i], eps))
+			if(!tl2::equals<t_num>(vec1[i], vec2[i], eps))
 				return false;
 		}
 	}
@@ -1790,12 +1775,12 @@ requires is_mat<t_mat>
 		{
 			if constexpr(is_complex<decltype(eps)>)
 			{
-				if(!equals<T>(mat1(i,j), mat2(i,j), eps.real()))
+				if(!tl2::equals<T>(mat1(i,j), mat2(i,j), eps.real()))
 					return false;
 			}
 			else
 			{
-				if(!equals<T>(mat1(i,j), mat2(i,j), eps))
+				if(!tl2::equals<T>(mat1(i,j), mat2(i,j), eps))
 					return false;
 			}
 		}
@@ -1918,9 +1903,9 @@ requires is_mat<t_mat>
 	{
 		for(std::size_t j=0; j<mat.size2(); ++j)
 		{
-			if(i==j && !equals<t_scalar>(mat(i, j), t_scalar(1), eps))
+			if(i==j && !tl2::equals<t_scalar>(mat(i, j), t_scalar(1), eps))
 				return false;
-			if(i!=j && !equals<t_scalar>(mat(i, j), t_scalar(0), eps))
+			if(i!=j && !tl2::equals<t_scalar>(mat(i, j), t_scalar(0), eps))
 				return false;
 		}
 	}
@@ -1973,7 +1958,7 @@ requires is_mat<t_mat>
 	{
 		for(std::size_t j=0; j<mat.size2(); ++j)
 		{
-			if(!equals<t_scalar>(mat(i, j), t_scalar(0), eps))
+			if(!tl2::equals<t_scalar>(mat(i, j), t_scalar(0), eps))
 				return false;
 		}
 	}
@@ -2012,7 +1997,7 @@ requires is_vec<t_vec>
 {
 	for(std::size_t i=0; i<vec.size(); ++i)
 	{
-		if(!equals<t_scalar>(vec[i], t_scalar(0), eps))
+		if(!tl2::equals<t_scalar>(vec[i], t_scalar(0), eps))
 			return false;
 	}
 
@@ -2185,7 +2170,7 @@ template<class t_real>
 bool equals_0(t_real val, t_real eps = std::numeric_limits<t_real>::epsilon())
 requires is_scalar<t_real>
 {
-	return equals<t_real>(val, t_real(0), eps);
+	return tl2::equals<t_real>(val, t_real(0), eps);
 }
 
 
@@ -2197,7 +2182,7 @@ bool equals_0(const t_vec& vec,
 	typename t_vec::value_type eps = std::numeric_limits<typename t_vec::value_type>::epsilon())
 requires is_basic_vec<t_vec>
 {
-	return equals<t_vec>(vec, zero<t_vec>(vec.size()), eps);
+	return tl2::equals<t_vec>(vec, zero<t_vec>(vec.size()), eps);
 }
 
 
@@ -2209,7 +2194,7 @@ bool equals_0(const t_mat& mat,
 	typename t_mat::value_type eps = std::numeric_limits<typename t_mat::value_type>::epsilon())
 requires is_mat<t_mat>
 {
-	return equals<t_mat>(mat, zero<t_mat>(mat.size1(), mat.size2()), eps);
+	return tl2::equals<t_mat>(mat, zero<t_mat>(mat.size1(), mat.size2()), eps);
 }
 
 
@@ -2232,13 +2217,13 @@ requires is_mat<t_mat>
 			if constexpr(is_complex<t_elem>)
 			{
 				// not hermitian?
-				if(!equals<t_elem>(mat(i,j), std::conj(mat(j,i)), eps))
+				if(!tl2::equals<t_elem>(mat(i,j), std::conj(mat(j,i)), eps))
 					return false;
 			}
 			else
 			{
 				// not symmetric?
-				if(!equals<t_elem>(mat(i,j), mat(j,i), eps))
+				if(!tl2::equals<t_elem>(mat(i,j), mat(j,i), eps))
 					return false;
 			}
 		}
@@ -2268,13 +2253,13 @@ requires is_mat<t_mat>
 			if constexpr(is_complex<t_elem>)
 			{
 				// not hermitian?
-				if(!equals<t_elem>(mat(i,j), -std::conj(mat(j,i)), eps))
+				if(!tl2::equals<t_elem>(mat(i,j), -std::conj(mat(j,i)), eps))
 					return false;
 			}
 			else
 			{
 				// not skew-symmetric?
-				if(!equals<t_elem>(mat(i,j), -mat(j,i), eps))
+				if(!tl2::equals<t_elem>(mat(i,j), -mat(j,i), eps))
 					return false;
 			}
 		}
@@ -2305,12 +2290,12 @@ requires is_mat<t_mat>
 
 			if constexpr(is_complex<t_elem>)
 			{
-				if(!equals<t_elem>(mat(i,j), t_elem(0, 0), eps))
+				if(!tl2::equals<t_elem>(mat(i,j), t_elem(0, 0), eps))
 					return false;
 			}
 			else
 			{
-				if(!equals<t_elem>(mat(i,j), t_elem(0.), eps))
+				if(!tl2::equals<t_elem>(mat(i,j), t_elem(0.), eps))
 					return false;
 			}
 		}
@@ -2719,7 +2704,7 @@ requires (is_vec<t_obj_dst> || is_mat<t_obj_dst>) && (is_vec<t_obj_src> || is_ma
 	dst_objs.reserve(src_objs.size());
 
 	for(const t_obj_src& src_obj : src_objs)
-		dst_objs.emplace_back(convert<t_obj_dst, t_obj_src>(src_obj));
+		dst_objs.emplace_back(tl2::convert<t_obj_dst, t_obj_src>(src_obj));
 
 	return dst_objs;
 }
@@ -2924,7 +2909,7 @@ template<class t_vec, class t_real = typename t_vec::value_type>
 t_real norm(const t_vec& vec)
 requires is_basic_vec<t_vec>
 {
-	t_real d = static_cast<t_real>(inner<t_vec>(vec, vec));
+	t_real d = static_cast<t_real>(tl2::inner<t_vec>(vec, vec));
 	return std::sqrt(d);
 }
 
@@ -3212,13 +3197,13 @@ requires is_vec<t_vec> && is_mat<t_mat>
 {
 	if(is_normalised)
 	{
-		return outer<t_mat, t_vec>(vec, vec);
+		return tl2::outer<t_mat, t_vec>(vec, vec);
 	}
 	else
 	{
-		const auto len = norm<t_vec>(vec);
+		const auto len = tl2::norm<t_vec>(vec);
 		t_vec _vec = vec / len;
-		return outer<t_mat, t_vec>(_vec, _vec);
+		return tl2::outer<t_mat, t_vec>(_vec, _vec);
 	}
 }
 
@@ -3237,13 +3222,13 @@ requires is_vec<t_vec>
 {
 	if(is_normalised)
 	{
-		return inner<t_vec>(vecProj, vec) * vecProj;
+		return tl2::inner<t_vec>(vecProj, vec) * vecProj;
 	}
 	else
 	{
-		const auto len = norm<t_vec>(vecProj);
+		const auto len = tl2::norm<t_vec>(vecProj);
 		const t_vec _vecProj = vecProj / len;
-		return inner<t_vec>(_vecProj, vec) * _vecProj;
+		return tl2::inner<t_vec>(_vecProj, vec) * _vecProj;
 	}
 }
 
@@ -3260,13 +3245,13 @@ requires is_vec<t_vec>
 {
 	if(is_normalised)
 	{
-		return inner<t_vec>(vecProj, vec);
+		return tl2::inner<t_vec>(vecProj, vec);
 	}
 	else
 	{
-		const auto len = norm<t_vec>(vecProj);
+		const auto len = tl2::norm<t_vec>(vecProj);
 		const t_vec _vecProj = vecProj / len;
-		return inner<t_vec>(_vecProj, vec);
+		return tl2::inner<t_vec>(_vecProj, vec);
 	}
 }
 
@@ -3356,7 +3341,7 @@ requires is_vec<t_vec> && is_mat<t_mat>
 {
 	const std::size_t iSize = vec.size();
 	return unit<t_mat>(iSize) -
-		projector<t_mat, t_vec>(vec, is_normalised);
+		tl2::projector<t_mat, t_vec>(vec, is_normalised);
 }
 
 
@@ -3374,7 +3359,7 @@ requires is_vec<t_vec> && is_mat<t_mat>
 	const std::size_t iSize = vec.size();
 
 	return unit<t_mat>(iSize) -
-		T(2)*projector<t_mat, t_vec>(vec, is_normalised);
+		T(2)*tl2::projector<t_mat, t_vec>(vec, is_normalised);
 }
 
 
@@ -3419,7 +3404,7 @@ template<class t_vec>
 t_vec ortho_project(const t_vec& vec, const t_vec& vecNorm, bool is_normalised = true)
 requires is_vec<t_vec>
 {
-	return vec - project<t_vec>(vec, vecNorm, is_normalised);
+	return vec - tl2::project<t_vec>(vec, vecNorm, is_normalised);
 }
 
 
@@ -3485,6 +3470,41 @@ requires is_vec<t_vec>
 		// normalise
 		vecOrthoProj /= norm<t_vec>(vecOrthoProj);
 		newsys.emplace_back(std::move(vecOrthoProj));
+	}
+
+	return newsys;
+}
+
+
+/**
+ * find orthonormal substitute basis for vector space (Gram-Schmidt algo)
+ * remove orthogonal projections to all other base vectors: |i'> = (1 - sum_{j<i} |j><j|) |i>
+ *
+ * @see https://en.wikipedia.org/wiki/Gram%E2%80%93Schmidt_process
+ * @see (Arens 2015), p. 744
+ */
+template<class t_mat, class t_vec>
+t_mat orthonorm_sys(const t_mat& sys)
+requires is_mat<t_mat> && is_vec<t_vec>
+{
+	using size_t = decltype(sys.size1());
+	t_mat newsys = sys;
+
+	for(size_t colidx=0; colidx<sys.size2(); ++colidx)
+	{
+		t_vec vecSys = col<t_mat, t_vec>(sys, colidx);
+		t_vec vecOrthoProj = vecSys;
+
+		// subtract projections to other basis vectors
+		for(size_t colidx2=0; colidx2<colidx; ++colidx2)
+		{
+			t_vec vecNewSys = col<t_mat, t_vec>(newsys, colidx2);
+			vecOrthoProj -= project<t_vec>(vecSys, vecNewSys, true);
+		}
+
+		// normalise
+		vecOrthoProj /= norm<t_vec>(vecOrthoProj);
+		set_col<t_mat, t_vec>(newsys, vecOrthoProj, colidx);
 	}
 
 	return newsys;
@@ -3659,9 +3679,9 @@ requires is_basic_vec<t_vec>
 			continue;
 
 		const T sgn = ((iRow+iCol) % 2) == 0 ? T(1) : T(-1);
-		const t_vec subMat = flat_submat<t_vec, t_matvec>(
+		const t_vec subMat = tl2::flat_submat<t_vec, t_matvec>(
 			mat, iN, iN, iRow, iCol);
-		const T subDet = flat_det<t_vec>(subMat, iN-1) * sgn;
+		const T subDet = tl2::flat_det<t_vec>(subMat, iN-1) * sgn;
 
 		fullDet += elem * subDet;
 	}
@@ -3750,7 +3770,7 @@ requires is_basic_vec<t_vec>
 	// 3-dim case
 	if(N == 3 && vecs.begin()->size() == 3)
 	{
-		return cross<t_vec>(*vecs.begin(), *std::next(vecs.begin(), 1));
+		return tl2::cross<t_vec>(*vecs.begin(), *std::next(vecs.begin(), 1));
 	}
 
 	// general case
@@ -3769,7 +3789,7 @@ requires is_basic_vec<t_vec>
 				++row_idx;
 			}
 
-			vec[iComp] = flat_det<decltype(mat)>(mat, N);
+			vec[iComp] = tl2::flat_det<decltype(mat)>(mat, N);
 		}
 	}
 
@@ -3797,10 +3817,10 @@ intersect_line_plane(
 requires is_vec<t_vec>
 {
 	// are line and plane parallel?
-	const t_real dir_n = inner<t_vec>(lineDir, planeNorm);
+	const t_real dir_n = tl2::inner<t_vec>(lineDir, planeNorm);
 	if(equals<t_real>(dir_n, 0, eps))
 	{
-		const t_real org_n = inner<t_vec>(lineOrg, planeNorm);
+		const t_real org_n = tl2::inner<t_vec>(lineOrg, planeNorm);
 		// line on plane?
 		if(equals<t_real>(org_n, plane_d, eps))
 			return std::make_tuple(t_vec(), 2, t_real(0));
@@ -3808,7 +3828,7 @@ requires is_vec<t_vec>
 		return std::make_tuple(t_vec(), 0, t_real(0));
 	}
 
-	const t_real org_n = inner<t_vec>(lineOrg, planeNorm);
+	const t_real org_n = tl2::inner<t_vec>(lineOrg, planeNorm);
 	const t_real lam = (plane_d - org_n) / dir_n;
 
 	const t_vec vecInters = lineOrg + lam*lineDir;
@@ -3874,14 +3894,14 @@ t_cont<t_vec> intersect_line_sphere(
 	using T = typename t_vec::value_type;
 
 	t_vec lineDir = _lineDir;
-	T lenDir = linedir_normalised ? T(1) : norm<t_vec>(lineDir);
+	T lenDir = linedir_normalised ? T(1) : tl2::norm<t_vec>(lineDir);
 
 	if(!linedir_normalised)
 		lineDir /= lenDir;
 
 	auto vecDiff = sphereOrg - lineOrg;
-	auto proj = project_scalar<t_vec>(vecDiff, lineDir, true);
-	auto rt = proj*proj + sphereRad*sphereRad - inner<t_vec>(vecDiff, vecDiff);
+	auto proj = tl2::project_scalar<t_vec>(vecDiff, lineDir, true);
+	auto rt = proj*proj + sphereRad*sphereRad - tl2::inner<t_vec>(vecDiff, vecDiff);
 
 	// no intersection
 	if(rt < T(0))
@@ -3919,33 +3939,6 @@ t_cont<t_vec> intersect_line_sphere(
 
 
 /**
- * average vector or matrix
- */
-template<class ty, template<class...> class t_cont = std::vector>
-ty avg(const t_cont<ty>& vecs)
-requires is_vec<ty> || is_mat<ty>
-{
-	if(vecs.size() == 0)
-		return ty();
-
-	typename ty::value_type num = 1;
-	ty vec = *vecs.begin();
-
-	auto iter = vecs.begin();
-	std::advance(iter, 1);
-
-	for(; iter!=vecs.end(); std::advance(iter, 1))
-	{
-		vec += *iter;
-		++num;
-	}
-	vec /= num;
-
-	return vec;
-}
-
-
-/**
  * intersection of a polygon and a line
  * @returns [position of intersection, intersects?, line parameter lambda]
  */
@@ -3959,18 +3952,18 @@ requires is_vec<t_vec>
 	using T = typename t_vec::value_type;
 
 	// middle point
-	const t_vec mid = avg<t_vec, t_cont>(poly);
+	const t_vec mid = tl2::mean<t_vec, t_cont>(poly);
 
 	// calculate polygon plane
 	const t_vec vec0 = poly[0] - mid;
 	const t_vec vec1 = poly[1] - mid;
-	t_vec planeNorm = cross<t_vec>({vec0, vec1});
-	planeNorm /= norm<t_vec>(planeNorm);
-	const T planeD = inner<t_vec>(poly[0], planeNorm);
+	t_vec planeNorm = tl2::cross<t_vec>({vec0, vec1});
+	planeNorm /= tl2::norm<t_vec>(planeNorm);
+	const T planeD = tl2::inner<t_vec>(poly[0], planeNorm);
 
 	// intersection with plane
 	auto [vec, intersects, lam] =
-		intersect_line_plane<t_vec>(lineOrg, lineDir, planeNorm, planeD);
+		tl2::intersect_line_plane<t_vec>(lineOrg, lineDir, planeNorm, planeD);
 	if(intersects != 1)
 		return std::make_tuple(t_vec(), false, T(0));
 
@@ -3982,12 +3975,12 @@ requires is_vec<t_vec>
 		const t_vec edge = *vecSecond - *vecFirst;
 
 		// plane through edge
-		t_vec edgeNorm = cross<t_vec>({edge, planeNorm});
-		edgeNorm /= norm<t_vec>(edgeNorm);
-		const T edgePlaneD = inner<t_vec>(*vecFirst, edgeNorm);
+		t_vec edgeNorm = tl2::cross<t_vec>({edge, planeNorm});
+		edgeNorm /= tl2::norm<t_vec>(edgeNorm);
+		const T edgePlaneD = tl2::inner<t_vec>(*vecFirst, edgeNorm);
 
 		// side of intersection
-		const T ptEdgeD = inner<t_vec>(vec, edgeNorm);
+		const T ptEdgeD = tl2::inner<t_vec>(vec, edgeNorm);
 
 		// outside polygon?
 		if(ptEdgeD > edgePlaneD)
@@ -4019,7 +4012,7 @@ requires is_vec<t_vec> && is_mat<t_mat>
 	for(t_vec& vec : poly)
 		vec = mat * vec;
 
-	return intersect_line_poly<t_vec, t_cont>(lineOrg, lineDir, poly);
+	return tl2::intersect_line_poly<t_vec, t_cont>(lineOrg, lineDir, poly);
 }
 
 
@@ -4205,7 +4198,7 @@ requires is_mat<t_mat> && is_vec<t_vec>
 /**
  * mean value
  */
-template<class t_elem, template<class...> class t_cont = std::vector>
+template<class t_elem, template<class...> class t_cont /*= std::vector*/>
 t_elem mean(const t_cont<t_elem>& vec)
 requires is_basic_vec<t_cont<t_elem>>
 {
@@ -4663,33 +4656,33 @@ requires is_vec<t_vec> && is_mat<t_mat>
 
 	t_real len = 1;
 	if(!is_normalised)
-		len = norm<t_vec>(axis);
+		len = tl2::norm<t_vec>(axis);
 
 	// ----------------------------------------------------
 	// special cases: rotations around [100], [010], [001]
-	if(equals(axis, create<t_vec>({ len, 0, 0 })))
-		return create<t_mat>({{1,0,0}, {0,c,s}, {0,-s,c}});
-	else if(equals(axis, create<t_vec>({ 0, len, 0 })))
-		return create<t_mat>({{c,0,-s}, {0,1,0}, {s,0,c}});
-	else if(equals(axis, create<t_vec>({ 0, 0, len })))
-		return create<t_mat>({{c,s,0}, {-s,c,0}, {0,0,1}});
+	if(tl2::equals(axis, create<t_vec>({ len, 0, 0 })))
+		return tl2::create<t_mat>({{1,0,0}, {0,c,s}, {0,-s,c}});
+	else if(tl2::equals(axis, create<t_vec>({ 0, len, 0 })))
+		return tl2::create<t_mat>({{c,0,-s}, {0,1,0}, {s,0,c}});
+	else if(tl2::equals(axis, create<t_vec>({ 0, 0, len })))
+		return tl2::create<t_mat>({{c,s,0}, {-s,c,0}, {0,0,1}});
 
 	// ----------------------------------------------------
 	// general case
 	// project along rotation axis
-	t_mat matProj1 = projector<t_mat, t_vec>(axis, is_normalised);
+	t_mat matProj1 = tl2::projector<t_mat, t_vec>(axis, is_normalised);
 
 	// project along axis 2 in plane perpendicular to rotation axis
-	t_mat matProj2 = ortho_projector<t_mat, t_vec>(axis, is_normalised) * c;
+	t_mat matProj2 = tl2::ortho_projector<t_mat, t_vec>(axis, is_normalised) * c;
 
 	// project along axis 3 in plane perpendicular to rotation axis and axis 2
-	t_mat matProj3 = skewsymmetric<t_mat, t_vec>(axis/len) * s;
+	t_mat matProj3 = tl2::skewsymmetric<t_mat, t_vec>(axis/len) * s;
 
 	//std::cout << matProj1(3,3) <<  " " << matProj2(3,3) <<  " " << matProj3(3,3) << std::endl;
 	t_mat matProj = matProj1 + matProj2 + matProj3;
 
 	// if matrix is larger than 3x3 (e.g. for homogeneous cooridnates), fill up with identity
-	unit<t_mat>(matProj, 3,3, matProj.size1(), matProj.size2());
+	tl2::unit<t_mat>(matProj, 3,3, matProj.size1(), matProj.size2());
 	return matProj;
 }
 
@@ -4713,8 +4706,8 @@ t_vec perp(const t_vec& vec, t_scalar eps = std::numeric_limits<t_scalar>::epsil
 		while(1)
 		{
 			t_vec rand = tl2::rand<t_vec>(3);
-			t_vec perp = cross<t_vec>({ vec, rand });
-			t_scalar dot = inner<t_vec>(perp, perp);
+			t_vec perp = tl2::cross<t_vec>({ vec, rand });
+			t_scalar dot = tl2::inner<t_vec>(perp, perp);
 
 			if(dot > eps)
 			{
@@ -4793,15 +4786,15 @@ requires is_vec<t_vec> && is_mat<t_mat>
 	else if(dim == 3 || (dim == 4 && force_3dim))
 	{
 		// get rotation axis from cross product
-		t_vec axis = cross<t_vec>({ vec1, vec2 });
-		t_real lenaxis = norm<t_vec>(axis);
+		t_vec axis = tl2::cross<t_vec>({ vec1, vec2 });
+		t_real lenaxis = tl2::norm<t_vec>(axis);
 
 		// rotation angle
-		t_real angle = std::atan2(lenaxis, inner<t_vec>(vec1, vec2));
+		t_real angle = std::atan2(lenaxis, tl2::inner<t_vec>(vec1, vec2));
 
 		// collinear vectors?
 		if(equals<t_real>(angle, 0, eps))
-			return unit<t_mat>(vec1.size());
+			return tl2::unit<t_mat>(vec1.size());
 
 		// antiparallel vectors?
 		if(equals<t_real>(std::abs(angle), pi<t_real>, eps))
@@ -4809,11 +4802,11 @@ requires is_vec<t_vec> && is_mat<t_mat>
 			if(perp_vec)
 			{
 				axis = *perp_vec;
-				lenaxis = norm<t_vec>(axis);
+				lenaxis = tl2::norm<t_vec>(axis);
 			}
 			else
 			{
-				axis = perp<t_vec>(vec1, eps);
+				axis = tl2::perp<t_vec>(vec1, eps);
 				lenaxis = t_real(1);
 			}
 
@@ -4821,20 +4814,20 @@ requires is_vec<t_vec> && is_mat<t_mat>
 		}
 
 		axis /= lenaxis;
-		return rotation<t_mat, t_vec>(axis, angle, true);
+		return tl2::rotation<t_mat, t_vec>(axis, angle, true);
 	}
 
 	// general case, equation (8) from (Zhelezov 2017)
 	else
 	{
 		// matrix to rotate vec1 to [1, 0, 0, ...]
-		t_mat mat1_x0 = rotation_x0<t_mat, t_vec, t_real>(vec1, eps);
+		t_mat mat1_x0 = tl2::rotation_x0<t_mat, t_vec, t_real>(vec1, eps);
 
 		// matrix to rotate vec2 to [1, 0, 0, ...]
-		t_mat mat2_x0 = rotation_x0<t_mat, t_vec, t_real>(vec2, eps);
+		t_mat mat2_x0 = tl2::rotation_x0<t_mat, t_vec, t_real>(vec2, eps);
 
 		// matrix to rotate [1, 0, 0, ...] to vec2
-		auto [mat2_x0_inv, mat2_ok] = inv<t_mat>(mat2_x0);
+		auto [mat2_x0_inv, mat2_ok] = tl2::inv<t_mat>(mat2_x0);
 
 		// rotate vec1 to [1, 0, 0, ...], then rotate [1, 0, 0, ...] to vec2
 		return mat2_x0_inv * mat1_x0;
@@ -5025,9 +5018,9 @@ requires is_vec<t_vec>
 		const t_vec& vec3 = *itervert;
 		std::advance(itervert, 1);
 
-		const t_vec vec12mid = avg<t_vec>({ vec1, vec2 });
-		const t_vec vec23mid = avg<t_vec>({ vec2, vec3 });
-		const t_vec vec31mid = avg<t_vec>({ vec3, vec1 });
+		const t_vec vec12mid = mean<t_vec>({ vec1, vec2 });
+		const t_vec vec23mid = mean<t_vec>({ vec2, vec3 });
+		const t_vec vec31mid = mean<t_vec>({ vec3, vec1 });
 
 		// triangle 1
 		vertices_new.push_back(vec1);
@@ -5073,9 +5066,9 @@ requires is_vec<t_vec>
 			const t_vec& uv3 = *iteruv;
 			std::advance(iteruv, 1);
 
-			const t_vec uv12mid = avg<t_vec>({ uv1, uv2 });
-			const t_vec uv23mid = avg<t_vec>({ uv2, uv3 });
-			const t_vec uv31mid = avg<t_vec>({ uv3, uv1 });
+			const t_vec uv12mid = mean<t_vec>({ uv1, uv2 });
+			const t_vec uv23mid = mean<t_vec>({ uv2, uv3 });
+			const t_vec uv31mid = mean<t_vec>({ uv3, uv1 });
 
 			// uvs of triangle 1
 			uvs_new.push_back(uv1);
@@ -5115,7 +5108,7 @@ requires is_vec<t_vec>
 {
 	auto tupDiv = tup;
 	for(std::size_t i=0; i<iters; ++i)
-		tupDiv = subdivide_triangles<t_vec, t_cont>(tupDiv);
+		tupDiv = tl2::subdivide_triangles<t_vec, t_cont>(tupDiv);
 	return tupDiv;
 }
 
@@ -5144,7 +5137,7 @@ requires is_vec<t_vec>
 	// vertices
 	for(t_vec vec : vertices)
 	{
-		vec /= norm<t_vec>(vec);
+		vec /= tl2::norm<t_vec>(vec);
 		vec *= rad;
 		vertices_new.emplace_back(std::move(vec));
 	}
@@ -5162,8 +5155,8 @@ requires is_vec<t_vec>
 		const t_vec& vec3 = *itervert;
 		std::advance(itervert, 1);
 
-		t_vec vecmid = avg<t_vec>({ vec1, vec2, vec3 });
-		vecmid /= norm<t_vec>(vecmid);
+		t_vec vecmid = mean<t_vec>({ vec1, vec2, vec3 });
+		vecmid /= tl2::norm<t_vec>(vecmid);
 		normals_new.emplace_back(std::move(vecmid));
 	}
 
@@ -5368,10 +5361,10 @@ requires is_vec<t_vec>
 
 		faces.push_back({ idx0, idx1, idx2 });
 
-		t_vec n = cross<t_vec>({
+		t_vec n = tl2::cross<t_vec>({
 			vertices[idx2]-vertices[idx0],
 			vertices[idx1]-vertices[idx0] });
-		n /= norm<t_vec>(n);
+		n /= tl2::norm<t_vec>(n);
 
 		normals.emplace_back(std::move(n));
 	}
@@ -5432,8 +5425,8 @@ requires is_vec<t_vec>
 		const t_real c = std::cos(phi);
 		const t_real s = std::sin(phi);
 
-		t_vec top = create<t_vec>({ r*c, r*s, h*t_real(0.5) });
-		t_vec bottom = create<t_vec>({ r*c, r*s, -h*t_real(0.5) });
+		t_vec top = tl2::create<t_vec>({ r*c, r*s, h*t_real(0.5) });
+		t_vec bottom = tl2::create<t_vec>({ r*c, r*s, -h*t_real(0.5) });
 
 		vertices.emplace_back(std::move(top));
 		vertices.emplace_back(std::move(bottom));
@@ -5457,10 +5450,10 @@ requires is_vec<t_vec>
 		std::size_t idx2 = (face >= num_points-1 ? 1 : face*2 + 3);	// bottom 2
 		std::size_t idx3 = (face >= num_points-1 ? 0 : face*2 + 2);	// top 2
 
-		t_vec n = cross<t_vec>({
+		t_vec n = tl2::cross<t_vec>({
 			vertices[idx1]-vertices[idx0],
 			vertices[idx3]-vertices[idx0] });
-		n /= norm<t_vec>(n);
+		n /= tl2::norm<t_vec>(n);
 
 		faces.push_back({ idx0, idx1, idx2, idx3 });
 		normals.emplace_back(std::move(n));
@@ -5468,8 +5461,8 @@ requires is_vec<t_vec>
 		t_real u1 = vertices_u[idx0];
 		t_real u2 = (face >= num_points-1 ? 1 : vertices_u[idx3]);
 		uvs.push_back({
-			create<t_vec>({u1, 1}), create<t_vec>({u1, 0}),
-			create<t_vec>({u2, 0}), create<t_vec>({u2, 1})
+			tl2::create<t_vec>({u1, 1}), tl2::create<t_vec>({u1, 0}),
+			tl2::create<t_vec>({u2, 0}), tl2::create<t_vec>({u2, 1})
 		});
 	}
 
@@ -5481,7 +5474,7 @@ requires is_vec<t_vec>
 		// bottom lid
 		// vertex indices have to be adapted for merging
 		std::size_t vert_start_idx = vertices.size();
-		const t_vec top = create<t_vec>({ 0, 0, h*t_real(0.5) });
+		const t_vec top = tl2::create<t_vec>({ 0, 0, h*t_real(0.5) });
 
 		for(const auto& disk_vert : disk_vertices)
 			vertices.push_back(disk_vert - top);
@@ -5525,7 +5518,7 @@ requires is_vec<t_vec>
 			bool bConeCap = !equals<t_real>(r, arrow_r);
 
 			const auto [cone_vertices, cone_faces, cone_normals, cone_uvs] =
-				create_cone<t_vec, t_cont>(arrow_r, arrow_h, bConeCap, num_points);
+				tl2::create_cone<t_vec, t_cont>(arrow_r, arrow_h, bConeCap, num_points);
 
 			for(const auto& cone_vert : cone_vertices)
 				vertices.push_back(cone_vert + top);
@@ -5710,8 +5703,8 @@ requires is_vec<t_vec>
 			create<t_vec>({0, 0}),
 			create<t_vec>({0, 0}) }});
 
-		t_vec n = cross<t_vec>({vec12, vec13});
-		n /= norm<t_vec>(n);
+		t_vec n = tl2::cross<t_vec>({vec12, vec13});
+		n /= tl2::norm<t_vec>(n);
 		normals.emplace_back(std::move(n));
 	}
 
@@ -5783,8 +5776,8 @@ requires is_vec<t_vec>
 			create<t_vec>({0, 0}),
 			create<t_vec>({0, 0}) }});
 
-		t_vec n = cross<t_vec>({vec12, vec13});
-		n /= norm<t_vec>(n);
+		t_vec n = tl2::cross<t_vec>({vec12, vec13});
+		n /= tl2::norm<t_vec>(n);
 		normals.emplace_back(std::move(n));
 	}
 
@@ -5914,13 +5907,13 @@ requires is_vec<t_vec>
 	using t_real = typename t_vec::value_type;
 
 	t_real rad{};
-	t_vec center = mean<t_vec, t_cont>(verts);
+	t_vec center = tl2::mean<t_vec, t_cont>(verts);
 
 	for(const t_vec& vec : verts)
 	{
 		t_vec vecCur = vec-center;
 
-		t_real dot = inner<t_vec>(vecCur, vecCur);
+		t_real dot = tl2::inner<t_vec>(vecCur, vecCur);
 		rad = std::max(rad, dot);
 	}
 
@@ -6225,15 +6218,15 @@ std::tuple<t_vec, t_vec> hom_line_from_screen_coords(
 	const t_mat* pmatViewport = nullptr, bool bFlipY = false, bool bFlipX = false)
 requires is_vec<t_vec> && is_mat<t_mat>
 {
-	const t_vec lineOrg = hom_from_screen_coords<t_mat, t_vec>(
+	const t_vec lineOrg = tl2::hom_from_screen_coords<t_mat, t_vec>(
 		xScreen, yScreen, z1, matModelView_inv, matProj_inv,
 		matViewport_inv, pmatViewport, bFlipY, bFlipX);
-	const t_vec linePos2 = hom_from_screen_coords<t_mat, t_vec>(
+	const t_vec linePos2 = tl2::hom_from_screen_coords<t_mat, t_vec>(
 		xScreen, yScreen, z2, matModelView_inv, matProj_inv,
 		matViewport_inv, pmatViewport, bFlipY, bFlipX);
 
 	t_vec lineDir = linePos2 - lineOrg;
-	lineDir /= norm<t_vec>(lineDir);
+	lineDir /= tl2::norm<t_vec>(lineDir);
 
 	return std::make_tuple(lineOrg, lineDir);
 }
@@ -6440,19 +6433,19 @@ requires is_vec<t_vec> && is_mat<t_mat>
 
 	// create orthonormal system
 	t_vec dir = -(target - pos);
-	dir = dir / norm<t_vec>(dir);
+	dir = dir / tl2::norm<t_vec>(dir);
 
-	t_vec side = cross<t_vec>({_up, dir});
-	side = side / norm<t_vec>(side);
+	t_vec side = tl2::cross<t_vec>({_up, dir});
+	side = side / tl2::norm<t_vec>(side);
 
 	t_vec up = cross<t_vec>({dir, side});
-	//up = up / norm<t_vec>(up);
+	//up = up / tl2::norm<t_vec>(up);
 
 	// inverted/transposed rotation matrix
 	t_mat rot_inv = unit<t_mat>(4);
-	set_row<t_mat, t_vec>(rot_inv, side, 0);
-	set_row<t_mat, t_vec>(rot_inv, up, 1);
-	set_row<t_mat, t_vec>(rot_inv, dir, 2);
+	tl2::set_row<t_mat, t_vec>(rot_inv, side, 0);
+	tl2::set_row<t_mat, t_vec>(rot_inv, up, 1);
+	tl2::set_row<t_mat, t_vec>(rot_inv, dir, 2);
 
 	// inverted translation matrix
 	t_mat trans_inv = hom_translation<t_mat, t_real>(
@@ -6484,9 +6477,9 @@ t_mat hom_rotation(const t_vec& vec1, const t_vec& vec2,
 	const t_vec *perp_vec = nullptr)
 requires is_vec<t_vec> && is_mat<t_mat>
 {
-	t_mat rot = rotation<t_mat, t_vec>(vec1, vec2, perp_vec);
+	t_mat rot = tl2::rotation<t_mat, t_vec>(vec1, vec2, perp_vec);
 
-	return create<t_mat>({
+	return tl2::create<t_mat>({
 		rot(0,0), rot(0,1), rot(0,2), 0.,
 		rot(1,0), rot(1,1), rot(1,2), 0.,
 		rot(2,0), rot(2,1), rot(2,2), 0.,
@@ -6503,9 +6496,9 @@ t_mat hom_rotation(const t_vec& axis, typename t_vec::value_type angle,
 	bool is_normalised = true)
 requires is_vec<t_vec> && is_mat<t_mat>
 {
-	t_mat rot = rotation<t_mat, t_vec>(axis, angle, is_normalised);
+	t_mat rot = tl2::rotation<t_mat, t_vec>(axis, angle, is_normalised);
 
-	return create<t_mat>({
+	return tl2::create<t_mat>({
 		rot(0,0), rot(0,1), rot(0,2), 0.,
 		rot(1,0), rot(1,1), rot(1,2), 0.,
 		rot(2,0), rot(2,1), rot(2,2), 0.,
@@ -6987,7 +6980,7 @@ requires is_mat<t_mat> && is_vec<t_vec>
 		for(const t_vec& vecSC : { _vecSC, -_vecSC, t_real{2}*_vecSC, t_real{-2}*_vecSC })
 		{
 			t_vec vec2A = matA * (vec2 + vecSC);
-			t_real dist = norm(vec1A - vec2A);
+			t_real dist = tl2::norm(vec1A - vec2A);
 
 			thedist = std::min(thedist, dist);
 		}
@@ -8355,14 +8348,11 @@ requires is_mat<t_mat>
 	const std::size_t N = mat.size1();
 
 	const auto& matFlat = matvec_adapter<t_mat>{mat};
-	const T fullDet = flat_det<t_vec>(matFlat, N);
+	const T fullDet = tl2::flat_det<t_vec>(matFlat, N);
 
 	// fail if determinant is zero
 	if(equals<T>(fullDet, 0))
-	{
-		//std::cerr << "det == 0" << std::endl;
 		return std::make_tuple(t_mat(), false);
-	}
 
 	t_mat matInv;
 	if constexpr(is_dyn_mat<t_mat>)
@@ -8373,8 +8363,8 @@ requires is_mat<t_mat>
 		for(std::size_t j=0; j<N; ++j)
 		{
 			const T sgn = ((i+j) % 2) == 0 ? T(1) : T(-1);
-			const t_vec subMat = flat_submat<t_vec>(matFlat, N, N, i, j);
-			matInv(j,i) = sgn * flat_det<t_vec>(subMat, N-1);
+			const t_vec subMat = tl2::flat_submat<t_vec>(matFlat, N, N, i, j);
+			matInv(j,i) = sgn * tl2::flat_det<t_vec>(subMat, N-1);
 		}
 	}
 
@@ -8429,7 +8419,7 @@ requires is_mat<t_mat>
 #else
 
 	const auto& matFlat = matvec_adapter<t_mat>{mat};
-	return flat_det<std::vector<T>>(matFlat, mat.size1());
+	return tl2::flat_det<std::vector<T>>(matFlat, mat.size1());
 
 #endif
 }
@@ -8563,7 +8553,7 @@ requires is_vec<t_vec>
 	{
 		// cross product gives sine
 		t_vec veccross = cross<t_vec>({vec0, vec1});
-		t_real dS = norm(veccross);
+		t_real dS = tl2::norm(veccross);
 
 		// dot product gives cosine
 		t_real dC = inner(vec0, vec1);
@@ -8604,8 +8594,8 @@ requires is_vec<t_vec>
 	// find non-collinear vectors
 	for(std::size_t iVecPoly=1; iVecPoly<vecPoly.size(); ++iVecPoly)
 	{
-		t_vec vecNorm = cross<t_vec>({vecPoly[0]-vecCentre, vecPoly[1]-vecCentre});
-		t_real tCross = norm(vecNorm);
+		t_vec vecNorm = tl2::cross<t_vec>({vecPoly[0]-vecCentre, vecPoly[1]-vecCentre});
+		t_real tCross = tl2::norm(vecNorm);
 		if(tCross > tBestCross)
 		{
 			tBestCross = tCross;
@@ -8636,7 +8626,7 @@ requires is_vec<t_vec>
 
 	// line from centre to vertex
 	const t_vec vecCentre = mean(vecPoly);
-	const t_vec vecNorm = _vecNorm / norm(_vecNorm);
+	const t_vec vecNorm = _vecNorm / tl2::norm(_vecNorm);
 
 	t_vec vec0 = vecPoly[0] - vecCentre;
 
@@ -8682,7 +8672,7 @@ requires is_vec<t_vec>
 		vecNorm = normal;
 	}
 
-	vecNorm /= norm(vecNorm);
+	vecNorm /= tl2::norm(vecNorm);
 	return vecNorm;
 }
 
@@ -8703,7 +8693,7 @@ requires is_vec<t_vec>
 	t_vec vecNorm = get_poly_normal<t_vec, t_cont>(vecPoly);
 	sort_poly_verts_norm<t_vec, t_cont>(vecPoly, vecNorm, true);
 
-	vecNorm /= norm(vecNorm);
+	vecNorm /= tl2::norm(vecNorm);
 	return vecNorm;
 }
 

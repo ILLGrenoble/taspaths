@@ -27,8 +27,8 @@
 # ----------------------------------------------------------------------------
 #
 
-project(mcalc)
 cmake_minimum_required(VERSION 3.0)
+project(mcalc)
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/../cmake")
 

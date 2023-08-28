@@ -31,7 +31,7 @@
 #define __TLIBS2_FILE_H__
 
 
-#if __has_include(<filesystem>) && !defined(__APPLE_CC__)
+#if __has_include(<filesystem>) /*&& !defined(__APPLE_CC__)*/
 	#include <filesystem>
 	namespace fs = std::filesystem;
 #else
@@ -104,6 +104,83 @@ inline std::size_t get_file_size(const std::basic_string<typename fs::path::valu
 {
 	return fs::file_size(fs::path(strFile));
 }
+
+
+
+/**
+ * get the extension of a file (without the point)
+ */
+template<class t_str = std::string>
+t_str get_fileext(const t_str& file_path, bool to_lower = false)
+{
+	fs::path path(file_path);
+	t_str file_ext = path.extension().string();
+
+	// remove the point
+	if(file_ext.length() > 0)
+		file_ext = file_ext.substr(1);
+
+	// convert to lower case
+	if(to_lower)
+		file_ext = str_to_lower(file_ext);
+
+	return file_ext;
+}
+
+
+/**
+ * get the file name without the extension
+ */
+template<class t_str = std::string>
+t_str get_file_noext(const t_str& file_path, bool to_lower = false)
+{
+	fs::path path(file_path);
+
+	fs::path path_noext = path.parent_path();
+	path_noext /= path.stem();
+	t_str pathname_noext = path_noext.string();
+
+	// convert to lower case
+	if(to_lower)
+		pathname_noext = str_to_lower(pathname_noext);
+
+	return pathname_noext;
+}
+
+
+/**
+ * get the file's directory
+ */
+template<class t_str = std::string>
+t_str get_dir(const t_str& file_path_name, bool to_lower = false)
+{
+	fs::path path(file_path_name);
+	t_str file_path = path.parent_path().string();
+
+	// convert to lower case
+	if(to_lower)
+		file_path = str_to_lower(file_path);
+
+	return file_path;
+}
+
+
+/**
+ * get the file name without the path
+ */
+template<class t_str = std::string>
+t_str get_file_nodir(const t_str& file_path, bool to_lower = false)
+{
+	fs::path path(file_path);
+	t_str file_stem = path.filename().string();
+
+	// convert to lower case
+	if(to_lower)
+		file_stem = str_to_lower(file_stem);
+
+	return file_stem;
+}
+
 
 
 /**
