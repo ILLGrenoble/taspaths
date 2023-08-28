@@ -57,7 +57,6 @@
 #include <numeric>
 #include <random>
 #include <utility>
-#include <optional>
 #include <memory>
 #include <iostream>
 #include <sstream>

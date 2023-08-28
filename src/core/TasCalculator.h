@@ -26,6 +26,8 @@
 #ifndef __TASCALC_H__
 #define __TASCALC_H__
 
+#include <optional>
+
 #include "tlibs2/libs/maths.h"
 #include "types.h"
 

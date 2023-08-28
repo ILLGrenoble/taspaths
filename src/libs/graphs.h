@@ -49,6 +49,7 @@
 #include <set>
 #include <unordered_set>
 #include <algorithm>
+#include <optional>
 #include <iostream>
 
 #ifdef USE_BOOST_GRAPH

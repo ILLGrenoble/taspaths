@@ -613,6 +613,11 @@ Y ana_effic_factor(const t_wavenumber<Sys, Y>& kf, const t_length<Sys, Y>& d)
  * Bose distribution
  * @see (Shirane 2002), p. 28
  * @see https://en.wikipedia.org/wiki/Bose%E2%80%93Einstein_statistics
+ *
+ * bose(+E, T) / bose(-E, T) = [ 1/(exp(E/kT) - 1) + 1 ] / [ 1/(exp(E/kT) - 1) ]
+ *                           = 1 + 1/1/(exp(E/kT) - 1)
+ *                           = exp(E/kT)
+ * which is the detailed balance, S(+Q, +E) / S(-Q, -E), see (Shirane 2002), p. 26.
  */
 template<class t_real=double>
 t_real bose(t_real E, t_real T)

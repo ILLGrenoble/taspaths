@@ -72,6 +72,7 @@
 #include <QtGui/QVector2D>
 
 #include <memory>
+#include <optional>
 
 #include "../maths.h"
 
