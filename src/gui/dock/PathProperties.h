@@ -29,7 +29,6 @@
 #include <memory>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
-#include <boost/signals2/signal.hpp>
 
 #include <QtCore/QTimer>
 #include <QtWidgets/QPushButton>
