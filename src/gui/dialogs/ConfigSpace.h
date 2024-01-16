@@ -122,6 +122,7 @@ private:
 	boost::signals2::connection m_pathsbuilderslot{};
 
 	// path mesh options
+	ContourBackend m_contourbackend{ContourBackend::INTERNAL};
 	VoronoiBackend m_voronoibackend{VoronoiBackend::BOOST};
 	bool m_use_region_function = true;
 	bool m_grouplines = false;

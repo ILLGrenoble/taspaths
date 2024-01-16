@@ -60,6 +60,12 @@
 	#include "trees.h"
 #endif
 
+#ifdef USE_OCV
+	#include <opencv2/core.hpp>
+	#include <opencv2/imgcodecs.hpp>
+	#include <opencv2/imgproc.hpp>
+#endif
+
 #include "tlibs2/libs/maths.h"
 
 
@@ -287,13 +293,13 @@ std::pair<std::size_t, std::size_t> get_image_dims(const t_imageview& img)
 // algorithms
 // ----------------------------------------------------------------------------
 /**
- * boundary tracing
+ * contour tracing
  * @see http://www.imageprocessingplace.com/downloads_V3/root_downloads/tutorials/contour_tracing_Abeer_George_Ghuneim/ray.html
  */
 template<class t_vec,
 	class t_imageview, class t_boundaryview = t_imageview>
 requires tl2::is_vec<t_vec>
-std::vector<std::vector<t_vec>> trace_boundary(
+std::vector<std::vector<t_vec>> trace_contour(
 	const t_imageview& img, t_boundaryview* boundary = nullptr)
 {
 	// contour polygons
@@ -446,6 +452,55 @@ std::vector<std::vector<t_vec>> trace_boundary(
 
 	return contours;
 }
+
+
+#ifdef USE_OCV
+/**
+ * contour tracing using opencv
+ * @see https://docs.opencv.org/4.x/index.html
+ * @see https://github.com/opencv/opencv
+ */
+template<class t_vec,
+	class t_imageview, class t_boundaryview = t_imageview>
+requires tl2::is_vec<t_vec>
+std::vector<std::vector<t_vec>> trace_contour_ocv(const t_imageview& img)
+{
+	// convert from internal image format
+	auto [width, height] = get_image_dims(img);
+	cv::Mat mat(height, width, CV_8U);
+
+	for(std::size_t y = 0; y < height; ++y)
+		for(std::size_t x = 0; x < width; ++x)
+			mat.at<std::uint8_t>(y, x) = get_pixel(img, x, y);
+
+	// find contours
+	std::vector<std::vector<cv::Point>> contours;
+	std::vector<cv::Vec4i> hierarchy;
+	cv::findContours(mat, contours, hierarchy,
+		cv::RETR_LIST, cv::CHAIN_APPROX_SIMPLE);
+
+	// debug output
+	/*cv::Mat cont_mat(height, width, CV_8UC3, cv::Scalar{0, 0, 0});
+	cv::drawContours(cont_mat, contours, -1, cv::Scalar{0xff, 0xff, 0xff});
+	cv::imwrite("/users/tw/tmp/taspaths_cont_0.png", mat);
+	cv::imwrite("/users/tw/tmp/taspaths_cont_1.png", cont_mat);*/
+
+	// convert to internal vector format
+	std::vector<std::vector<t_vec>> contour_polys;
+	for(const std::vector<cv::Point>& contour : contours)
+	{
+		std::vector<t_vec> contour_poly;
+		contour_poly.reserve(contour.size());
+
+		for(const cv::Point& pt : contour)
+			contour_poly.emplace_back(tl2::create<t_vec>({pt.x, pt.y}));
+
+		contour_polys.emplace_back(std::move(contour_poly));
+	}
+
+	return contour_polys;
+}
+#endif
 
 
 /**

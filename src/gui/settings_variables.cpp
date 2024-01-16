@@ -78,6 +78,10 @@ t_real g_a4_delta = 1. / 180. * tl2::pi<t_real>;
 // 0: sweep, 1: half-plane test
 int g_poly_intersection_method = 1;
 
+// which backend to use for contour calculation?
+// 0: internal, 1: opencv
+int g_contour_backend = 0;
+
 // which backend to use for voronoi diagram calculation?
 // 0: boost.polygon, 1: cgal
 int g_voronoi_backend = 0;

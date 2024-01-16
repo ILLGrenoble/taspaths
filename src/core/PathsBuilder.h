@@ -89,6 +89,19 @@ enum class PathStrategy
 
 
 /**
+ * backend to use for contour calculation
+ */
+enum class ContourBackend
+{
+	// internal function
+	INTERNAL,
+
+	// opencv
+	OCV,
+};
+
+
+/**
  * backend to use for voronoi diagram calculation
  */
 enum class VoronoiBackend
@@ -189,7 +202,7 @@ public:
 
 	// get contour image and wall contour points
 	const geo::Image<std::uint8_t>& GetImage() const { return m_img; }
-	const std::vector<std::vector<t_contourvec>>& GetWallContours(bool full=false) const;
+	const std::vector<std::vector<t_contourvec>>& GetWallContours(bool full = false) const;
 
 	// get voronoi vertices, edges and graph
 	const geo::VoronoiLinesResults<t_vec2, t_line, t_graph>& GetVoronoiResults() const
@@ -205,7 +218,8 @@ public:
 		t_real starta2 = 0., t_real enda2 = tl2::pi<t_real>,
 		t_real starta4 = 0., t_real enda4 = tl2::pi<t_real>);
 	bool CalculateWallsIndexTree();
-	bool CalculateWallContours(bool simplify = true, bool convex_split = false);
+	bool CalculateWallContours(bool simplify = true, bool convex_split = false,
+		ContourBackend backend = ContourBackend::INTERNAL);
 	bool CalculateLineSegments(bool use_region_function = false);
 	bool CalculateVoronoi(bool group_lines = true,
 		VoronoiBackend backend = VoronoiBackend::BOOST,

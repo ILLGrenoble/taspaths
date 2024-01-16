@@ -93,6 +93,10 @@ extern t_real g_a4_delta;
 // 0: sweep, 1: half-plane test
 extern int g_poly_intersection_method;
 
+// which backend to use for contour calculation?
+// 0: internal, 1: opencv
+extern int g_contour_backend;
+
 // which backend to use for voronoi diagram calculation?
 // 0: boost.polygon, 1: cgal
 extern int g_voronoi_backend;
@@ -183,7 +187,7 @@ extern int g_nested_docks;
 // ----------------------------------------------------------------------------
 // variables register
 // ----------------------------------------------------------------------------
-constexpr std::array<SettingsVariable, 30> g_settingsvariables
+constexpr std::array<SettingsVariable, 31> g_settingsvariables
 {{
 	// epsilons and precisions
 	{
@@ -265,6 +269,13 @@ constexpr std::array<SettingsVariable, 30> g_settingsvariables
 		.value = &g_poly_intersection_method,
 		.editor = SettingsVariableEditor::COMBOBOX,
 		.editor_config = "Sweep;;Half-plane Test",
+	},
+	{
+		.description = "Contour calculation backend.",
+		.key = "settings/contour_backend",
+		.value = &g_contour_backend,
+		.editor = SettingsVariableEditor::COMBOBOX,
+		.editor_config = "Internal;;OpenCV",
 	},
 	{
 		.description = "Voronoi calculation backend.",

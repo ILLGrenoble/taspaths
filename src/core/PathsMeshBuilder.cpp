@@ -401,14 +401,29 @@ bool PathsBuilder::CalculateWallsIndexTree()
 /**
  * calculate the contour lines of the obstacle regions
  */
-bool PathsBuilder::CalculateWallContours(bool simplify, bool convex_split)
+bool PathsBuilder::CalculateWallContours(bool simplify, bool convex_split, ContourBackend backend)
 {
 	std::string message{"Calculating obstacle contours..."};
 	(*m_sigProgress)(CalculationState::STEP_STARTED, 0, message);
 
-	m_wallcontours = geo::trace_boundary<t_contourvec, decltype(m_img)>(m_img);
-	m_fullwallcontours = m_wallcontours;
+	if(backend == ContourBackend::INTERNAL)
+	{
+		m_wallcontours = geo::trace_contour<t_contourvec, decltype(m_img)>(m_img);
+	}
+#ifdef USE_OCV
+	else if(backend == ContourBackend::OCV)
+	{
+		m_wallcontours = geo::trace_contour_ocv<t_contourvec, decltype(m_img)>(m_img);
+	}
+#endif
+	else
+	{
+		// invalid backend selected
+		(*m_sigProgress)(CalculationState::FAILED, 0.33, message);
+		return false;
+	}
 
+	m_fullwallcontours = m_wallcontours;
 	(*m_sigProgress)(CalculationState::RUNNING, 0.33, message);
 
 	if(simplify)

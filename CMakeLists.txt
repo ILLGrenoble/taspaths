@@ -48,6 +48,7 @@ option(USE_QT6 "use qt 6" FALSE)
 option(USE_LAPACK "use lapack" TRUE)
 option(USE_OVD "use openvoronoi" FALSE)
 option(USE_CGAL "use cgal" TRUE)
+option(USE_OCV "use opencv" TRUE)
 option(USE_PY "use python scripting" TRUE)
 option(BUILD_TEST_TOOLS "build test tools" FALSE)
 option(UNIT_TESTS "build unit tests" FALSE)
@@ -178,6 +179,19 @@ if(USE_OVD)
 endif()
 
 
+if(USE_OCV)
+	find_package(OpenCV)
+
+	if(OpenCV_FOUND)
+		message("OpenCV enabled.")
+		add_definitions(-DUSE_OCV)
+		include_directories("${OpenCV_INCLUDE_DIRS}")
+	else()
+		message("OpenCV disabled.")
+	endif()
+endif()
+
+
 if(USE_CGAL)
 	message("CGAL enabled.")
 	add_definitions(-DUSE_CGAL)
@@ -290,6 +304,7 @@ target_link_libraries(taspaths_core
 	"${Lapacke_LIBRARIES}"
 	#"${Qhull_LIBRARIES}"
 	"${CGAL_LIBRARIES}"
+	"${OpenCV_LIBRARIES}"
 	Threads::Threads
 )
 # -----------------------------------------------------------------------------
@@ -407,6 +422,7 @@ target_link_libraries(taspaths
 	"${Lapacke_LIBRARIES}"
 	"${Qhull_LIBRARIES}"
 	"${CGAL_LIBRARIES}"
+	"${OpenCV_LIBRARIES}"
 	"${OVD_LIBRARIES}"
 	"${MINGW_WINSOCK}"
 	Threads::Threads
