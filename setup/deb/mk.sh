@@ -82,6 +82,8 @@ if [ $create_appdir -ne 0 ]; then
 			"libqcustomplot2.0 (>=2.0.0),"\
 			"python3 (>=3.10.0),"\
 			"python3-matplotlib,"\
+			"libopencv-core4.5d,"\
+			"libopencv-imgproc4.5d,"\
 			"libopengl0 (>=1.3.0)\n" \
 				>> ${APPDIRNAME}/DEBIAN/control
 
@@ -103,6 +105,8 @@ if [ $create_appdir -ne 0 ]; then
 			"libqcustomplot2.0 (>=2.0.0),"\
 			"python3 (>=3.8.0),"\
 			"python3-matplotlib,"\
+			"libopencv-core4.2,"\
+			"libopencv-imgproc4.2,"\
 			"libopengl0 (>=1.3.0)\n" \
 				>> ${APPDIRNAME}/DEBIAN/control
 

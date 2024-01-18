@@ -83,6 +83,12 @@ if ! wget https://gitlab.com/DerManu/QCustomPlot/-/raw/master/GPL.txt -O ${LICDI
 	exit -1
 fi
 
+# opencv
+if ! wget https://raw.githubusercontent.com/opencv/opencv/4.x/LICENSE -O ${LICDIR}/OpenCV_license.txt; then
+	echo -e "Error: Cannot download OpenCV license.";
+	exit -1
+fi
+
 # swig
 if ! wget https://raw.githubusercontent.com/swig/swig/master/LICENSE -O ${LICDIR}/SWIG_license.txt; then
 	echo -e "Error: Cannot download SWIG license.";
