@@ -47,6 +47,7 @@ QT_PLUGIN_DIR=/usr/local/opt/qt@5/plugins
 LOCAL_DIR=/usr/local
 LOCAL_LIB_DIR=/usr/local/lib
 LOCAL_OPT_DIR=/usr/local/opt
+GCC_LIB_DIR=/usr/local/Cellar/gcc/13.2.0/lib/gcc/13
 LOCAL_FRAMEWORKS_DIR=/usr/local/Frameworks
 
 
@@ -79,6 +80,8 @@ declare -a LOCAL_LIBS=(
 	libzstd.1.dylib
 	libpng16.16.dylib
 	libfreetype.6.dylib
+	libopencv_core.408.dylib libopencv_imgproc.408.dylib
+	libtbb.12.dylib
 )
 
 
@@ -269,8 +272,13 @@ if [ $create_appdir -ne 0 ]; then
 	done
 
 	# more libraries
+	cp -v ${LOCAL_OPT_DIR}/openblas/lib/libopenblas.0.dylib "${APPDIRNAME}/Contents/Libraries/"
 	#cp -v ${LOCAL_OPT_DIR}/lapack/lib/liblapacke.3.dylib "${APPDIRNAME}/Contents/Libraries/"
 	#cp -v ${LOCAL_OPT_DIR}/lapack/lib/liblapack.3.dylib "${APPDIRNAME}/Contents/Libraries/"
+	cp -v ${GCC_LIB_DIR}/libgfortran.5.dylib "${APPDIRNAME}/Contents/Libraries/"
+	cp -v ${GCC_LIB_DIR}/libgomp.1.dylib "${APPDIRNAME}/Contents/Libraries/"
+	cp -v ${GCC_LIB_DIR}/libquadmath.0.dylib "${APPDIRNAME}/Contents/Libraries/"
+	cp -v ${GCC_LIB_DIR}/libgcc_s.1.1.dylib "${APPDIRNAME}/Contents/Libraries/"
 
 	# locally built libraries
 	cp -v build/libqcustomplot_local.dylib "${APPDIRNAME}/Contents/Libraries/"

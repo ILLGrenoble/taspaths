@@ -180,7 +180,7 @@ endif()
 
 
 if(USE_OCV)
-	find_package(OpenCV)
+	find_package(OpenCV REQUIRED COMPONENTS core imgproc)
 
 	if(OpenCV_FOUND)
 		message("OpenCV enabled.")
