@@ -73,10 +73,14 @@ public:
 	 */
 	virtual bool operator<(const QTableWidgetItem& item) const override
 	{
-		T val1 = GetValue();
-		T val2 = str_to_var_parse<T>(item.text().toStdString());
+		std::pair<bool, T> res1 = eval_expr<std::string, T>(text().toStdString());
+		std::pair<bool, T> res2 = eval_expr<std::string, T>(item.text().toStdString());
 
-		return val1 < val2;
+		// if the expressions cannot be parsed, order lexicographically
+		if(!res1.first || !res2.first)
+			return QTableWidgetItem::operator<(item);
+
+		return res1.second < res2.second;
 	}
 
 
@@ -104,8 +108,11 @@ public:
 
 		if(valid)
 			*valid = pairResult.first;
+
+		// invalid result?
 		if(!pairResult.first)
-			return T(0);
+			return T{};
+
 		return pairResult.second;
 	}
 

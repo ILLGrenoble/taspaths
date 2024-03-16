@@ -9,8 +9,9 @@ A physical-mathematical C++ template library.
 
 |Date        |URL                                                          |Description                                     |
 |------------|-------------------------------------------------------------|------------------------------------------------|
-|2019 - now  |https://code.ill.fr/scientific-software/takin/tlibs2         |Main development repository for tlibs 2.        |
-|2019 - now  |https://code.ill.fr/scientific-software/takin/tlibs          |Main development repository for tlibs 1.        |
+|2023 - now  |https://github.com/illgrenoble/takin                         |Main development repository for tlibs 2 and 1.       |
+|2019 - 2023 |https://code.ill.fr/scientific-software/takin/tlibs2         |Former main development repository for tlibs 2. |
+|2019 - 2023 |https://code.ill.fr/scientific-software/takin/tlibs          |Former main development repository for tlibs 1. |
 |2016 - 2019 |https://github.com/t-weber/tlibs                             |Old private repository for tlibs 1.             |
 |2015 - 2017 |https://forge.frm2.tum.de/cgit/cgit.cgi/frm2/mira/tlibs.git/ |Former main development repository for tlibs 1. |
 

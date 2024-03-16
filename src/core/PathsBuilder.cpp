@@ -682,14 +682,14 @@ std::vector<t_vec2> PathsBuilder::GetPathVertices(
 				if(idx == 1)
 				{
 					begin_idx = path.param_i * (vertices.size()-1);
-					begin_idx = tl2::clamp<std::ptrdiff_t>(begin_idx, 0, vertices.size()-1);
+					begin_idx = std::clamp<std::ptrdiff_t>(begin_idx, 0, vertices.size()-1);
 				}
 
 				// use the closest position on the path for the final vertex
 				else if(idx == path.voronoi_indices.size()-1)
 				{
 					end_idx = (1.-path.param_f) * (vertices.size()-1);
-					end_idx = tl2::clamp<std::ptrdiff_t>(end_idx, 0, vertices.size()-1);
+					end_idx = std::clamp<std::ptrdiff_t>(end_idx, 0, vertices.size()-1);
 				}
 
 				if(inverted_iter_order)
@@ -938,7 +938,7 @@ PathsBuilder::FindClosestPointOnBisector(
 		// a new parameter farther from the walls has been found
 		if(new_param_found)
 		{
-			new_param_lin = tl2::clamp<t_real>(new_param_lin, param_range[0], param_range[1]);
+			new_param_lin = std::clamp<t_real>(new_param_lin, param_range[0], param_range[1]);
 			t_vec2 new_vertex = vert1 + dir*new_param_lin*dir_len;
 
 			param_lin = new_param_lin;
@@ -1160,7 +1160,7 @@ PathsBuilder::FindClosestBisector(
 	}
 	//std::cout << std::endl;
 
-	min_param = tl2::clamp<t_real>(min_param, 0., 1.);
+	min_param = std::clamp<t_real>(min_param, 0., 1.);
 	return std::make_tuple(min_param, min_bisector, bisector_type, collides);
 }
 

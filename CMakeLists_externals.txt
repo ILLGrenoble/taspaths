@@ -136,21 +136,21 @@ set(CMAKE_AUTOMOC TRUE)
 # target library settings
 # -----------------------------------------------------------------------------
 # make a 3rd party qcustomplot library
-add_library(qcustomplot_local SHARED
+add_library(qcustomplot SHARED
 	qcustomplot/qcustomplot.cpp qcustomplot/qcustomplot.h
 )
 
-set_property(TARGET qcustomplot_local
+set_property(TARGET qcustomplot
 	PROPERTY POSITION_INDEPENDENT_CODE True)
 
 if(QT_VER EQUAL 6)
-	target_link_libraries(qcustomplot_local
+	target_link_libraries(qcustomplot
 		Qt6::Core Qt6::Gui Qt6::Widgets
 		#Qt6::OpenGL Qt6::OpenGLWidgets
 		Qt6::PrintSupport
 	)
 elseif(QT_VER EQUAL 5)
-	target_link_libraries(qcustomplot_local
+	target_link_libraries(qcustomplot
 		Qt5::Core Qt5::Gui Qt5::Widgets
 		#Qt5::OpenGL
 		Qt5::PrintSupport

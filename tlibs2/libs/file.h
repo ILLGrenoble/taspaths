@@ -455,7 +455,7 @@ public:
 			switch(ty)
 			{
 				case PropType::XML:
-					prop::read_xml(istr, m_prop);
+					prop::read_xml(istr, m_prop, prop::xml_parser::no_comments);
 					break;
 				case PropType::JSON:
 					prop::read_json(istr, m_prop);

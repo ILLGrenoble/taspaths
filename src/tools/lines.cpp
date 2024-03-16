@@ -56,7 +56,7 @@
 #include <iostream>
 
 #include "tlibs2/libs/algos.h"
-#include "tlibs2/libs/log.h"
+#include "tlibs2/libs/str.h"
 
 #include "src/libs/voronoi_lines.h"
 

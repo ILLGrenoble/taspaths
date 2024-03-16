@@ -35,7 +35,7 @@ find_path(Qhull_INCLUDE_DIRS
 
 
 find_library(Qhull_c_LIBRARY
-	NAMES qhull_r
+	NAMES libqhullstatic_r.a libqhull_r.a qhull_r
 	HINTS ${PROJECT_SOURCE_DIR}/externals/qhull-inst/usr/local/lib
 		/usr/local/lib64 /usr/local/lib /usr/lib64 /usr/lib /opt/local/lib
 	DOC "Qhull C library"
@@ -43,7 +43,7 @@ find_library(Qhull_c_LIBRARY
 
 
 find_library(Qhull_cpp_LIBRARY
-	NAMES qhullcpp
+	NAMES libqhullcpp.a qhullcpp
 	HINTS ${PROJECT_SOURCE_DIR}/externals/qhull-inst/usr/local/lib
 		/usr/local/lib64 /usr/local/lib /usr/lib64 /usr/lib /opt/local/lib
 	DOC "Qhull C++ library"

@@ -251,8 +251,10 @@ public:
 
 		// restrict theta angle
 		if(restrict_theta)
-			m_theta = tl2::clamp<t_real>(
+		{
+			m_theta = std::clamp<t_real>(
 				m_theta, -t_real(0.5)*tl2::pi<t_real>, 0.);
+		}
 
 		m_trafo_needs_update = true;
 	}

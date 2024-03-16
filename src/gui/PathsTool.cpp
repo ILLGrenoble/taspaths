@@ -44,7 +44,6 @@ namespace pt = boost::property_tree;
 #include "tlibs2/libs/str.h"
 #include "tlibs2/libs/file.h"
 #include "tlibs2/libs/algos.h"
-#include "tlibs2/libs/log.h"
 
 
 // instantiate the settings dialog class

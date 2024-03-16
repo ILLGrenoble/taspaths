@@ -38,9 +38,10 @@
 #define __TLIBS2_PHYS__
 
 #include "units.h"
-#include "log.h"
 #include "maths.h"
 
+#include <stdexcept>
+#include <optional>
 #include <boost/units/pow.hpp>
 
 
@@ -187,7 +188,7 @@ t_angle<Sys,Y> calc_tas_angle_ki_kf(const t_wavenumber<Sys,Y>& ki,
 {
 	t_dimensionless<Sys,Y> ttCos = (ki*ki + kf*kf - Q*Q)/(Y(2.)*ki*kf);
 	if(units::abs(ttCos) > Y(1.))
-		throw Err("Scattering triangle not closed.");
+		throw std::runtime_error("Scattering triangle not closed.");
 
 	t_angle<Sys,Y> tt = units::acos(ttCos);
 
@@ -239,7 +240,7 @@ t_angle<Sys,Y> calc_tas_angle_ki_Q(const t_wavenumber<Sys,Y>& ki,
 	{
 		auto c = (ki*ki - kf*kf + Q*Q) / (Y(2.)*ki*Q);
 		if(units::abs(c) > Y(1.))
-			throw Err("Scattering triangle not closed.");
+			throw std::runtime_error("Scattering triangle not closed.");
 
 		angle = units::acos(c);
 	}
@@ -277,7 +278,7 @@ t_angle<Sys,Y> calc_tas_angle_kf_Q(const t_wavenumber<Sys,Y>& ki,
 	{
 		auto c = (ki*ki - kf*kf - Q*Q) / (Y(2.)*kf*Q);
 		if(units::abs(c) > Y(1.))
-			throw Err("Scattering triangle not closed.");
+			throw std::runtime_error("Scattering triangle not closed.");
 
 		angle = units::acos(c);
 	}
@@ -448,7 +449,7 @@ t_angle<Sys,Y> calc_tas_a1(const t_wavenumber<Sys,Y>& k,
 	t_length<Sys,Y> lam = Y(2.)*pi<Y> / k;
 	auto dS = order*lam/(Y(2.)*d);
 	if(std::abs(Y(dS)) > Y(1))
-		throw Err("Invalid twotheta angle.");
+		throw std::runtime_error("Invalid twotheta angle.");
 
 	t_angle<Sys,Y> theta = units::asin(dS);
 	if(!bPosSense)
@@ -571,7 +572,7 @@ t_wavenumber<Sys,Y> get_other_k(const t_energy<Sys,Y>& E,
 
 	auto k_sq = kE_sq + kfix*kfix;
 	if(k_sq*angstrom<Y>*angstrom<Y> < Y(0.))
-		throw Err("Scattering triangle not closed.");
+		throw std::runtime_error("Scattering triangle not closed.");
 
 	//return units::sqrt(k_sq);
 	return my_units_sqrt<t_wavenumber<Sys,Y>>(k_sq);

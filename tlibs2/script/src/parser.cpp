@@ -35,6 +35,7 @@
 #include "str.h"
 #include "file.h"
 
+#include <iostream>
 #include <fstream>
 #include <locale>
 
@@ -48,7 +49,8 @@ namespace args = boost::program_options;
  */
 void yy::Lexer::LexerOutput(const char* str, int /*len*/)
 {
-	tl2::log_err("Lexer output (line ", GetCurLine(), "): ", str, ".");
+	std::cerr << "Lexer output (line " << GetCurLine() << "): " << str
+		<< "." << std::endl;
 }
 
 
@@ -57,7 +59,8 @@ void yy::Lexer::LexerOutput(const char* str, int /*len*/)
  */
 void yy::Lexer::LexerError(const char* err)
 {
-	tl2::log_err("Lexer error in line ", GetCurLine(), ": ", err, ".");
+	std::cerr << "Lexer error in line " << GetCurLine() << ": " << err
+		<< "." << std::endl;
 }
 
 
@@ -66,7 +69,8 @@ void yy::Lexer::LexerError(const char* err)
  */
 void yy::Parser::error(const std::string& err)
 {
-	tl2::log_err("Parser error in line ", context.GetCurLine(), ": ", err, ".");
+	std::cerr << "Parser error in line " << context.GetCurLine() << ": " << err
+		<< "." << std::endl;
 }
 
 
@@ -87,11 +91,11 @@ int main(int argc, char** argv)
 		std::locale loc{};
 		std::locale::global(loc);
 
-		tl2::log_info("--------------------------------------------------------------------------------");
-		tl2::log_info("This is the tlibs2 script compiler.");
-		tl2::log_info("Author: Tobias Weber <tweber@ill.fr>, 2020.");
-		tl2::log_info("Licensed under GPLv3.");
-		tl2::log_info("--------------------------------------------------------------------------------");
+		std::cout << "--------------------------------------------------------------------------------\n";
+		std::cout << "This is the tlibs2 script compiler.\n";
+		std::cout << "Author: Tobias Weber <tweber@ill.fr>, 2020.\n";
+		std::cout << "Licensed under GPLv3.\n";
+		std::cout << "--------------------------------------------------------------------------------\n";
 
 
 		// llvm toolchain
@@ -145,8 +149,8 @@ int main(int argc, char** argv)
 
 		if(vecProgs.size() == 0)
 		{
-			tl2::log_info("Please specify an input program.");
-			tl2::log_info(arg_descr);
+			std::cerr << "Please specify an input program.\n";
+			std::cerr << arg_descr << std::endl;
 			return 0;
 		}
 
@@ -171,12 +175,12 @@ int main(int argc, char** argv)
 		// --------------------------------------------------------------------
 		// parse input
 		// --------------------------------------------------------------------
-		tl2::log_info("Parsing \"", inprog, "\"...");
+		std::cout << "Parsing \"" << inprog << "\"..." << std::endl;
 
 		std::ifstream ifstr{inprog};
 		if(!ifstr)
 		{
-			tl2::log_err("Cannot open \"", inprog, "\".");
+			std::cerr << "Cannot open \"" << inprog << "\"." << std::endl;
 			return -1;
 		}
 		yy::ParserContext ctx{ifstr};
@@ -244,13 +248,13 @@ int main(int argc, char** argv)
 		int res = parser.parse();
 		if(res != 0)
 		{
-			tl2::log_err("Parser reports failure.");
+			std::cerr << "Parser reports failure." << std::endl;
 			return res;
 		}
 
 		if(show_symbols)
 		{
-			tl2::log_info("Writing symbol table to \"", outprog_syms, "\"...");
+			std::cout << "Writing symbol table to \"" << outprog_syms << "\"..." << std::endl;
 
 			std::ofstream ostrSyms{outprog_syms};
 			ostrSyms << ctx.GetSymbols() << std::endl;
@@ -258,7 +262,7 @@ int main(int argc, char** argv)
 
 		if(show_ast)
 		{
-			tl2::log_info("Writing AST to \"", outprog_ast, "\"...");
+			std::cout << "Writing AST to \"" << outprog_ast << "\"..." << std::endl;
 
 			std::ofstream ostrAST{outprog_ast};
 			ASTPrinter printer{&ostrAST};
@@ -279,8 +283,9 @@ int main(int argc, char** argv)
 		// --------------------------------------------------------------------
 		// 3AC generation
 		// --------------------------------------------------------------------
-		tl2::log_info("Generating intermediate code: \"",
-			inprog, "\" -> \"", outprog_3ac, "\"...");
+		std::cout << "Generating intermediate code: \""
+			<< inprog << "\" -> \"" << outprog_3ac
+			<< "\"..." << std::endl;
 
 		std::ofstream ofstr{outprog_3ac};
 		std::ostream* ostr = &ofstr;
@@ -476,14 +481,15 @@ define i32 @main()
 		// --------------------------------------------------------------------
 		if(optimise)
 		{
-			tl2::log_info("Optimising intermediate code: \"",
-				outprog_3ac, "\" -> \"", outprog_3ac_opt, "\"...");
+			std::cout << "Optimising intermediate code: \""
+				<< outprog_3ac << "\" -> \"" << outprog_3ac_opt
+				<< "\"..." << std::endl;
 
 			std::string cmd_opt = tool_opt + " -stats -S --strip-debug -o "
 				+ outprog_3ac_opt + " " + outprog_3ac;
 			if(std::system(cmd_opt.c_str()) != 0)
 			{
-				tl2::log_err("Failed.");
+				std::cerr << "Failed." << std::endl;
 				return -1;
 			}
 
@@ -496,13 +502,14 @@ define i32 @main()
 		// --------------------------------------------------------------------
 		// Bitcode generation
 		// --------------------------------------------------------------------
-		tl2::log_info("Assembling bitcode: \"",
-			outprog_3ac, "\" -> \"", outprog_bc, "\"...");
+		std::cout << "Assembling bitcode: \""
+			<< outprog_3ac << "\" -> \"" << outprog_bc
+			<< "\"..." << std::endl;
 
 		std::string cmd_bc = tool_bc + " -o " + outprog_bc + " " + outprog_3ac;
 		if(std::system(cmd_bc.c_str()) != 0)
 		{
-			tl2::log_err("Failed.");
+			std::cerr << "Failed." << std::endl;
 			return -1;
 		}
 		// --------------------------------------------------------------------
@@ -512,25 +519,27 @@ define i32 @main()
 		// --------------------------------------------------------------------
 		// Native compilation
 		// --------------------------------------------------------------------
-		tl2::log_info("Generating native assembly \"",
-			outprog_bc, "\" -> \"", outprog_s, "\"...");
+		std::cout << "Generating native assembly \""
+			<< outprog_bc << "\" -> \"" << outprog_s
+			<< "\"..." << std::endl;
 
 		std::string opt_flag_s = optimise ? "-O2" : "";
 		std::string cmd_s = tool_s + " " + opt_flag_s + " -o " + outprog_s + " " + outprog_bc;
 		if(std::system(cmd_s.c_str()) != 0)
 		{
-			tl2::log_err("Failed.");
+			std::cerr << "Failed." << std::endl;
 			return -1;
 		}
 
 
-		tl2::log_info("Assembling native code \"", outprog_s, "\" -> \"", outprog_o, "\"...");
+		std::cout << "Assembling native code \"" << outprog_s << "\" -> \"" << outprog_o
+			<< "\"..." << std::endl;
 
 		std::string opt_flag_o = optimise ? "-O2" : "";
 		std::string cmd_o = tool_o + " " + opt_flag_o + " -c -o " + outprog_o + " " + outprog_s;
 		if(std::system(cmd_o.c_str()) != 0)
 		{
-			tl2::log_err("Failed.");
+			std::cerr << "Failed." << std::endl;
 			return -1;
 		}
 		// --------------------------------------------------------------------
@@ -540,15 +549,16 @@ define i32 @main()
 		// --------------------------------------------------------------------
 		// Linking
 		// --------------------------------------------------------------------
-		tl2::log_info("Generating native executable \"",
-			outprog_o, "\" -> \"", outprog, "\"...");
+		std::cout << "Generating native executable \""
+			<< outprog_o << "\" -> \"" << outprog
+			<< "\"..." << std::endl;
 
 		std::string opt_flag_exec = optimise ? "-O2" : "";
 		std::string exec_libs = "-L. -lmcalc_rt -lm";
 		std::string cmd_exec = tool_exec + " " + opt_flag_exec + " -o " + outprog + " " + outprog_o + " " + exec_libs;
 		if(std::system(cmd_exec.c_str()) != 0)
 		{
-			tl2::log_err("Failed.");
+			std::cerr << "Failed." << std::endl;
 			return -1;
 		}
 		// --------------------------------------------------------------------
@@ -559,12 +569,12 @@ define i32 @main()
 		// --------------------------------------------------------------------
 		// Change linkage of runtime
 		// --------------------------------------------------------------------
-		tl2::log_info("Adjusting linkage of runtime library...");
+		std::cout << "Adjusting linkage of runtime library..." << std::endl;
 
 		std::string cmd_rtlink = "install_name_tool -change @rpath/libmcalc_rt.dylib ./libmcalc_rt.dylib " + outprog;
 		if(std::system(cmd_rtlink.c_str()) != 0)
 		{
-			tl2::log_err("Failed.");
+			std::cerr << "Failed." << std::endl;
 			return -1;
 		}
 		// --------------------------------------------------------------------
@@ -573,19 +583,20 @@ define i32 @main()
 
 		if(optimise)
 		{
-			tl2::log_info("Stripping debug symbols from \"", outprog, "\"...");
+			std::cout << "Stripping debug symbols from \"" << outprog 
+				<< "\"..." << std::endl;
 
 			std::string cmd_strip = tool_strip + " " + outprog;
 			if(std::system(cmd_strip.c_str()) != 0)
 			{
-				tl2::log_err("Failed.");
+				std::cerr << "Failed." << std::endl;
 				return -1;
 			}
 		}
 	}
 	catch(const std::exception& ex)
 	{
-		tl2::log_err("Error: ", ex.what());
+		std::cerr << "Error: " << ex.what() << std::endl;
 		return -1;
 	}
 

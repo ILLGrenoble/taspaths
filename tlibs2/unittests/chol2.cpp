@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_chol, t_real, t_types)
 
 		bool sym = 1;
 		auto [ok, C, D] =
-			tl2_la::chol2<t_mat, t_vec>(mat);
+			tl2_la::chol_herm<t_mat, t_vec>(mat);
 		std::cout << "ok = " << std::boolalpha << ok << std::endl;
 
 		t_mat CDCt = C * D * tl2::trans(C);
@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_chol, t_real, t_types)
 		std::cout << "M    = " << mat << std::endl;
 
 		auto [ok, C, D] =
-			tl2_la::chol2<t_mat_cplx, t_vec_cplx>(mat);
+			tl2_la::chol_herm<t_mat_cplx, t_vec_cplx>(mat);
 		std::cout << "ok = " << std::boolalpha << ok << std::endl;
 
 		t_mat_cplx CDCh = C * D * tl2::herm(C);

@@ -95,8 +95,8 @@ if [ $BUILD_EXTERNALS -ne 0 ]; then
 		exit -1
 	fi
 
-	strip -v libqcustomplot_local.*
-	cp -v libqcustomplot_local.* ../qcustomplot/
+	strip -v libqcustomplot.*
+	cp -v libqcustomplot.* ../qcustomplot/
 
 	popd
 	echo -e "--------------------------------------------------------------------------------"
@@ -143,7 +143,7 @@ strip -v taspaths-hull
 strip -v taspaths-poly
 
 if [ $BUILD_EXTERNALS -ne 0 ]; then
-	cp -v ../externals/qcustomplot/libqcustomplot_local.* .
+	cp -v ../externals/qcustomplot/libqcustomplot.* .
 fi
 
 popd

@@ -50,7 +50,7 @@ TMPFILE="${APPNAME}_tmp.dmg"
 declare -a QT_LIBS=(
 	QtCore
 	QtGui
-	QtWidgets 
+	QtWidgets
 	QtPrintSupport
 	QtDBus
 	QtSvg

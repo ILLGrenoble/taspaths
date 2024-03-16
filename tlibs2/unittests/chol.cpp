@@ -69,17 +69,24 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_chol, t_real, t_types)
 		//std::cout << "C0  = " << org_mat << std::endl;
 		std::cout << "M   = " << mat << std::endl;
 
-		bool sym = 1;
-		auto [ok, C] =
-			tl2_la::chol<t_mat, t_vec>(mat);
+		auto [ok, C] = tl2_la::chol<t_mat, t_vec>(mat);
+		auto [ok2, C2, P] = tl2_la::chol_semi<t_mat, t_vec>(mat, eps);
 		std::cout << "ok = " << std::boolalpha << ok << std::endl;
+		std::cout << "ok 2 = " << std::boolalpha << ok2 << std::endl;
 
 		t_mat CtC = tl2::trans(C) * C;
 		std::cout << "C    = " << C << std::endl;
 		std::cout << "C^tC = " << CtC << std::endl;
 
+		t_mat CtC2 = tl2::trans(C2) * C2;
+		std::cout << "C2      = " << C2 << std::endl;
+		std::cout << "C2^t C2 = " << CtC2 << std::endl;
+		t_mat mat_pivot = tl2::trans(P) * mat * P;
+
 		BOOST_TEST(ok);
+		BOOST_TEST(ok2);
 		BOOST_TEST(tl2::equals<t_mat>(mat, CtC, eps));
+		BOOST_TEST(tl2::equals<t_mat>(mat_pivot, CtC2, eps));
 		//BOOST_TEST(tl2::equals<t_mat>(org_mat, C, eps));
 		std::cout << "--------------------------------------------------------------------------------\n" << std::endl;
 	}
@@ -97,16 +104,24 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_chol, t_real, t_types)
 		t_mat_cplx mat = tl2::herm(org_mat) * org_mat;
 		std::cout << "M   = " << mat << std::endl;
 
-		auto [ok, C] =
-			tl2_la::chol<t_mat_cplx, t_vec_cplx>(mat);
+		auto [ok, C] = tl2_la::chol<t_mat_cplx, t_vec_cplx>(mat);
+		auto [ok2, C2, P] = tl2_la::chol_semi<t_mat_cplx, t_vec_cplx>(mat, eps);
 		std::cout << "ok = " << std::boolalpha << ok << std::endl;
+		std::cout << "ok 2 = " << std::boolalpha << ok2 << std::endl;
 
 		t_mat_cplx ChC = tl2::herm(C) * C;
 		std::cout << "C    = " << C << std::endl;
 		std::cout << "C^hC = " << ChC << std::endl;
 
+		t_mat_cplx ChC2 = tl2::herm(C2) * C2;
+		std::cout << "C2      = " << C2 << std::endl;
+		std::cout << "C2^h C2 = " << ChC2 << std::endl;
+		t_mat_cplx mat_pivot = tl2::trans(P) * mat * P;
+
 		BOOST_TEST(ok);
+		BOOST_TEST(ok2);
 		BOOST_TEST(tl2::equals<t_mat_cplx>(mat, ChC, eps));
+		BOOST_TEST(tl2::equals<t_mat_cplx>(mat_pivot, ChC2, eps));
 
 		std::cout << "--------------------------------------------------------------------------------\n" << std::endl;
 	}

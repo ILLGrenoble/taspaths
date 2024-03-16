@@ -1,8 +1,7 @@
 /**
- * tlibs2
- * (container-agnostic) math library
+ * tlibs2 -- (container-agnostic) math library
  * @author Tobias Weber <tobias.weber@tum.de>, <tweber@ill.fr>
- * @date 2015 - 2023
+ * @date 2015 - 2024
  * @license GPLv3, see 'LICENSE' file
  *
  * @note The present version was forked on 8-Nov-2018 from my privately developed "magtools" project (https://github.com/t-weber/magtools).
@@ -14,7 +13,7 @@
  *
  * ----------------------------------------------------------------------------
  * tlibs
- * Copyright (C) 2017-2023  Tobias WEBER (Institut Laue-Langevin (ILL),
+ * Copyright (C) 2017-2024  Tobias WEBER (Institut Laue-Langevin (ILL),
  *                          Grenoble, France).
  * Copyright (C) 2015-2017  Tobias WEBER (Technische Universitaet Muenchen
  *                          (TUM), Garching, Germany).
@@ -39,7 +38,7 @@
 #define __TLIBS2_CXX20_MATH_ALGOS_H__
 
 //#define USE_LAPACK 1
-#define __TLIBS2_QR_METHOD 0
+#define __TLIBS2_QR_METHOD__ 0
 
 #include <cstddef>
 #include <cstdint>
@@ -65,7 +64,6 @@
 
 #if __has_include(<numbers>)
 	#include <numbers>
-
 	#define __TLIBS2_USE_NUMBERS__
 #endif
 
@@ -74,9 +72,8 @@
 #include <boost/math/special_functions/spherical_harmonic.hpp>
 #include <boost/algorithm/minmax_element.hpp>
 
-#include "log.h"
 #include "str.h"
-#include "bits.h"
+#include "algos.h"
 #include "traits.h"
 
 #if __has_include(<lapacke.h>) && USE_LAPACK
@@ -357,16 +354,6 @@ t_vec<T> logspace(const T& tmin, const T& tmax, std::size_t iNum, T tBase=T(10))
 	for(T& t : vec)
 		t = std::pow(tBase, t);
 	return vec;
-}
-
-
-template<typename T>
-T clamp(T t, T min, T max)
-{
-	if(t < min) t = min;
-	if(t > max) t = max;
-
-	return t;
 }
 
 
@@ -2372,10 +2359,30 @@ template<typename t_vec, typename t_real = typename t_vec::value_type>
 void set_eps_0(t_vec& vec, t_real eps = std::numeric_limits<t_real>::epsilon())
 requires is_basic_vec<t_vec>
 {
-	using t_elem = typename t_vec::value_type;
-
 	for(std::size_t i=0; i<vec.size(); ++i)
-		set_eps_0<t_elem>(vec[i], eps);
+		set_eps_0<t_real>(vec[i], eps);
+};
+
+
+/**
+ * set values lower than epsilon to zero
+ * quaternion version
+ */
+template<typename t_quat, typename t_real = typename t_quat::value_type>
+void set_eps_0(t_quat& quat, t_real eps = std::numeric_limits<t_real>::epsilon())
+requires is_quat<t_quat>
+{
+	t_real re = quat.R_component_1();
+	t_real im1 = quat.R_component_2();
+	t_real im2 = quat.R_component_3();
+	t_real im3 = quat.R_component_4();
+
+	set_eps_0<t_real>(re, eps);
+	set_eps_0<t_real>(im1, eps);
+	set_eps_0<t_real>(im2, eps);
+	set_eps_0<t_real>(im3, eps);
+
+	quat = t_quat(re, im1, im2, im3);
 };
 
 
@@ -2383,15 +2390,28 @@ requires is_basic_vec<t_vec>
  * set values lower than epsilon to zero
  * matrix version
  */
-template<typename t_mat, typename t_real = typename t_mat::value_type>
-void set_eps_0(t_mat& mat, t_real eps = std::numeric_limits<t_real>::epsilon())
-requires is_basic_mat<t_mat>
+template<typename t_mat, typename t_val = typename t_mat::value_type>
+void set_eps_0(t_mat& mat,
+	typename t_val::value_type eps = std::numeric_limits<typename t_val::value_type>::epsilon())
+requires is_basic_mat<t_mat> && is_complex<t_val>
 {
-	using t_elem = typename t_mat::value_type;
-
 	for(std::size_t i=0; i<mat.size1(); ++i)
 		for(std::size_t j=0; j<mat.size2(); ++j)
-			set_eps_0<t_elem>(mat(i,j), eps);
+			set_eps_0<t_val, typename t_val::value_type>(mat(i,j), eps);
+};
+
+
+/**
+ * set values lower than epsilon to zero
+ * complex matrix version
+ */
+template<typename t_mat, typename t_val = typename t_mat::value_type>
+void set_eps_0(t_mat& mat, t_val eps = std::numeric_limits<t_val>::epsilon())
+requires is_basic_mat<t_mat> && (!is_complex<t_val>)
+{
+	for(std::size_t i=0; i<mat.size1(); ++i)
+		for(std::size_t j=0; j<mat.size2(); ++j)
+			set_eps_0<t_val>(mat(i,j), eps);
 };
 // -----------------------------------------------------------------------------
 
@@ -3173,7 +3193,7 @@ requires is_basic_mat<t_mat> && is_basic_vec<t_vec>
 
 	t_real c = inner<t_mat, t_vec>(metric_co, vec1_contra, vec2_contra);
 	c /= len1 * len2;
-	c = clamp<t_real>(c, -1, 1);
+	c = std::clamp<t_real>(c, -1, 1);
 
 	return std::acos(c);
 }
@@ -3444,7 +3464,7 @@ requires is_vec<t_vec>
 
 /**
  * find orthonormal substitute basis for vector space (Gram-Schmidt algo)
- * remove orthogonal projections to all other base vectors: |i'> = (1 - sum_{j<i} |j><j|) |i>
+ * remove orthogonal projections to all other basis vectors: |i'> = (1 - sum_{j<i} |j><j|) |i>
  *
  * @see https://en.wikipedia.org/wiki/Gram%E2%80%93Schmidt_process
  * @see (Arens 2015), p. 744
@@ -3477,7 +3497,7 @@ requires is_vec<t_vec>
 
 /**
  * find orthonormal substitute basis for vector space (Gram-Schmidt algo)
- * remove orthogonal projections to all other base vectors: |i'> = (1 - sum_{j<i} |j><j|) |i>
+ * remove orthogonal projections to all other basis vectors: |i'> = (1 - sum_{j<i} |j><j|) |i>
  *
  * @see https://en.wikipedia.org/wiki/Gram%E2%80%93Schmidt_process
  * @see (Arens 2015), p. 744
@@ -4645,7 +4665,7 @@ requires tl2::is_mat<t_mat>
  */
 template<class t_mat, class t_vec>
 t_mat rotation(const t_vec& axis, const typename t_vec::value_type angle,
-	bool is_normalised = 1)
+	bool is_normalised = true)
 requires is_vec<t_vec> && is_mat<t_mat>
 {
 	using t_real = typename t_vec::value_type;
@@ -7151,25 +7171,26 @@ requires is_vec<t_vec>
 template<class t_vec, class t_mat, class t_real = typename t_vec::value_type,
 	template<class...> class t_cont = std::vector>
 t_cont<t_vec> apply_ops_hom(const t_vec& _atom, const t_cont<t_mat>& ops,
-	t_real eps=std::numeric_limits<t_real>::epsilon(),
+	t_real eps = std::numeric_limits<t_real>::epsilon(),
 	bool keepInUnitCell = true, bool ignore_occupied = false, bool ret_hom = false)
 requires is_vec<t_vec> && is_mat<t_mat>
 {
-	// in homogeneous coordinates
+	// convert vector to homogeneous coordinates
 	t_vec atom = _atom;
 	if(atom.size() == 3)
-		atom = create<t_vec>({atom[0], atom[1], atom[2], 1});
+		atom = create<t_vec>({ atom[0], atom[1], atom[2], 1 });
 
 	t_cont<t_vec> newatoms;
 	newatoms.reserve(ops.size());
 
 	for(const auto& op : ops)
 	{
-		auto newatom = op*atom;
+		// apply symmetry operator
+		auto newatom = op * atom;
 
 		// return a homogeneous 4-vector or a 3-vector
 		if(!ret_hom)
-			newatom.resize(3);
+			newatom = create<t_vec>({newatom[0], newatom[1], newatom[2]});
 
 		if(keepInUnitCell)
 			newatom = keep_atom_in_uc<t_vec>(newatom, 3);
@@ -7187,6 +7208,53 @@ requires is_vec<t_vec> && is_mat<t_mat>
 	}
 
 	return newatoms;
+}
+
+
+
+/**
+ * transform matrices using the given symmetry operations
+ */
+template<class t_mat, class t_real = typename t_mat::value_type,
+template<class...> class t_cont = std::vector>
+t_cont<t_mat> apply_ops_hom(const t_mat& _mat, const t_cont<t_mat>& ops,
+	bool ret_hom = false)
+requires is_mat<t_mat>
+{
+	// convert matrix to homogeneous coordinates
+	t_mat mat = _mat;
+	if(mat.size1() == 3)
+	{
+		mat = create<t_mat>({
+			mat(0, 0), mat(0, 1), mat(0, 2),  0,
+			mat(1, 0), mat(1, 1), mat(1, 2),  0,
+			mat(2, 0), mat(2, 1), mat(2, 2),  0,
+			        0,         0,         0,  1
+		});
+	}
+
+	t_cont<t_mat> newmatrices;
+	newmatrices.reserve(ops.size());
+
+	for(const auto& op : ops)
+	{
+		// apply symmetry operator
+		auto newmatrix = trans(op) * mat * op;
+
+		// return a homogeneous 4-vector or a 3-vector
+		if(!ret_hom)
+		{
+			newmatrix = create<t_mat>({
+				newmatrix(0, 0), newmatrix(0, 1), newmatrix(0, 2),
+				newmatrix(1, 0), newmatrix(1, 1), newmatrix(1, 2),
+				newmatrix(2, 0), newmatrix(2, 1), newmatrix(2, 2)
+			});
+		}
+
+		newmatrices.emplace_back(std::move(newmatrix));
+	}
+
+	return newmatrices;
 }
 // ----------------------------------------------------------------------------
 
@@ -7498,7 +7566,7 @@ requires tl2::is_mat<t_mat>
  * @see http://www.netlib.org/utk/papers/factor/node9.html
  */
 template<class t_mat, class t_vec = std::vector<typename t_mat::value_type>>
-std::tuple<bool, t_mat> chol(const t_mat& mat)
+std::tuple<bool, t_mat> chol(const t_mat& mat, bool blocked = true)
 requires tl2::is_mat<t_mat>
 {
 	using namespace tl2_ops;
@@ -7523,13 +7591,21 @@ requires tl2::is_mat<t_mat>
 	{
 		if constexpr(std::is_same_v<t_real, float>)
 		{
-			err = LAPACKE_cpotrf(LAPACK_ROW_MAJOR,
-				'U', N, outmat.data(), N);
+			if(blocked)
+				err = LAPACKE_cpotrf(LAPACK_ROW_MAJOR,
+					'U', N, outmat.data(), N);
+			else
+				err = LAPACKE_cpotrf2(LAPACK_ROW_MAJOR,
+					'U', N, outmat.data(), N);
 		}
 		else if constexpr(std::is_same_v<t_real, double>)
 		{
-			err = LAPACKE_zpotrf(LAPACK_ROW_MAJOR,
-				'U', N, outmat.data(), N);
+			if(blocked)
+				err = LAPACKE_zpotrf(LAPACK_ROW_MAJOR,
+					'U', N, outmat.data(), N);
+			else
+				err = LAPACKE_zpotrf2(LAPACK_ROW_MAJOR,
+					'U', N, outmat.data(), N);
 		}
 		else
 		{
@@ -7541,13 +7617,21 @@ requires tl2::is_mat<t_mat>
 	{
 		if constexpr(std::is_same_v<t_real, float>)
 		{
-			err = LAPACKE_spotrf(LAPACK_ROW_MAJOR,
-				'U', N, outmat.data(), N);
+			if(blocked)
+				err = LAPACKE_spotrf(LAPACK_ROW_MAJOR,
+					'U', N, outmat.data(), N);
+			else
+				err = LAPACKE_spotrf2(LAPACK_ROW_MAJOR,
+					'U', N, outmat.data(), N);
 		}
 		else if constexpr(std::is_same_v<t_real, double>)
 		{
-			err = LAPACKE_dpotrf(LAPACK_ROW_MAJOR,
-				'U', N, outmat.data(), N);
+			if(blocked)
+				err = LAPACKE_dpotrf(LAPACK_ROW_MAJOR,
+					'U', N, outmat.data(), N);
+			else
+				err = LAPACKE_dpotrf2(LAPACK_ROW_MAJOR,
+					'U', N, outmat.data(), N);
 		}
 		else
 		{
@@ -7568,13 +7652,95 @@ requires tl2::is_mat<t_mat>
 
 
 /**
+ * cholesky decomposition of a hermitian, positive-semidefinite matrix, mat = C^H C
+ * @returns [ok, C, P]
+ * @see https://netlib.org/lapack/explore-html/db/dba/zpstrf_8f_source.html
+ */
+template<class t_mat, class t_vec = std::vector<typename t_mat::value_type>,
+	class t_real = tl2::underlying_value_type<typename t_mat::value_type>>
+std::tuple<bool, t_mat, t_mat> chol_semi(const t_mat& mat, t_real eps)
+requires tl2::is_mat<t_mat>
+{
+	using namespace tl2_ops;
+	using t_scalar = typename t_mat::value_type;
+
+	if constexpr(tl2::is_dyn_mat<t_mat>)
+		assert((mat.size1() == mat.size2()));
+	else
+		static_assert(t_mat::size1() == t_mat::size2());
+
+	const std::size_t N = mat.size1();
+	int err = -1;
+
+	std::vector<t_scalar> outmat(N*N);
+	std::vector<int> pivot(N, 0);
+	int steps = 0;
+
+	for(std::size_t i=0; i<N; ++i)
+		for(std::size_t j=0; j<N; ++j)
+			outmat[i*N + j] = (j >= i ? mat(i, j) : 0.);
+
+	if constexpr(tl2::is_complex<t_scalar>)
+	{
+		if constexpr(std::is_same_v<t_real, float>)
+		{
+			err = LAPACKE_cpstrf(LAPACK_ROW_MAJOR,
+				'U', N, outmat.data(), N, pivot.data(), &steps, eps);
+		}
+		else if constexpr(std::is_same_v<t_real, double>)
+		{
+			err = LAPACKE_zpstrf(LAPACK_ROW_MAJOR,
+				'U', N, outmat.data(), N, pivot.data(), &steps, eps);
+		}
+		else
+		{
+			static_assert(tl2::bool_value<0, t_real>, "Invalid element type");
+			//throw std::domain_error("Invalid element type.");
+		}
+	}
+	else
+	{
+		if constexpr(std::is_same_v<t_real, float>)
+		{
+			err = LAPACKE_spstrf(LAPACK_ROW_MAJOR,
+				'U', N, outmat.data(), N, pivot.data(), &steps, eps);
+		}
+		else if constexpr(std::is_same_v<t_real, double>)
+		{
+			err = LAPACKE_dpstrf(LAPACK_ROW_MAJOR,
+				'U', N, outmat.data(), N, pivot.data(), &steps, eps);
+		}
+		else
+		{
+			static_assert(tl2::bool_value<0, t_real>, "Invalid element type");
+			//throw std::domain_error("Invalid element type.");
+		}
+	}
+
+	t_mat C = tl2::create<t_mat>(N, N);
+	t_mat P = tl2::zero<t_mat>(N, N);    // pivot matrix
+
+	for(std::size_t i=0; i<N; ++i)
+	{
+		for(std::size_t j=0; j<N; ++j)
+			C(i, j) = outmat[i*N + j];
+
+		P(pivot[i]-1, i) = 1.;
+	}
+
+	//std::cerr << "error value: " << err << std::endl;
+	return std::make_tuple(err == 0, C, P);
+}
+
+
+/**
  * cholesky decomposition of a hermitian matrix, mat = C D C^H
  * @returns [ok, C, D]
  * @see http://www.math.utah.edu/software/lapack/lapack-z/zhptrf.html
  * @see http://www.math.utah.edu/software/lapack/lapack-d/dsptrf.html
  */
 template<class t_mat, class t_vec = std::vector<typename t_mat::value_type>>
-std::tuple<bool, t_mat, t_mat> chol2(const t_mat& mat)
+std::tuple<bool, t_mat, t_mat> chol_herm(const t_mat& mat)
 requires tl2::is_mat<t_mat>
 {
 	using namespace tl2_ops;
@@ -8295,7 +8461,7 @@ requires is_mat<t_mat> && is_vec<t_vec>
 	const std::size_t cols = mat.size2();
 	const std::size_t N = std::min(cols, rows);
 
-#if __TLIBS2_QR_METHOD == 0
+#if __TLIBS2_QR_METHOD__ == 0
 	t_mat R = mat;
 	t_mat Q = unit<t_mat>(N, N);
 
@@ -8308,7 +8474,7 @@ requires is_mat<t_mat> && is_vec<t_vec>
 		R = prod(matMirror, R);
 	}
 
-#elif __TLIBS2_QR_METHOD == 1
+#elif __TLIBS2_QR_METHOD__ == 1
 	std::vector<t_vec> sysM;
 	sysM.reserve(mat.size2());
 	for(std::size_t i=0; i<mat.size2(); ++i)

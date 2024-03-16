@@ -12,8 +12,6 @@
 tests/jl/*.dat
 !tests/jl/tl2_jl.so
 !tests/jl/tl2_jl.dylib
-!tests/py/_tl2_py.so
-!tests/py/_tl2_py.dylib
 
 # Compiled Static libraries
 *.lai
@@ -36,7 +34,6 @@ unittests/build/**
 *.pyc
 .DS_Store
 *.csv
-tests/py/__pycache__/**
 
 # Temporary tex files
 *.log
@@ -55,4 +52,3 @@ tests/py/__pycache__/**
 *.bc
 
 ext/**
-

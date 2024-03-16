@@ -154,7 +154,7 @@ template<class Y=double> constexpr Y g_e = Y(co::g_e.value());
 template<class Y=double> constexpr t_inv_flux_time<units::si::system, Y> gamma_n = Y(co::gamma_n*units::si::tesla*units::si::seconds)/units::si::tesla/units::si::seconds;
 template<class Y=double> constexpr t_inv_flux_time<units::si::system, Y> gamma_e = Y(co::gamma_e*units::si::tesla*units::si::seconds)/units::si::tesla/units::si::seconds;
 template<class Y=double> constexpr t_energy_per_temperature<units::si::system, Y> kB = Y(co::k_B*units::si::kelvin/units::si::joules)/units::si::kelvin*units::si::joules;
-template<class Y=double> constexpr t_energy_per_field<units::si::system, Y> muB = Y(co::mu_B/units::si::joules*units::si::tesla)*units::si::joules/units::si::tesla;
+template<class Y=double> constexpr t_energy_per_field<units::si::system, Y> mu_B = Y(co::mu_B/units::si::joules*units::si::tesla)*units::si::joules/units::si::tesla;
 template<class Y=double> constexpr t_energy_per_field<units::si::system, Y> mu_n = Y(co::mu_n/units::si::joules*units::si::tesla)*units::si::joules/units::si::tesla;
 template<class Y=double> constexpr t_energy_per_field<units::si::system, Y> mu_N = Y(co::mu_N/units::si::joules*units::si::tesla)*units::si::joules/units::si::tesla;
 template<class Y=double> constexpr t_energy_per_field<units::si::system, Y> mu_e = Y(co::mu_e/units::si::joules*units::si::tesla)*units::si::joules/units::si::tesla;

@@ -46,7 +46,6 @@
 #include "ast.h"
 #include "sym.h"
 #include "parser_defs.h"
-#include "libs/log.h"
 
 
 namespace yy
@@ -161,9 +160,10 @@ namespace yy
 
 			if(curscope != name)
 			{
-				tl2::log_err("Error in line ", GetCurLine(),
-					": Trying to leave scope ", name,
-					", but the top scope is ", curscope, ".");
+				std::cerr << "Error in line " << GetCurLine()
+					<< ": Trying to leave scope " << name
+					<< ", but the top scope is " << curscope
+					<< "." << std::endl;
 			}
 
 			m_curscope.pop_back();

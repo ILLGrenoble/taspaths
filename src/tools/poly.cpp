@@ -50,7 +50,7 @@
 namespace ptree = boost::property_tree;
 
 #include "tlibs2/libs/algos.h"
-#include "tlibs2/libs/log.h"
+#include "tlibs2/libs/str.h"
 
 
 #define GEOTOOLS_SHOW_MESSAGE

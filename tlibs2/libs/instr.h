@@ -41,16 +41,15 @@
 #include <iostream>
 #include <iomanip>
 
-#include "str.h"
-#include "log.h"
 #include "file.h"
 #include "phys.h"
+#include "str.h"
 
 
 namespace tl2{
 
 
-template<class t_real=double, class t_char=char>
+template<class t_real = double, class t_char = char>
 class DatFile
 {
 	public:
@@ -60,9 +59,9 @@ class DatFile
 		using t_map = std::unordered_map<t_str, t_str>;
 
 	protected:
-		bool m_bOk = 0;
+		bool m_bOk = false;
 
-		t_char m_chComm = '#';				// comment
+		t_char m_chComm = '#';			// comment
 		t_str m_strSeps = {'=', ':'};		// key-value separator
 		t_str m_strDatSep = {' ', '\t'};	// data separators
 
@@ -82,9 +81,9 @@ class DatFile
 			trim(strLine);
 			if(strLine.length() == 0)
 				return;
-			//log_debug("Header line: ", strLine);
+			//std::cout << "Header line: " << strLine << std::endl;
 
-			bool bInsert = 1;
+			bool bInsert = true;
 			std::pair<t_str, t_str> pair =
 				split_first<t_str>(strLine, t_str({m_strSeps}), 1);
 			if(pair.first.length()==0 && pair.second.length()==0)
@@ -117,11 +116,15 @@ class DatFile
 						m_vecCols.emplace_back(std::move(vecNew));
 					}
 
-					log_warn("Data file loader: Too many elements in line ", m_iCurLine, ".");
+					std::cerr << "Data file loader: Too many elements in line "
+						<< m_iCurLine << "." << std::endl;
 				}
 			}
 			if(m_vecCols.size() < vecToks.size())
-				log_warn("Data file loader: Too few elements in line ", m_iCurLine, ".");
+			{
+				std::cerr << "Data file loader: Too few elements in line "
+					<< m_iCurLine << "." << std::endl;
+			}
 
 			for(std::size_t iCol=0; iCol<vecToks.size(); ++iCol)
 				m_vecCols[iCol].push_back(vecToks[iCol]);
@@ -142,7 +145,8 @@ class DatFile
 
 		bool Save(std::basic_ostream<t_char>& ostr)
 		{
-			if(!m_bOk) return 0;
+			if(!m_bOk)
+				return false;
 
 			for(const typename t_map::value_type& val : m_mapHdr)
 				ostr << m_chComm << " " <<
@@ -157,13 +161,14 @@ class DatFile
 					ostr << std::setw(16) << m_vecCols[iCol][iRow] << m_strDatSep[0];
 				ostr << "\n";
 			}
-			return 1;
+			return true;
 		}
 
 		bool Save(const t_str& strFile)
 		{
 			std::ofstream ofstr(strFile);
-			if(!ofstr) return 0;
+			if(!ofstr)
+				return false;
 			return Save(ofstr);
 		}
 
@@ -178,7 +183,7 @@ class DatFile
 				trim<t_str>(strLine);
 				if(strLine.length() == 0)
 					continue;
-				//log_debug("Line: ", strLine);
+				//std::cout << "Line: " << strLine << std::endl;
 
 				if(strLine[0] == m_chComm)
 					ReadHeaderLine(strLine);
@@ -186,14 +191,12 @@ class DatFile
 					ReadDataLine(strLine);
 			}
 
-			m_bOk = 1;
-			return m_bOk;
+			return true;
 		}
 
 		bool Load(const t_str& strFile)
 		{
-			m_bOk = 0;
-			//log_debug("File: ", strFile);
+			//std::cout << "File: " << strFile << std::endl;
 			std::basic_ifstream<t_char> ifstr(wstr_to_str(strFile));
 			if(!ifstr)
 				return false;
@@ -275,7 +278,7 @@ class FileInstrBase
 		virtual std::size_t GetScanCount() const = 0;
 		virtual std::array<t_real, 5> GetScanHKLKiKf(std::size_t i) const = 0;
 		virtual bool MergeWith(const FileInstrBase<t_real>* pDat);
-		virtual void SmoothData(const std::string& strCol, t_real dEps, bool bIterate=1);
+		virtual void SmoothData(const std::string& strCol, t_real dEps, bool bIterate=true);
 
 		virtual std::string GetTitle() const = 0;
 		virtual std::string GetUser() const = 0;
@@ -305,7 +308,7 @@ class FileInstrBase
 
 	public:
 		virtual bool MatchColumn(const std::string& strRegex,
-			std::string& strColName, bool bSortByCounts=0, bool bFilterEmpty=1) const;
+			std::string& strColName, bool bSortByCounts=0, bool bFilterEmpty=true) const;
 
 		static std::shared_ptr<FileInstrBase<t_real>> LoadInstr(const char* pcFile);
 };
@@ -342,9 +345,10 @@ class FilePsi : public FileInstrBase<_t_real>
 		std::vector<std::array<t_real, 6>> m_vecPolStates{};
 
 		// instrument-specific device names
-		std::string m_strPolVec1 = "p1", m_strPolVec2 = "p2";
-		std::string m_strPolCur1 = "i1", m_strPolCur2 = "i2";
-
+		std::string m_strPolVec1 = "p1";
+		std::string m_strPolVec2 = "p2";
+		std::string m_strPolCur1 = "i1";
+		std::string m_strPolCur2 = "i2";
 
 	protected:
 		void ReadData(std::istream& istr);
@@ -714,7 +718,8 @@ void FileInstrBase<t_real>::RenameDuplicateCols()
 		}
 		else
 		{
-			log_warn("Column \"", strCol, "\" is duplicate, renaming it.");
+			std::cerr << "Column \"" << strCol << "\" is duplicate, renaming it."
+				<< std::endl;
 
 			++iter->second;
 			strCol += "_" + var_to_str(iter->second);
@@ -756,19 +761,19 @@ std::shared_ptr<FileInstrBase<t_real>> FileInstrBase<t_real>::LoadInstr(const ch
 
 	if(strLine.find(strNicos) != std::string::npos)
 	{ // frm file
-		//log_debug(pcFile, " is an frm file.");
+		//std::cout << pcFile << " is an frm file." << std::endl;
 		pDat = std::make_shared<FileFrm<t_real>>();
 	}
 	else if(strLine.find('#') != std::string::npos &&
 		strLine.find(strMacs) != std::string::npos &&
 		strLine2.find('#') != std::string::npos)
 	{ // macs file
-		//log_debug(pcFile, " is a macs file.");
+		//std::cout << pcFile << " is a macs file." << std::endl;
 		pDat = std::make_shared<FileMacs<t_real>>();
 	}
 	else if(strLine2.find("scan start") != std::string::npos)
 	{ // trisp file
-		//log_debug(pcFile, " is a trisp file.");
+		std::cout << pcFile << " is a trisp file." << std::endl;
 		pDat = std::make_shared<FileTrisp<t_real>>();
 	}
 	else if(strLine.find('#') == std::string::npos &&
@@ -776,12 +781,13 @@ std::shared_ptr<FileInstrBase<t_real>> FileInstrBase<t_real>::LoadInstr(const ch
 		(strLine3.find(strPsi) != std::string::npos ||
 		strLine.find(strPsiOld) != std::string::npos))
 	{ // psi or ill file
-		//log_debug(pcFile, " is an ill or psi file.");
+		std::cout << pcFile << " is an ill or psi file." << std::endl;
 		pDat = std::make_shared<FilePsi<t_real>>();
 	}
 	else
 	{ // raw file
-		log_warn("\"", pcFile, "\" is of unknown type, falling back to raw loader.");
+		std::cerr << "\"" << pcFile << "\" is of unknown type, falling back to raw loader."
+			<< std::endl;
 		pDat = std::make_shared<FileRaw<t_real>>();
 	}
 
@@ -807,7 +813,8 @@ std::array<t_real, 5> FileInstrBase<t_real>::GetScanHKLKiKf(const char* pcH, con
 	/*std::size_t minSize = min4(vecH.size(), vecK.size(), vecL.size(), vecE.size());
 	if(i>=minSize)
 	{
-		log_err("Scan position ", i, " out of bounds. Size: ", minSize, ".");
+		std::cerr << "Scan position " << i << " is out of bounds. Size: " << minSize
+			<< "." << std::endl;
 		return std::array<t_real,5>{{0.,0.,0.,0.}};
 	}*/
 
@@ -877,7 +884,7 @@ bool FileInstrBase<t_real>::MergeWith(const FileInstrBase<t_real>* pDat)
 {
 	if(this->GetColNames().size() != pDat->GetColNames().size())
 	{
-		log_err("Cannot merge: Mismatching number of columns.");
+		std::cerr << "Cannot merge: Mismatching number of columns." << std::endl;
 		return false;
 	}
 
@@ -885,11 +892,11 @@ bool FileInstrBase<t_real>::MergeWith(const FileInstrBase<t_real>* pDat)
 	{
 		t_vecVals& col1 = this->GetCol(strCol);
 		const t_vecVals& col2 = pDat->GetCol(strCol);
-		//std::cout << "merging \"" << strCol << "\", size 1: " << col1.size() << ", size 2: " << col2.size() << std::endl;
 
 		if(col1.size() == 0 || col2.size() == 0)
 		{
-			log_err("Cannot merge: Column \"", strCol, "\" is empty.");
+			std::cerr << "Cannot merge: Column \"" << strCol << "\" is empty."
+				<< std::endl;
 			return false;
 		}
 
@@ -901,14 +908,13 @@ bool FileInstrBase<t_real>::MergeWith(const FileInstrBase<t_real>* pDat)
 
 
 template<class t_real>
-void FileInstrBase<t_real>::SmoothData(const std::string& strCol,
-	t_real dEps, bool bIterate)
+void FileInstrBase<t_real>::SmoothData(const std::string& strCol, t_real dEps, bool bIterate)
 {
 	std::size_t iIdxCol;
 	this->GetCol(strCol, &iIdxCol);		// get column index
 	if(iIdxCol == GetColNames().size())	// no such column?
 	{
-		log_err("No such data column: \"", strCol, "\".");
+		std::cerr << "No such data column: \"" << strCol << "\"." << std::endl;
 		return;
 	}
 
@@ -1017,8 +1023,10 @@ void FilePsi<t_real>::ReadData(std::istream& istr)
 
 		if(vecToks.size() != m_vecColNames.size())
 		{
-			log_warn("Loader: Column size mismatch in data line ", iLine,
-				": Expected ", m_vecColNames.size(), ", got ", vecToks.size(), ".");
+			std::cerr << "Loader: Column size mismatch in data line " << iLine
+				<< ": Expected " << m_vecColNames.size()
+				<< ", got " << vecToks.size()
+				<< "." << std::endl;
 
 			// add zeros
 			while(m_vecColNames.size() > vecToks.size())
@@ -1036,7 +1044,6 @@ void FilePsi<t_real>::GetInternalParams(const std::string& strAll, FilePsi<t_rea
 {
 	std::vector<std::string> vecToks;
 	get_tokens<std::string, std::string>(strAll, ",\n", vecToks);
-	//std::cout << strAll << std::endl;
 
 	for(const std::string& strTok : vecToks)
 	{
@@ -1048,8 +1055,6 @@ void FilePsi<t_real>::GetInternalParams(const std::string& strAll, FilePsi<t_rea
 
 		t_real dVal = str_to_var<t_real>(pair.second);
 		mapPara.insert(typename t_mapIParams::value_type(pair.first, dVal));
-
-		//std::cout << "Key: " << pair.first << ", Val: " << dVal << std::endl;
 	}
 }
 
@@ -1314,11 +1319,11 @@ std::array<bool, 3> FilePsi<t_real>::GetScatterSenses() const
 	typename t_mapIParams::const_iterator iterS = m_mapParameters.find("SS");
 	typename t_mapIParams::const_iterator iterA = m_mapParameters.find("SA");
 
-	bool m = (iterM!=m_mapParameters.end() ? (iterM->second>0) : 0);
-	bool s = (iterS!=m_mapParameters.end() ? (iterS->second>0) : 1);
-	bool a = (iterA!=m_mapParameters.end() ? (iterA->second>0) : 0);
+	bool m = (iterM!=m_mapParameters.end() ? (iterM->second>0) : false);
+	bool s = (iterS!=m_mapParameters.end() ? (iterS->second>0) : true);
+	bool a = (iterA!=m_mapParameters.end() ? (iterA->second>0) : false);
 
-	return std::array<bool,3>{{m, s, a}};
+	return std::array<bool,3>{{ m, s, a }};
 }
 
 template<class t_real>
@@ -1501,7 +1506,6 @@ std::vector<std::string> FilePsi<t_real>::GetScannedVars() const
 	// steps parameter
 	for(const typename t_mapIParams::value_type& pair : m_mapScanSteps)
 	{
-		//std::cout << pair.first << ", " << pair.second << std::endl;
 		if(!equals<t_real>(pair.second, 0.) && pair.first.length())
 		{
 			if(std::tolower(pair.first[0]) == 'd')
@@ -1519,7 +1523,6 @@ std::vector<std::string> FilePsi<t_real>::GetScannedVars() const
 		if(iter != m_mapParams.end())
 		{
 			std::vector<std::string> vecToks;
-			//std::cout << iter->second << std::endl;
 			get_tokens<std::string, std::string>(iter->second, " \t", vecToks);
 			for(std::string& strTok : vecToks)
 				trim(strTok);
@@ -1545,7 +1548,7 @@ std::vector<std::string> FilePsi<t_real>::GetScannedVars() const
 			// still nothing found, try regex
 			if(!vecVars.size())
 			{
-				const std::string strRegex = R"REX((sc|scan)[ \t]+([a-z0-9]+)[ \t]+[0-9\.-]+[ \t]+[d|D]([a-z0-9]+).*)REX";
+				const std::string strRegex = "(sc|scan)[ \\t]+([a-z0-9]+)[ \\t]+[0-9\\.-]+[ \\t]+[d|D]([a-z0-9]+).*";
 				std::regex rx(strRegex, std::regex::ECMAScript|std::regex_constants::icase);
 				std::smatch m;
 				if(std::regex_search(iter->second, m, rx) && m.size()>3)
@@ -1559,17 +1562,15 @@ std::vector<std::string> FilePsi<t_real>::GetScannedVars() const
 
 	if(!vecVars.size())
 	{
-		log_warn("Could not determine scan variable.");
+		std::cerr << "Could not determine scan variable." << std::endl;
 		if(m_vecColNames.size() >= 1)
 		{
-			log_warn("Using first column: \"", m_vecColNames[0], "\".");
+			std::cerr << "Using first column: \"" << m_vecColNames[0] <<
+				"\"." << std::endl;
 			vecVars.push_back(m_vecColNames[0]);
 		}
 	}
 
-	//for(std::string& strVar : vecVars)
-	//	log_info("Scan var: ", strVar);
-	//log_info("--------");
 	return vecVars;
 }
 
@@ -1578,7 +1579,7 @@ template<class t_real>
 std::string FilePsi<t_real>::GetCountVar() const
 {
 	std::string strRet;
-	if(FileInstrBase<t_real>::MatchColumn(R"REX(cnts)REX", strRet))
+	if(FileInstrBase<t_real>::MatchColumn("cnts", strRet))
 		return strRet;
 	return "";
 }
@@ -1587,7 +1588,7 @@ template<class t_real>
 std::string FilePsi<t_real>::GetMonVar() const
 {
 	std::string strRet;
-	if(FileInstrBase<t_real>::MatchColumn(R"REX(m[0-9])REX", strRet))
+	if(FileInstrBase<t_real>::MatchColumn("m[0-9]", strRet))
 		return strRet;
 	return "";
 }
@@ -1621,7 +1622,6 @@ std::size_t FilePsi<t_real>::NumPolChannels() const
 
 
 // -----------------------------------------------------------------------------
-
 
 
 template<class t_real>
@@ -1663,7 +1663,6 @@ void FileFrm<t_real>::ReadHeader(std::istream& istr)
 		}
 		else
 		{
-			//std::cout << "Key: " << pairLine.first << ", Val: " << pairLine.second << std::endl;
 			typename t_mapParams::iterator iter = m_mapParams.find(pairLine.first);
 
 			if(iter == m_mapParams.end())
@@ -1674,18 +1673,18 @@ void FileFrm<t_real>::ReadHeader(std::istream& istr)
 			// try to find instrument name
 			if(m_strInstrIdent == "")
 			{
-				const std::string strRegex = R"REX(([a-z0-9]+)\_responsible)REX";
+				const std::string strRegex = "([a-z0-9]+)\\_responsible";
 				std::regex rx(strRegex, std::regex::ECMAScript|std::regex_constants::icase);
 				std::smatch m;
 				if(std::regex_search(pairLine.first, m, rx) && m.size()>=2)
 				{
 					m_strInstrIdent = m[1];
-					//std::cout << "Instrument name: " << m_strInstrIdent << std::endl;
 				}
 			}
 		}
 	}
 }
+
 
 template<class t_real>
 void FileFrm<t_real>::ReadData(std::istream& istr)
@@ -1727,7 +1726,7 @@ void FileFrm<t_real>::ReadData(std::istream& istr)
 
 		if(vecToks.size() != m_vecQuantities.size())
 		{
-			log_warn("Loader: Line size mismatch.");
+			std::cerr << "Loader: Line size mismatch." << std::endl;
 
 			// add zeros
 			while(m_vecQuantities.size() > vecToks.size())
@@ -1803,7 +1802,7 @@ std::array<t_real, 3> FileFrm<t_real>::GetSampleLattice() const
 	std::vector<t_real> vec = get_py_array<std::string, std::vector<t_real>>(iter->second);
 	if(vec.size() != 3)
 	{
-		log_err("Invalid lattice array size.");
+		std::cerr << "Invalid lattice array size." << std::endl;
 		return std::array<t_real,3>{{0.,0.,0.}};
 	}
 
@@ -1820,7 +1819,7 @@ std::array<t_real, 3> FileFrm<t_real>::GetSampleAngles() const
 	std::vector<t_real> vec = get_py_array<std::string, std::vector<t_real>>(iter->second);
 	if(vec.size() != 3)
 	{
-		log_err("Invalid angle array size.");
+		std::cerr << "Invalid angle array size." << std::endl;
 		return std::array<t_real,3>{{0.,0.,0.}};
 	}
 
@@ -1873,7 +1872,7 @@ std::array<t_real, 3> FileFrm<t_real>::GetScatterPlane0() const
 	std::vector<t_real> vec = get_py_array<std::string, std::vector<t_real>>(iter->second);
 	if(vec.size() != 3)
 	{
-		log_err("Invalid sample peak 1 array size.");
+		std::cerr << "Invalid sample peak 1 array size." << std::endl;
 		return std::array<t_real,3>{{0.,0.,0.}};
 	}
 	return std::array<t_real,3>{{vec[0],vec[1],vec[2]}};
@@ -1889,7 +1888,7 @@ std::array<t_real, 3> FileFrm<t_real>::GetScatterPlane1() const
 	std::vector<t_real> vec = get_py_array<std::string, std::vector<t_real>>(iter->second);
 	if(vec.size() != 3)
 	{
-		log_err("Invalid sample peak 2 array size.");
+		std::cerr << "Invalid sample peak 2 array size." << std::endl;
 		return std::array<t_real,3>{{0.,0.,0.}};
 	}
 	return std::array<t_real,3>{{-vec[0],-vec[1],-vec[2]}};	// LH -> RH
@@ -1937,8 +1936,8 @@ bool FileFrm<t_real>::IsKiFixed() const
 	}
 
 	if(strScanMode == "cki")
-		return 1;
-	return 0;
+		return true;
+	return false;
 }
 
 template<class t_real>
@@ -2047,7 +2046,7 @@ std::vector<std::string> FileFrm<t_real>::GetScannedVars() const
 		const std::string& strInfo = iter->second;
 
 		// try qscan/qcscan
-		const std::string strRegex = R"REX((qscan|qcscan)\((\[.*\])[, ]+(\[.*\]).*\))REX";
+		const std::string strRegex = "(qscan|qcscan)\\((\\[.*\\])[, ]+(\\[.*\\]).*\\)";
 		std::regex rx(strRegex, std::regex::ECMAScript|std::regex_constants::icase);
 		std::smatch m;
 		if(std::regex_search(strInfo, m, rx) && m.size()>3)
@@ -2069,7 +2068,7 @@ std::vector<std::string> FileFrm<t_real>::GetScannedVars() const
 		if(vecVars.size() == 0)
 		{
 			// try scan/cscan
-			const std::string strRegexDevScan = R"REX((scan|cscan)\(([a-z0-9_\.]+)[, ]+.*\))REX";
+			const std::string strRegexDevScan = "(scan|cscan)\\(([a-z0-9_\\.]+)[, ]+.*\\)";
 			std::regex rxDev(strRegexDevScan, std::regex::ECMAScript|std::regex_constants::icase);
 			std::smatch mDev;
 			if(std::regex_search(strInfo, mDev, rxDev) && mDev.size()>2)
@@ -2083,10 +2082,11 @@ std::vector<std::string> FileFrm<t_real>::GetScannedVars() const
 
 	if(!vecVars.size())
 	{
-		log_warn("Could not determine scan variable.");
+		std::cerr << "Could not determine scan variable." << std::endl;
 		if(m_vecQuantities.size() >= 1)
 		{
-			log_warn("Using first column: \"", m_vecQuantities[0], "\".");
+			std::cerr << "Using first column: \"" << m_vecQuantities[0]
+				<< "\"." << std::endl;
 			vecVars.push_back(m_vecQuantities[0]);
 		}
 	}
@@ -2094,11 +2094,12 @@ std::vector<std::string> FileFrm<t_real>::GetScannedVars() const
 	return vecVars;
 }
 
+
 template<class t_real>
 std::string FileFrm<t_real>::GetCountVar() const
 {
 	std::string strRet;
-	if(FileInstrBase<t_real>::MatchColumn(R"REX((det[a-z]*[0-9])|(ctr[0-9])|(counter[0-9])|([a-z0-9\.]*roi))REX", strRet, true))
+	if(FileInstrBase<t_real>::MatchColumn("(det[a-z]*[0-9])|(ctr[0-9])|(counter[0-9])|([a-z0-9\\.]*roi)", strRet, true))
 		return strRet;
 	return "";
 }
@@ -2107,7 +2108,7 @@ template<class t_real>
 std::string FileFrm<t_real>::GetMonVar() const
 {
 	std::string strRet;
-	if(FileInstrBase<t_real>::MatchColumn(R"REX((mon[a-z]*[0-9]))REX", strRet, true))
+	if(FileInstrBase<t_real>::MatchColumn("(mon[a-z]*[0-9])", strRet, true))
 		return strRet;
 	return "";
 }
@@ -2153,7 +2154,6 @@ void FileMacs<t_real>::ReadHeader(std::istream& istr)
 
 		std::pair<std::string, std::string> pairLine =
 			split_first<std::string>(strLine, " \t", 1);
-		//std::cout << "key: " << pairLine.first << ", val: " << pairLine.second << std::endl;
 
 		if(pairLine.first == "")
 			continue;
@@ -2161,9 +2161,6 @@ void FileMacs<t_real>::ReadHeader(std::istream& istr)
 		{
 			get_tokens<std::string, std::string>(pairLine.second, " \t", m_vecQuantities);
 			FileInstrBase<t_real>::RenameDuplicateCols();
-
-			//for(const std::string& strCol : m_vecQuantities)
-			//	std::cout << "column: \"" << strCol << "\"" << std::endl;
 			continue;
 		}
 		else
@@ -2197,7 +2194,7 @@ void FileMacs<t_real>::ReadData(std::istream& istr)
 
 		if(vecToks.size() != m_vecQuantities.size())
 		{
-			log_warn("Loader: Line size mismatch.");
+			std::cerr << "Loader: Line size mismatch." << std::endl;
 
 			// add zeros
 			while(m_vecQuantities.size() > vecToks.size())
@@ -2266,7 +2263,7 @@ std::array<t_real, 3> FileMacs<t_real>::GetSampleLattice() const
 	get_tokens<t_real, std::string>(iter->second, " \t", vecToks);
 	if(vecToks.size() != 6)
 	{
-		log_err("Invalid sample lattice array size.");
+		std::cerr << "Invalid sample lattice array size." << std::endl;
 		return std::array<t_real,3>{{0.,0.,0.}};
 	}
 
@@ -2284,7 +2281,7 @@ std::array<t_real, 3> FileMacs<t_real>::GetSampleAngles() const
 	get_tokens<t_real, std::string>(iter->second, " \t", vecToks);
 	if(vecToks.size() != 6)
 	{
-		log_err("Invalid sample lattice array size.");
+		std::cerr << "Invalid sample lattice array size." << std::endl;
 		return std::array<t_real,3>{{0.,0.,0.}};
 	}
 
@@ -2306,7 +2303,7 @@ std::array<t_real, 2> FileMacs<t_real>::GetMonoAnaD() const
 template<class t_real>
 std::array<bool, 3> FileMacs<t_real>::GetScatterSenses() const
 {
-	return std::array<bool,3>{{0, 1, 0}};
+	return std::array<bool,3>{{ false, true, false }};
 }
 
 template<class t_real>
@@ -2320,7 +2317,7 @@ std::array<t_real, 3> FileMacs<t_real>::GetScatterPlane0() const
 	get_tokens<t_real, std::string>(iter->second, " \t", vecToks);
 	if(vecToks.size() != 6)
 	{
-		log_err("Invalid sample orientation array size.");
+		std::cerr << "Invalid sample orientation array size." << std::endl;
 		return std::array<t_real,3>{{0.,0.,0.}};
 	}
 
@@ -2338,7 +2335,7 @@ std::array<t_real, 3> FileMacs<t_real>::GetScatterPlane1() const
 	get_tokens<t_real, std::string>(iter->second, " \t", vecToks);
 	if(vecToks.size() != 6)
 	{
-		log_err("Invalid sample orientation array size.");
+		std::cerr << "Invalid sample orientation array size." << std::endl;
 		return std::array<t_real,3>{{0.,0.,0.}};
 	}
 
@@ -2373,7 +2370,7 @@ t_real FileMacs<t_real>::GetKFix() const
 	typename t_mapParams::const_iterator iter = m_mapParams.find("FixedE");
 	if(iter==m_mapParams.end())
 	{
-		log_err("Cannot determine kfix.");
+		std::cerr << "Cannot determine kfix." << std::endl;
 		return 0.;
 	}
 
@@ -2382,7 +2379,7 @@ t_real FileMacs<t_real>::GetKFix() const
 
 	if(vecToks.size()<2)
 	{
-		log_err("Cannot determine kfix.");
+		std::cerr << "Cannot determine kfix." << std::endl;
 		return 0.;
 	}
 
@@ -2397,23 +2394,23 @@ bool FileMacs<t_real>::IsKiFixed() const
 {
 	typename t_mapParams::const_iterator iter = m_mapParams.find("FixedE");
 	if(iter==m_mapParams.end())
-		return 0;	// assume ckf
+		return false;	// assume ckf
 
 	std::vector<std::string> vecToks;
 	get_tokens<std::string, std::string>(iter->second, " \t", vecToks);
 
-	if(vecToks.size()==0)
-		return 0;	// assume ckf
+	if(vecToks.size() == 0)
+		return false;	// assume ckf
 
 	std::string strFixedE = vecToks[0];
 	trim(strFixedE);
 
 	if(strFixedE == "Ef")
-		return 0;
+		return false;
 	else if(strFixedE == "Ei")
-		return 1;
+		return true;
 
-	return 0;		// assume ckf
+	return false;		// assume ckf
 }
 
 template<class t_real>
@@ -2521,10 +2518,11 @@ std::vector<std::string> FileMacs<t_real>::GetScannedVars() const
 
 	if(!vecScan.size())
 	{
-		log_warn("Could not determine scan variable.");
+		std::cerr << "Could not determine scan variable." << std::endl;
 		if(m_vecQuantities.size() >= 1)
 		{
-			log_warn("Using first column: \"", m_vecQuantities[0], "\".");
+			std::cerr << "Using first column: \"" << m_vecQuantities[0]
+				<< "\"." << std::endl;
 			vecScan.push_back(m_vecQuantities[0]);
 		}
 	}
@@ -2536,7 +2534,7 @@ template<class t_real>
 std::string FileMacs<t_real>::GetCountVar() const
 {
 	std::string strRet;
-	if(FileInstrBase<t_real>::MatchColumn(R"REX(spec[a-z0-9]*)REX", strRet))
+	if(FileInstrBase<t_real>::MatchColumn("spec[a-z0-9]*", strRet))
 		return strRet;
 	return "";
 }
@@ -2545,7 +2543,7 @@ template<class t_real>
 std::string FileMacs<t_real>::GetMonVar() const
 {
 	std::string strRet;
-	if(FileInstrBase<t_real>::MatchColumn(R"REX(mon[a-z0-9]*)REX", strRet))
+	if(FileInstrBase<t_real>::MatchColumn("mon[a-z0-9]*", strRet))
 		return strRet;
 	return "";
 }
@@ -2568,7 +2566,6 @@ std::string FileMacs<t_real>::GetTimestamp() const
 }
 
 
-
 // -----------------------------------------------------------------------------
 
 
@@ -2576,7 +2573,7 @@ std::string FileMacs<t_real>::GetTimestamp() const
 template<class t_real>
 void FileTrisp<t_real>::ReadHeader(std::istream& istr)
 {
-	bool bInVarSection = 0;
+	bool bInVarSection = false;
 	while(!istr.eof())
 	{
 		std::string strLine;
@@ -2588,7 +2585,7 @@ void FileTrisp<t_real>::ReadHeader(std::istream& istr)
 
 		if(str_contains<std::string>(strLine, "----", 0))	// new variable section beginning
 		{
-			bInVarSection = 1;
+			bInVarSection = true;
 			//std::cout << "Section: " << strLine << std::endl;
 
 			if(str_contains<std::string>(strLine, "steps", 0))
@@ -2625,8 +2622,8 @@ void FileTrisp<t_real>::ReadHeader(std::istream& istr)
 template<class t_real>
 void FileTrisp<t_real>::ReadData(std::istream& istr)
 {
-	bool bAtStepsBeginning = 0;
-	bool bInFooter = 0;
+	bool bAtStepsBeginning = false;
+	bool bInFooter = false;
 
 	// data
 	while(!istr.eof())
@@ -2644,7 +2641,7 @@ void FileTrisp<t_real>::ReadData(std::istream& istr)
 				//for(const std::string& strCol : m_vecQuantities)
 				//	std::cout << "col: " << strCol << std::endl;
 
-				bAtStepsBeginning = 1;
+				bAtStepsBeginning = true;
 				m_vecData.resize(m_vecQuantities.size());
 			}
 			continue;
@@ -2669,7 +2666,7 @@ void FileTrisp<t_real>::ReadData(std::istream& istr)
 					m_mapParams["scan_vars"] = trimmed(pairLine.second);
 				}
 
-				bInFooter = 1;
+				bInFooter = true;
 			}
 		}
 
@@ -2681,7 +2678,7 @@ void FileTrisp<t_real>::ReadData(std::istream& istr)
 
 			if(vecToks.size() != m_vecQuantities.size())
 			{
-				log_warn("Loader: Line size mismatch.");
+				std::cerr << "Loader: Line size mismatch." << std::endl;
 
 				// add zeros
 				while(m_vecQuantities.size() > vecToks.size())
@@ -2781,9 +2778,9 @@ std::array<bool, 3> FileTrisp<t_real>::GetScatterSenses() const
 	typename t_mapParams::const_iterator iterS = m_mapParams.find("SS");
 	typename t_mapParams::const_iterator iterA = m_mapParams.find("SA");
 
-	bool m = (iterM!=m_mapParams.end() ? (str_to_var<int>(iterM->second)>0) : 0);
-	bool s = (iterS!=m_mapParams.end() ? (str_to_var<int>(iterS->second)>0) : 1);
-	bool a = (iterA!=m_mapParams.end() ? (str_to_var<int>(iterA->second)>0) : 0);
+	bool m = (iterM!=m_mapParams.end() ? (str_to_var<int>(iterM->second)>0) : false);
+	bool s = (iterS!=m_mapParams.end() ? (str_to_var<int>(iterS->second)>0) : true);
+	bool a = (iterA!=m_mapParams.end() ? (str_to_var<int>(iterA->second)>0) : false);
 
 	return std::array<bool,3>{{m, s, a}};
 }
@@ -2833,7 +2830,7 @@ t_real FileTrisp<t_real>::GetKFix() const
 	typename t_mapParams::const_iterator iter = m_mapParams.find(strKey);
 	if(iter==m_mapParams.end())
 	{
-		log_err("Cannot determine kfix.");
+		std::cerr << "Cannot determine kfix." << std::endl;
 		return 0.;
 	}
 
@@ -2843,7 +2840,7 @@ t_real FileTrisp<t_real>::GetKFix() const
 template<class t_real>
 bool FileTrisp<t_real>::IsKiFixed() const
 {
-	return 0;		// assume ckf
+	return false;		// assume ckf
 }
 
 template<class t_real>
@@ -2884,10 +2881,11 @@ std::vector<std::string> FileTrisp<t_real>::GetScannedVars() const
 
 	if(!vecScan.size())
 	{
-		log_warn("Could not determine scan variable.");
+		std::cerr << "Could not determine scan variable." << std::endl;
 		if(m_vecQuantities.size() >= 1)
 		{
-			log_warn("Using first column: \"", m_vecQuantities[0], "\".");
+			std::cerr << "Using first column: \"" << m_vecQuantities[0]
+				<< "\"." << std::endl;
 			vecScan.push_back(m_vecQuantities[0]);
 		}
 	}
@@ -2899,7 +2897,7 @@ template<class t_real>
 std::string FileTrisp<t_real>::GetCountVar() const
 {
 	std::string strRet;
-	if(FileInstrBase<t_real>::MatchColumn(R"REX(c[0-9])REX", strRet))
+	if(FileInstrBase<t_real>::MatchColumn("c[0-9]", strRet))
 		return strRet;
 	return "";
 }
@@ -2908,7 +2906,7 @@ template<class t_real>
 std::string FileTrisp<t_real>::GetMonVar() const
 {
 	std::string strRet;
-	if(FileInstrBase<t_real>::MatchColumn(R"REX(mon[a-z0-9]*)REX", strRet))
+	if(FileInstrBase<t_real>::MatchColumn("mon[a-z0-9]*", strRet))
 		return strRet;
 	return "";
 }
@@ -3095,7 +3093,7 @@ std::array<bool, 3> FileRaw<t_real>::GetScatterSenses() const
 			a = str_to_var<t_real>(iter->second);
 	}
 
-	return std::array<bool,3>{{m>0., s>0., a>0.}};
+	return std::array<bool,3>{{ m>0., s>0., a>0. }};
 }
 
 template<class t_real>
@@ -3178,7 +3176,7 @@ bool FileRaw<t_real>::IsKiFixed() const
 {
 	using t_map = typename FileInstrBase<t_real>::t_mapParams;
 	const t_map& params = GetAllParams();
-	bool b{0};
+	bool b{false};
 
 	typename t_map::const_iterator iter = params.find("is_ki_fixed");
 	if(iter != params.end())
@@ -3303,6 +3301,5 @@ template<class t_real> std::string FileRaw<t_real>::GetScanCommand() const { ret
 template<class t_real> std::string FileRaw<t_real>::GetTimestamp() const { return ""; }
 
 }
-
 
 #endif

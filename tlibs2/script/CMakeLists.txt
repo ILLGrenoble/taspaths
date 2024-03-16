@@ -27,7 +27,7 @@
 # ----------------------------------------------------------------------------
 #
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 project(mcalc)
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/../cmake")
@@ -87,7 +87,6 @@ add_executable(mcalc
 	src/printast.cpp src/printast.h
 	${FLEX_lexer_impl_OUTPUTS}
 	${BISON_parser_impl_OUTPUT_SOURCE} ${BISON_parser_impl_OUTPUT_HEADER}
-	../libs/log.cpp ../libs/log.h
 )
 
 #add_dependencies(parser parser_impl lexer_impl)

@@ -25,9 +25,9 @@
 # ----------------------------------------------------------------------------
 #
 
+cmake_minimum_required(VERSION 3.5)
 project(tlibs2_tests)
 
-cmake_minimum_required(VERSION 3.0)
 cmake_policy(SET CMP0078 NEW)
 cmake_policy(SET CMP0086 NEW)
 enable_testing()
@@ -85,15 +85,15 @@ add_executable(mat2 mat2.cpp)
 add_executable(rotation rotation.cpp)
 add_executable(stat1 stat1.cpp)
 add_executable(quat1 quat1.cpp)
-add_executable(expr expr.cpp ../libs/log.cpp)
-add_executable(cryst cryst.cpp ../libs/log.cpp)
-add_executable(leastsq leastsq.cpp ../libs/log.cpp)
+add_executable(expr expr.cpp)
+add_executable(cryst cryst.cpp)
+add_executable(leastsq leastsq.cpp)
 add_executable(eig eig.cpp)
 add_executable(chol chol.cpp)
 add_executable(ode ode.cpp)
-add_executable(min0 min0.cpp ../libs/log.cpp)
-add_executable(fit0 fit0.cpp ../libs/log.cpp)
-add_executable(fit1 fit1.cpp ../libs/log.cpp)
+add_executable(min0 min0.cpp)
+add_executable(fit0 fit0.cpp)
+add_executable(fit1 fit1.cpp)
 add_executable(cov cov.cpp)
 add_executable(fft fft.cpp)
 

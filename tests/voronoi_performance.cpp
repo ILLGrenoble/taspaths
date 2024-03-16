@@ -32,7 +32,7 @@
 
 #include "src/libs/voronoi_lines.h"
 #include "src/core/types.h"
-#include "tlibs2/libs/log.h"
+#include "tlibs2/libs/algos.h"
 
 
 using t_real = double;
