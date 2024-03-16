@@ -80,7 +80,7 @@ declare -a LOCAL_LIBS=(
 	libzstd.1.dylib
 	libpng16.16.dylib
 	libfreetype.6.dylib
-	libopencv_core.408.dylib libopencv_imgproc.408.dylib
+	libopencv_core.409.dylib libopencv_imgproc.409.dylib
 	libtbb.12.dylib
 )
 
@@ -281,7 +281,7 @@ if [ $create_appdir -ne 0 ]; then
 	cp -v ${GCC_LIB_DIR}/libgcc_s.1.1.dylib "${APPDIRNAME}/Contents/Libraries/"
 
 	# locally built libraries
-	cp -v build/libqcustomplot_local.dylib "${APPDIRNAME}/Contents/Libraries/"
+	cp -v build/libqcustomplot.dylib "${APPDIRNAME}/Contents/Libraries/"
 	cp -v externals/qhull-inst/usr/local/lib/libqhull_r.8.1.dylib "${APPDIRNAME}/Contents/Libraries/"
 
 	# frameworks
@@ -373,7 +373,7 @@ if [ $create_appdir -ne 0 ]; then
 		fi
 	done
 
-	#install_name_tool -id "${LOCAL_LIB_DIR}/libqcustomplot_local.dylib" "${APPDIRNAME}/Contents/Libraries/libqcustomplot_local.dylib"
+	#install_name_tool -id "${LOCAL_LIB_DIR}/libqcustomplot.dylib" "${APPDIRNAME}/Contents/Libraries/libqcustomplot.dylib"
 	echo -e "--------------------------------------------------------------------------------"
 fi
 
