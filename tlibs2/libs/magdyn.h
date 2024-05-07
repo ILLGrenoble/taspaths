@@ -1559,7 +1559,7 @@ public:
 		bool only_energies = false) const
 	{
 		const t_size N = GetMagneticSitesCount();
-		if(N == 0 || _H.size1() == 0)
+		if(N == 0 || _H.size1() == 0 || _H.size2() == 0)
 			return {};
 
 		// equation (30) from (Toth 2015)
@@ -1572,7 +1572,7 @@ public:
 		// equation (31) from (Toth 2015)
 		t_mat C_mat;
 		t_size chol_try = 0;
-		for(; chol_try<m_tries_chol; ++chol_try)
+		for(; chol_try < m_tries_chol; ++chol_try)
 		{
 			const auto [chol_ok, _C] = tl2_la::chol<t_mat>(_H);
 
@@ -1583,7 +1583,7 @@ public:
 			}
 			else
 			{
-				if(chol_try >= m_tries_chol-1)
+				if(chol_try >= m_tries_chol - 1)
 				{
 					using namespace tl2_ops;
 					std::cerr << "Warning: Cholesky decomposition failed at Q = "
@@ -1602,8 +1602,16 @@ public:
 		{
 			using namespace tl2_ops;
 			std::cerr << "Warning: Needed " << chol_try
-				<< " corrections for cholesky decomposition at Q = "
+				<< " correction(s) for Cholesky decomposition at Q = "
 				<< Qvec << "." << std::endl;
+		}
+
+		if(C_mat.size1() == 0 || C_mat.size2() == 0)
+		{
+			using namespace tl2_ops;
+			std::cerr << "Error: Invalid Cholesky decomposition at Q = "
+				<< Qvec << "." << std::endl;
+			return {};
 		}
 
 		// see p. 5 in (Toth 2015)

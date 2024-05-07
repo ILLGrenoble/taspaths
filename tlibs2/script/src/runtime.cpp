@@ -38,7 +38,7 @@
 using namespace tl2_ops;
 
 
-using t_real =  double;
+using t_real = double;
 using t_int = int64_t;
 using t_byte = int8_t;
 

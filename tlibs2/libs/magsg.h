@@ -38,8 +38,8 @@
 #include <iostream>
 
 #include "maths.h"
+#include "str.h"
 
-#include <boost/algorithm/string.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/info_parser.hpp>
 #include <boost/property_tree/xml_parser.hpp>
@@ -301,8 +301,8 @@ bool Spacegroups<t_mat, t_vec>::Load(const std::string& strFile)
 		}
 		else
 		{	// magnetic space group
-			sg.m_sgnrStruct = std::stoi(vecNumbers[0]);
-			sg.m_sgnrMag = std::stoi(vecNumbers[1]);
+			sg.m_sgnrStruct = tl2::stoval<int>(vecNumbers[0]);
+			sg.m_sgnrMag = tl2::stoval<int>(vecNumbers[1]);
 		}
 		// --------------------------------------------------------------------
 

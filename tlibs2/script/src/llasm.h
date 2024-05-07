@@ -41,6 +41,7 @@
 
 #include <stack>
 #include <optional>
+#include <functional>
 
 
 /**

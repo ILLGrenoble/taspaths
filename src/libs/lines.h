@@ -948,6 +948,22 @@ struct IntersTreeNode : public CommonTreeNode<IntersTreeNode<t_vec, t_line>>
 	t_real eps = std::numeric_limits<t_real>::epsilon();
 
 
+	virtual IntersTreeNode<t_vec, t_line>&
+	operator=(const IntersTreeNode<t_vec, t_line>& other)
+	{
+		static_cast<CommonTreeNode<IntersTreeNode<t_vec, t_line>>*>(this)->operator=(
+			static_cast<const CommonTreeNode<IntersTreeNode<t_vec, t_line>>&>(other));
+
+		balance = other.balance;
+		curX = other.curX;
+		lines = other.lines;
+		line_idx = other.line_idx;
+		eps = other.eps;
+
+		return *this;
+	}
+
+
 	friend std::ostream& operator<<(std::ostream& ostr,
 		const IntersTreeNode<t_vec, t_line>& e)
 	{

@@ -53,8 +53,8 @@ namespace tl2 {
 // --------------------------------------------------------------------------------
 // import scipy.constants as co
 // E2KSQ = 2.*co.neutron_mass/(co.Planck/co.elementary_charge*1000./2./co.pi)**2. / co.elementary_charge*1000. * 1e-20
-template<class T=double> constexpr T KSQ2E = T(0.5) * hbar<T>/angstrom<T>/m_n<T> * hbar<T>/angstrom<T>/meV<T>;
-template<class T=double> constexpr T E2KSQ = T(1) / KSQ2E<T>;
+template<class T = double> constexpr T KSQ2E = T(0.5) * hbar<T>/angstrom<T>/m_n<T> * hbar<T>/angstrom<T>/meV<T>;
+template<class T = double> constexpr T E2KSQ = T(1) / KSQ2E<T>;
 // --------------------------------------------------------------------------------
 
 
@@ -106,9 +106,9 @@ t_wavenumber<Sys,Y> kinematic_plane(bool bFixedKi,
 
 	auto c = Y(2.)*m_n<Y> / (hbar<Y>*hbar<Y>);
 	t_wavenumber<Sys,Y> Q =
-		units::sqrt(c *
-		(Y(2.)*EiEf + dE - Y(2.)*units::cos(twotheta) *
-		units::sqrt(EiEf*(EiEf + dE))));
+		my_units_sqrt<t_wavenumber<Sys,Y>>(c *
+			(Y(2.)*EiEf + dE - Y(2.)*units::cos(twotheta) *
+			my_units_sqrt<t_wavenumber<Sys,Y>>(EiEf*(EiEf + dE))));
 
 	return Q;
 }
@@ -128,9 +128,12 @@ t_energy<Sys,Y> kinematic_plane(bool bFixedKi, bool bBranch,
 	const t_energy<Sys,Y>& EiEf, const t_wavenumber<Sys,Y>& Q,
 	const t_angle<Sys,Y>& twotheta)
 {
+	using t_cE = units::quantity<units::unit<typename units::derived_dimension<
+		units::length_base_dimension, -2>::type,
+		Sys>, Y>;
+
 	auto c = Y(2.)*m_n<Y> / (hbar<Y>*hbar<Y>);
 	auto c2 = c*c;
-
 	auto EiEf2 = EiEf*EiEf;
 
 	Y ctt = units::cos(twotheta);
@@ -140,10 +143,11 @@ t_energy<Sys,Y> kinematic_plane(bool bFixedKi, bool bBranch,
 	Y dSignFixedKf = bFixedKi ? Y(-1.) : Y(1.);
 
 	t_energy<Sys,Y> dE =
-			dSignFixedKf*Y(2.) * EiEf * ctt2
-			- dSignFixedKf*Y(2.) * EiEf
-			+ dSignFixedKf * Q*Q / c
-			+ dSign*Y(2.) * ctt/c * units::sqrt(c2*ctt2*EiEf2 - c2*EiEf2 + c*EiEf*Q*Q);
+		dSignFixedKf*Y(2.) * EiEf * ctt2
+		- dSignFixedKf*Y(2.) * EiEf
+		+ dSignFixedKf * Q*Q / c
+		+ dSign*Y(2.) * ctt/c * my_units_sqrt<t_cE>(
+			c2*ctt2*EiEf2 - c2*EiEf2 + c*EiEf*Q*Q);
 
 	return dE;
 }
@@ -323,7 +327,6 @@ calc_tas_Q_len(const t_wavenumber<Sys,Y>& ki,
 		Qsq = -Qsq;
 	}
 
-	//t_wavenumber<Sys,Y> Q = units::sqrt(Qsq);
 	t_wavenumber<Sys,Y> Q = my_units_sqrt<t_wavenumber<Sys,Y>>(Qsq);
 	return Q;
 }
@@ -574,7 +577,6 @@ t_wavenumber<Sys,Y> get_other_k(const t_energy<Sys,Y>& E,
 	if(k_sq*angstrom<Y>*angstrom<Y> < Y(0.))
 		throw std::runtime_error("Scattering triangle not closed.");
 
-	//return units::sqrt(k_sq);
 	return my_units_sqrt<t_wavenumber<Sys,Y>>(k_sq);
 }
 
@@ -611,7 +613,7 @@ Y ana_effic_factor(const t_wavenumber<Sys, Y>& kf, const t_length<Sys, Y>& d)
 
 
 /**
- * Bose distribution
+ * Bose distribution (occupation number including detailed balance)
  * @see (Shirane 2002), p. 28
  * @see https://en.wikipedia.org/wiki/Bose%E2%80%93Einstein_statistics
  *
@@ -620,7 +622,7 @@ Y ana_effic_factor(const t_wavenumber<Sys, Y>& kf, const t_length<Sys, Y>& d)
  *                           = exp(E/kT)
  * which is the detailed balance, S(+Q, +E) / S(-Q, -E), see (Shirane 2002), p. 26.
  */
-template<class t_real=double>
+template<class t_real = double>
 t_real bose(t_real E, t_real T)
 {
 	const t_real _kB = kB<t_real> * kelvin<t_real>/meV<t_real>;
@@ -637,7 +639,7 @@ t_real bose(t_real E, t_real T)
  * Bose factor with a lower cutoff energy
  * @see https://en.wikipedia.org/wiki/Bose%E2%80%93Einstein_statistics
  */
-template<class t_real=double>
+template<class t_real = double>
 t_real bose_cutoff(t_real E, t_real T, t_real E_cutoff=t_real(0.02))
 {
 	t_real dB;
@@ -672,10 +674,9 @@ Y bose(const t_energy<Sys,Y>& E, const t_temperature<Sys,Y>& T,
  * DHO
  * @see B. Fak, B. Dorner, Physica B 234-236 (1997) pp. 1107-1108, doi: https://doi.org/10.1016/S0921-4526(97)00121-X
  */
-template<class t_real=double>
+template<class t_real = double>
 t_real DHO_model(t_real E, t_real T, t_real E0, t_real hwhm, t_real amp, t_real offs)
 {
-	//if(E0*E0 - hwhm*hwhm < 0.) return 0.;
 	return std::abs(bose<t_real>(E, T)*amp/(E0*pi<t_real>) *
 		(hwhm/((E-E0)*(E-E0) + hwhm*hwhm) - hwhm/((E+E0)*(E+E0) + hwhm*hwhm)))
 		+ offs;
@@ -1134,8 +1135,9 @@ requires is_mat<t_mat> && is_vec<t_vec>
  * @see https://doi.org/10.1016/B978-044451050-1/50002-1
  */
 template<class t_vec, class T = t_vec, template<class...> class t_cont = std::vector,
-	class t_cplx = std::complex<double>>
-T structure_factor(const t_cont<T>& Ms_or_bs, const t_cont<t_vec>& Rs, const t_vec& Q, const t_vec* fs=nullptr)
+	class t_cplx = std::complex<typename t_vec::value_type>>
+T structure_factor(const t_cont<T>& Ms_or_bs, const t_cont<t_vec>& Rs,
+	const t_vec& Q, const t_vec* fs = nullptr)
 requires is_basic_vec<t_vec>
 {
 	using t_real = typename t_cplx::value_type;

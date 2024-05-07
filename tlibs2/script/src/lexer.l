@@ -44,6 +44,7 @@
 	#include <iomanip>
 
 	#include "parser.h"
+	#include "str.h"
 %}
 
 
@@ -138,7 +139,8 @@ ident	[A-Za-z_]+[A-Za-z0-9_]*
 }
 
 {int_dec}	{
-	return yy::Parser::make_INT(std::stol(yytext));
+	return yy::Parser::make_INT(
+		tl2::stoval<long, std::string>(yytext));
 }
 
 {int_hex}	{
@@ -148,7 +150,8 @@ ident	[A-Za-z_]+[A-Za-z0-9_]*
 }
 
 {realeng}	{
-	return yy::Parser::make_REAL(std::stod(yytext));
+	return yy::Parser::make_REAL(
+		tl2::stoval<double, std::string>(yytext));
 }
 
 

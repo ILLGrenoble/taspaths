@@ -2,13 +2,13 @@
  * tlibs2
  * fitting and interpolation library
  * @author Tobias Weber <tobias.weber@tum.de>, <tweber@ill.fr>
- * @date 2012-2021
+ * @date 2012-2024
  * @note Forked on 7-Nov-2018 from my privately and TUM-PhD-developed "tlibs" project (https://github.com/t-weber/tlibs).
  * @license GPLv3, see 'LICENSE' file
  *
  * ----------------------------------------------------------------------------
  * tlibs
- * Copyright (C) 2017-2021  Tobias WEBER (Institut Laue-Langevin (ILL),
+ * Copyright (C) 2017-2024  Tobias WEBER (Institut Laue-Langevin (ILL),
  *                          Grenoble, France).
  * Copyright (C) 2015-2017  Tobias WEBER (Technische Universitaet Muenchen
  *                          (TUM), Garching, Germany).
@@ -63,14 +63,12 @@ namespace tl2 {
 // Minuit interface
 // @see http://seal.cern.ch/documents/minuit/mnusersguide.pdf
 // ----------------------------------------------------------------------------
+
 #ifdef __TLIBS2_USE_MINUIT__
 using t_real_min = std::invoke_result_t<
 	decltype(&ROOT::Minuit2::MnFcn::Up), ROOT::Minuit2::MnFcn>;
 
 
-
-// ----------------------------------------------------------------------------
-// function models
 
 template<class t_real>
 class FitterFuncModel
@@ -107,7 +105,7 @@ public:
 
 	virtual bool SetParams(const std::vector<t_real>& vecParams) override
 	{
-		for(std::size_t i=0; i<std::min(vecParams.size(), m_vecVals.size()); ++i)
+		for(std::size_t i = 0; i < std::min(vecParams.size(), m_vecVals.size()); ++i)
 			m_vecVals[i] = vecParams[i];
 		return true;
 	}
@@ -207,6 +205,7 @@ public:
 
 /**
  * generic chi^2 calculation for fitting
+ * @see http://seal.cern.ch/documents/minuit/mnusersguide.pdf
  */
 template<class t_real = t_real_min>
 class Chi2Function : public ROOT::Minuit2::FCNBase
@@ -285,6 +284,7 @@ public:
 
 /**
  * function adaptor for minimisation
+ * @see http://seal.cern.ch/documents/minuit/mnusersguide.pdf
  */
 template<class t_real = t_real_min>
 class MiniFunction : public ROOT::Minuit2::FCNBase
@@ -385,7 +385,7 @@ bool fit(t_func&& func,
 			chi2 = std::make_unique<Chi2Function<t_real_min>>(&mod, vecXConverted.size(), vecXConverted.data(), vecYConverted.data(), vecYErrConverted.data());
 
 		ROOT::Minuit2::MnUserParameters params;
-		for(std::size_t iParam=0; iParam<vecParamNames.size(); ++iParam)
+		for(std::size_t iParam = 0; iParam < vecParamNames.size(); ++iParam)
 		{
 			params.Add(vecParamNames[iParam], static_cast<t_real_min>(vecVals[iParam]), static_cast<t_real_min>(vecErrs[iParam]));
 			if(pVecFixed && (*pVecFixed)[iParam])
@@ -396,7 +396,7 @@ bool fit(t_func&& func,
 		ROOT::Minuit2::FunctionMinimum mini = migrad();
 		bool bValidFit = mini.IsValid() && mini.HasValidParameters() && mini.UserState().IsValid();
 
-		for(std::size_t iParam=0; iParam<vecParamNames.size(); ++iParam)
+		for(std::size_t iParam = 0; iParam < vecParamNames.size(); ++iParam)
 		{
 			vecVals[iParam] = static_cast<t_real>(mini.UserState().Value(vecParamNames[iParam]));
 			vecErrs[iParam] = static_cast<t_real>(std::fabs(mini.UserState().Error(vecParamNames[iParam])));
@@ -473,7 +473,7 @@ bool fit_expr(const std::string& func,
 			chi2 = std::make_unique<Chi2Function<t_real_min>>(&mod, vecXConverted.size(), vecXConverted.data(), vecYConverted.data(), vecYErrConverted.data());
 
 		ROOT::Minuit2::MnUserParameters params;
-		for(std::size_t iParam=0; iParam<vecParamNames.size(); ++iParam)
+		for(std::size_t iParam = 0; iParam < vecParamNames.size(); ++iParam)
 		{
 			params.Add(vecParamNames[iParam], static_cast<t_real_min>(vecVals[iParam]), static_cast<t_real_min>(vecErrs[iParam]));
 			if(pVecFixed && (*pVecFixed)[iParam])
@@ -484,7 +484,7 @@ bool fit_expr(const std::string& func,
 		ROOT::Minuit2::FunctionMinimum mini = migrad();
 		bool bValidFit = mini.IsValid() && mini.HasValidParameters() && mini.UserState().IsValid();
 
-		for(std::size_t iParam=0; iParam<vecParamNames.size(); ++iParam)
+		for(std::size_t iParam = 0; iParam < vecParamNames.size(); ++iParam)
 		{
 			vecVals[iParam] = static_cast<t_real>(mini.UserState().Value(vecParamNames[iParam]));
 			vecErrs[iParam] = static_cast<t_real>(std::fabs(mini.UserState().Error(vecParamNames[iParam])));
@@ -527,7 +527,7 @@ bool minimise(t_func&& func, const std::vector<std::string>& vecParamNames,
 		MiniFunction<t_real_min> chi2(&mod);
 
 		ROOT::Minuit2::MnUserParameters params;
-		for(std::size_t iParam=0; iParam<vecParamNames.size(); ++iParam)
+		for(std::size_t iParam = 0; iParam < vecParamNames.size(); ++iParam)
 		{
 			params.Add(vecParamNames[iParam], static_cast<t_real_min>(vecVals[iParam]), static_cast<t_real_min>(vecErrs[iParam]));
 			if(pVecFixed && (*pVecFixed)[iParam])
@@ -538,7 +538,7 @@ bool minimise(t_func&& func, const std::vector<std::string>& vecParamNames,
 		ROOT::Minuit2::FunctionMinimum mini = migrad();
 		bool bMinimumValid = mini.IsValid() && mini.HasValidParameters() && mini.UserState().IsValid();
 
-		for(std::size_t iParam=0; iParam<vecParamNames.size(); ++iParam)
+		for(std::size_t iParam = 0; iParam < vecParamNames.size(); ++iParam)
 		{
 			vecVals[iParam] = static_cast<t_real>(mini.UserState().Value(vecParamNames[iParam]));
 			vecErrs[iParam] = static_cast<t_real>(std::fabs(mini.UserState().Error(vecParamNames[iParam])));
@@ -581,7 +581,7 @@ bool minimise_expr(const std::string& func, const std::vector<std::string>& vecP
 		MiniFunction<t_real_min> chi2(&mod);
 
 		ROOT::Minuit2::MnUserParameters params;
-		for(std::size_t iParam=0; iParam<vecParamNames.size(); ++iParam)
+		for(std::size_t iParam = 0; iParam < vecParamNames.size(); ++iParam)
 		{
 			params.Add(vecParamNames[iParam], static_cast<t_real_min>(vecVals[iParam]), static_cast<t_real_min>(vecErrs[iParam]));
 			if(pVecFixed && (*pVecFixed)[iParam])
@@ -592,7 +592,7 @@ bool minimise_expr(const std::string& func, const std::vector<std::string>& vecP
 		ROOT::Minuit2::FunctionMinimum mini = migrad();
 		bool bMinimumValid = mini.IsValid() && mini.HasValidParameters() && mini.UserState().IsValid();
 
-		for(std::size_t iParam=0; iParam<vecParamNames.size(); ++iParam)
+		for(std::size_t iParam = 0; iParam < vecParamNames.size(); ++iParam)
 		{
 			vecVals[iParam] = static_cast<t_real>(mini.UserState().Value(vecParamNames[iParam]));
 			vecErrs[iParam] = static_cast<t_real>(std::fabs(mini.UserState().Error(vecParamNames[iParam])));
@@ -703,7 +703,7 @@ t_vec bspline(const t_vec* P, std::size_t N, T t, const std::vector<T>& knots)
 
 // ----------------------------------------------------------------------------
 
-template<class t_vec, typename T=typename t_vec::value_type>
+template<class t_vec, typename T = typename t_vec::value_type>
 class Bezier
 {
 	protected:
@@ -716,7 +716,7 @@ class Bezier
 		{
 			m_pvecs.reset(new t_vec[m_iN]);
 
-			for(std::size_t i=0; i<m_iN; ++i)
+			for(std::size_t i = 0; i < m_iN; ++i)
 			{
 				m_pvecs[i].resize(2);
 				m_pvecs[i][0] = px[i];
@@ -733,7 +733,7 @@ class Bezier
 
 
 
-template<class t_vec, typename T=typename t_vec::value_type>
+template<class t_vec, typename T = typename t_vec::value_type>
 class BSpline
 {
 	protected:
@@ -745,7 +745,7 @@ class BSpline
 
 	public:
 		BSpline(std::size_t N, const T *px, const T *py,
-			unsigned int iDegree=3) : m_iN(N), m_iDegree(iDegree)
+			unsigned int iDegree = 3) : m_iN(N), m_iDegree(iDegree)
 		{
 			m_pvecs.reset(new t_vec[m_iN]);
 
@@ -806,7 +806,7 @@ public:
 	{
 		m_pvecs.reset(new t_vec[m_iN]);
 
-		for(std::size_t i=0; i<m_iN; ++i)
+		for(std::size_t i = 0; i < m_iN; ++i)
 		{
 			m_pvecs[i].resize(2);
 			m_pvecs[i][0] = px[i];
@@ -876,7 +876,7 @@ void __sort_2(Iter begin1, Iter end1, Iter begin2)
 	const std::size_t N = end1 - begin1;
 	std::unique_ptr<__sort_obj<T, 2>[]>obj{new __sort_obj<T, 2>[N]};
 
-	for(std::size_t i=0; i<N; ++i)
+	for(std::size_t i = 0; i < N; ++i)
 	{
 		obj.get()[i].vec[0] = *(begin1+i);
 		obj.get()[i].vec[1] = *(begin2+i);
@@ -884,7 +884,7 @@ void __sort_2(Iter begin1, Iter end1, Iter begin2)
 
 	std::stable_sort(obj.get(), obj.get()+N, __comp_fkt<T, 2>);
 
-	for(std::size_t i=0; i<N; ++i)
+	for(std::size_t i = 0; i < N; ++i)
 	{
 		*(begin1+i) = obj.get()[i].vec[0];
 		*(begin2+i) = obj.get()[i].vec[1];
@@ -902,7 +902,7 @@ std::vector<std::size_t> find_zeroes(const t_cont& cont)
 	const std::size_t num_pts = cont.size();
 	std::vector<std::size_t> indices;
 
-	for(std::size_t i=0; i<num_pts-1; ++i)
+	for(std::size_t i = 0; i < num_pts-1; ++i)
 	{
 		if(std::signbit(cont[i]) != std::signbit(cont[i+1]))
 			indices.push_back(i);
@@ -945,7 +945,7 @@ void find_peaks(std::size_t num_pts, const T* _px, const T* _py, unsigned int sp
 	spline.SetEps(eps);
 	const T* y_min = std::min_element(py, py+num_pts);
 
-	for(std::size_t iSpline=0; iSpline<num_spline; ++iSpline)
+	for(std::size_t iSpline = 0; iSpline < num_spline; ++iSpline)
 	{
 		const T dT = T(iSpline) / T(num_spline-1);
 		t_vec vec = spline(dT);
@@ -965,7 +965,7 @@ void find_peaks(std::size_t num_pts, const T* _px, const T* _py, unsigned int sp
 	std::vector<std::size_t> zeros = find_zeroes(spline_diff);
 
 
-	for(std::size_t zero_idx=0; zero_idx<zeros.size(); ++zero_idx)
+	for(std::size_t zero_idx = 0; zero_idx < zeros.size(); ++zero_idx)
 	{
 		const std::size_t cur_zero_idx = zeros[zero_idx];
 

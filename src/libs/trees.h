@@ -116,7 +116,7 @@ struct CommonTreeNode
 		*this = operator=(other);
 	}
 
-	virtual CommonTreeNode<t_nodetype>&
+	CommonTreeNode<t_nodetype>&
 	operator=(const CommonTreeNode<t_nodetype>& other)
 	{
 		this->parent = other.parent;

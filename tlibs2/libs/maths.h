@@ -411,39 +411,6 @@ bool is_in_angular_range(T dStart, T dRange, T dAngle)
 
 
 /**
- * converts a string to a scalar value
- */
-template<class t_scalar=double, class t_str=std::string>
-t_scalar stoval(const t_str& str)
-{
-	if constexpr(std::is_same_v<t_scalar, float>)
-		return std::stof(str);
-	else if constexpr(std::is_same_v<t_scalar, double>)
-		return std::stod(str);
-	else if constexpr(std::is_same_v<t_scalar, long double>)
-		return std::stold(str);
-	else if constexpr(std::is_same_v<t_scalar, int>)
-		return std::stoi(str);
-//	else if constexpr(std::is_same_v<t_scalar, unsigned int>)
-//		return std::stoui(str);
-	else if constexpr(std::is_same_v<t_scalar, long>)
-		return std::stol(str);
-	else if constexpr(std::is_same_v<t_scalar, unsigned long>)
-		return std::stoul(str);
-	else if constexpr(std::is_same_v<t_scalar, long long>)
-		return std::stoll(str);
-	else if constexpr(std::is_same_v<t_scalar, unsigned long long>)
-		return std::stoull(str);
-	else
-	{
-		t_scalar val{};
-		std::istringstream{str} >> val;
-		return val;
-	}
-}
-
-
-/**
  * get a random number in the given range
  */
 template<class t_num>
@@ -1120,13 +1087,14 @@ requires tl2::is_basic_vec<t_vec> && tl2::is_dyn_vec<t_vec>
 
 	std::vector<std::string> vecstr;
 	boost::split(vecstr, str,
-		[](auto c) -> bool { return c==TL2_COLSEP; },
+		[](auto c) -> bool { return c == TL2_COLSEP; },
 		boost::token_compress_on);
 
 	for(auto& tok : vecstr)
 	{
 		boost::trim(tok);
-		typename t_vec::value_type c = tl2::stoval<typename t_vec::value_type>(tok);
+		typename t_vec::value_type c =
+			tl2::stoval<typename t_vec::value_type>(tok);
 		vec.emplace_back(std::move(c));
 	}
 
@@ -7829,6 +7797,8 @@ requires tl2::is_mat<t_mat>
 /**
  * eigenvectors and -values of a complex matrix
  * @returns [ok, evals, evecs]
+ * @see http://www.math.utah.edu/software/lapack/lapack-z/zheev.html
+ * @see http://www.math.utah.edu/software/lapack/lapack-z/zgeev.html
  */
 template<class t_mat_cplx, class t_vec_cplx, class t_cplx = typename t_mat_cplx::value_type,
     class t_real = typename t_cplx::value_type>
@@ -8016,6 +7986,8 @@ eigenvec(const t_mat_cplx& mat,
 /**
  * eigenvectors and -values of a real matrix
  * @returns [ok, evals_re, evals_im, evecs_re, evecs_im]
+ * @see http://www.math.utah.edu/software/lapack/lapack-d/dsyev.html
+ * @see http://www.math.utah.edu/software/lapack/lapack-d/dgeev.html
  */
 template<class t_mat, class t_vec, class t_real = typename t_mat::value_type>
 std::tuple<bool, std::vector<t_real>, std::vector<t_real>, std::vector<t_vec>, std::vector<t_vec>>
@@ -8243,6 +8215,8 @@ eigenvec(const t_mat& mat, bool only_evals=false, bool is_symmetric=false, bool 
 /**
  * singular values of a real or complex matrix mat = U * diag{vals} * V^h
  * @returns [ ok, U, Vh, vals ]
+ * @see http://www.math.utah.edu/software/lapack/lapack-z/zgesvd.html
+ * @see http://www.math.utah.edu/software/lapack/lapack-d/dgesvd.html
  */
 template<class t_mat, class t_scalar = typename t_mat::value_type, class t_real = tl2::underlying_value_type<t_scalar>>
 std::tuple<bool, t_mat, t_mat, std::vector<t_real>>
@@ -8454,9 +8428,11 @@ std::tuple<bool, t_mat, t_mat> qr(const t_mat& mat)
 requires is_mat<t_mat> && is_vec<t_vec>
 {
 #ifdef __TLIBS2_USE_LAPACK__
+
 	return tl2_la::qr<t_mat, t_vec>(mat);
 
 #else
+
 	const std::size_t rows = mat.size1();
 	const std::size_t cols = mat.size2();
 	const std::size_t N = std::min(cols, rows);
@@ -8486,7 +8462,8 @@ requires is_mat<t_mat> && is_vec<t_vec>
 #endif
 
 	return std::make_tuple(true, Q, R);
-#endif
+
+#endif  // __TLIBS2_USE_LAPACK__
 }
 
 
@@ -8506,8 +8483,11 @@ requires is_mat<t_mat>
 		static_assert(t_mat::size1() == t_mat::size2());
 
 #ifdef __TLIBS2_USE_LAPACK__
+
 	return tl2_la::inv<t_mat>(mat);
+
 #else
+
 	using T = typename t_mat::value_type;
 	using t_vec = std::vector<T>;
 	const std::size_t N = mat.size1();
@@ -8535,6 +8515,7 @@ requires is_mat<t_mat>
 
 	matInv = matInv / fullDet;
 	return std::make_tuple(matInv, true);
+
 #endif
 }
 

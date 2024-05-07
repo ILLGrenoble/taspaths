@@ -1,12 +1,14 @@
 /**
  * tlibs2 -- julia module
  * @author Tobias Weber <tobias.weber@tum.de>, <tweber@ill.fr>
- * @date 2017 -- 2018
+ * @date 2017 - 2018
  * @license GPLv3, see 'LICENSE' file
  * @desc Forked on 7-Nov-2018 from my privately and TUM-PhD-developed "tlibs" project (https://github.com/t-weber/tlibs).
  *
- * g++ -std=c++20 -shared -fPIC -O2 -march=native -I. -I.. -I/usr/local/include/julia -I/usr/include/julia -o tl2_jl.so ../libs/log.cpp jl.cpp -lboost_system -lboost_iostreams -lMinuit2 -lgomp -ljulia
+ * g++ -std=c++20 -shared -fPIC -O2 -march=native -I. -I.. -I/usr/local/include/julia -I/usr/include/julia -I/usr/local/include/Minuit2 -o tl2_jl.so jl.cpp -L/usr/local/lib/julia -lboost_system -lboost_iostreams -lMinuit2 -ljulia
  */
+
+#define __TLIBS2_USE_MINUIT__
 
 #include "jl.h"
 #include "libs/instr.h"
@@ -33,7 +35,11 @@ extern "C" void load_tl2(int bDebug)
 }
 
 
+
 // ----------------------------------------------------------------------------
+// data file loading
+// ----------------------------------------------------------------------------
+
 
 /**
  * loads an instrument data file
@@ -67,10 +73,13 @@ extern "C" jl_array_t* load_instr(const char* pcFile)
 	return pArr;
 }
 
+// ----------------------------------------------------------------------------
+
 
 
 // ----------------------------------------------------------------------------
 // Fitting
+// ----------------------------------------------------------------------------
 
 
 /**
@@ -197,6 +206,7 @@ extern "C" int fit(void *_pFkt, std::size_t iNumParams,
 
 // ----------------------------------------------------------------------------
 // Minimisation
+// ----------------------------------------------------------------------------
 
 
 /**
@@ -296,3 +306,5 @@ extern "C" int minimise(void *_pFkt, std::size_t iNumParams,
 
 	return int(bOk);
 }
+
+// ----------------------------------------------------------------------------

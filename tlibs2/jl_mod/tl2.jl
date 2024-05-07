@@ -7,7 +7,7 @@
 #
 # ----------------------------------------------------------------------------
 # tlibs
-# Copyright (C) 2017-2021  Tobias WEBER (Institut Laue-Langevin (ILL),
+# Copyright (C) 2017-2024  Tobias WEBER (Institut Laue-Langevin (ILL),
 #                          Grenoble, France).
 # Copyright (C) 2015-2017  Tobias WEBER (Technische Universitaet Muenchen
 #                          (TUM), Garching, Germany).
@@ -250,6 +250,7 @@ end
 function gauss_model_amp(x, x0, sigma, amp, offs)
 	return amp.*exp.(-0.5 .* ((x.-x0)./sigma).^2.) .+ offs
 end
+
 
 
 #
