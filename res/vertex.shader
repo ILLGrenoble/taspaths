@@ -3,6 +3,8 @@
  * @author Tobias Weber <tweber@ill.fr>
  * @date feb-2021
  * @license GPLv3, see 'LICENSE' file
+ * @note Initially forked from my tlibs2 library (https://code.ill.fr/scientific-software/takin/tlibs2/-/blob/master/libs/qt/glplot.cpp).
+ * @note Further code forked from my privately developed "misc" project (https://github.com/t-weber/misc).
  *
  * References:
  *   - http://doc.qt.io/qt-5/qopenglwidget.html#details
