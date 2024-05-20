@@ -2692,8 +2692,10 @@ bool PathsTool::CalculatePathMesh()
 
 		// contour backend
 		ContourBackend contour_backend{ContourBackend::INTERNAL};
+#ifdef USE_OCV
 		if(g_contour_backend == 1)
 			contour_backend = ContourBackend::OCV;
+#endif
 
 		SetTmpStatus("Calculating obstacle contour lines.", 0);
 		if(!m_pathsbuilder.CalculateWallContours(true, false, contour_backend))
