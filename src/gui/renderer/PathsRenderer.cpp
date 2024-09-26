@@ -560,9 +560,9 @@ void PathsRenderer::UpdateLights()
 		return;
 
 	int num_lights = std::min(MAX_LIGHTS, static_cast<int>(m_lights.size()));
-	t_real_gl pos[num_lights * 3];
+	auto pos = std::make_unique<t_real_gl[]>(num_lights * 3);
 
-	for(int i=0; i<num_lights; ++i)
+	for(int i = 0; i < num_lights; ++i)
 	{
 		pos[i*3 + 0] = m_lights[i][0];
 		pos[i*3 + 1] = m_lights[i][1];
@@ -577,7 +577,7 @@ void PathsRenderer::UpdateLights()
 	m_shaders->bind();
 	LOGGLERR(pGl);
 
-	m_shaders->setUniformValueArray(m_uniLightPos, pos, num_lights, 3);
+	m_shaders->setUniformValueArray(m_uniLightPos, pos.get(), num_lights, 3);
 	m_shaders->setUniformValue(m_uniNumActiveLights, num_lights);
 
 
