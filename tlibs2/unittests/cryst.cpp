@@ -81,7 +81,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_xtal, t_real, t_types)
 	std::cout << "A  = " << A << std::endl;
 	std::cout << "B  = " << B << std::endl;
 	std::cout << "B2 = " << B2 << std::endl;
-	std::cout << "G = " << G << std::endl;
+	std::cout << "G  = " << G << std::endl;
 	std::cout << "UB = " << UB << std::endl;
 	//std::cout << tl2::levi<t_mat>(B, {0,1,2}) << std::endl;
 	//std::cout << tl2::levi<t_mat>(B, {0,2,1}) << std::endl;

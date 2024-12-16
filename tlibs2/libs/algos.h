@@ -223,8 +223,31 @@ t_vec reorder(const t_vec& vec, const t_perm& perm)
 	t_vec vec_new;
 	vec_new.reserve(vec.size());
 
-	for(decltype(vec.size()) i=0; i<vec.size(); ++i)
+	for(decltype(vec.size()) i = 0; i < vec.size(); ++i)
 		vec_new.push_back(vec[perm[i]]);
+
+	return vec_new;
+}
+
+
+
+/**
+ * reorder a vector according to a permutation
+ */
+template<class t_vec, class t_func, class t_perm = std::vector<std::size_t>>
+t_vec reorder(const t_func& get_elem_ptr, std::size_t N, const t_perm& perm)
+{
+	using t_elem = typename t_vec::value_type;
+
+	t_vec vec_new;
+	vec_new.reserve(N);
+
+	for(std::size_t i = 0; i < N; ++i)
+	{
+		const t_elem* elem = get_elem_ptr(perm[i]);
+		if(elem)
+			vec_new.push_back(*elem);
+	}
 
 	return vec_new;
 }
@@ -302,18 +325,26 @@ class Stopwatch
 		t_dur m_dur{};
 		t_dur_sys m_dur_sys{};
 
-		T m_dDur = T{};
+		T m_dDur{};
 
 	public:
 		Stopwatch() = default;
 		~Stopwatch() = default;
 
+
+		/**
+		 * start the timer
+		 */
 		void start()
 		{
 			m_timeStart = std::chrono::system_clock::now();
 			m_timeStart_st = std::chrono::steady_clock::now();
 		}
 
+
+		/**
+		 * stop the timer
+		 */
 		void stop()
 		{
 			m_timeStop_st = std::chrono::steady_clock::now();
@@ -324,11 +355,19 @@ class Stopwatch
 			m_dDur = T(t_dur::period::num)/T(t_dur::period::den) * T(m_dur.count());
 		}
 
+
+		/**
+		 * get the amount of time that passed
+		 */
 		T GetDur() const
 		{
 			return m_dDur;
 		}
 
+
+		/**
+		 * convert a time point to a string representation
+		 */
 		static std::string to_str(const t_tp_sys& t)
 		{
 			using boost::date_time::c_time;
@@ -342,9 +381,28 @@ class Stopwatch
 			return std::string(cTime);
 		}
 
-		std::string GetStartTimeStr() const { return to_str(m_timeStart); }
-		std::string GetStopTimeStr() const { return to_str(m_timeStart+m_dur_sys); }
 
+		/**
+		 * get the start time as string
+		 */
+		std::string GetStartTimeStr() const
+		{
+			return to_str(m_timeStart);
+		}
+
+
+		/**
+		 * get the stop time as string
+		 */
+		std::string GetStopTimeStr() const
+		{
+			return to_str(m_timeStart + m_dur_sys);
+		}
+
+
+		/**
+		 * get the estimated stop time
+		 */
 		t_tp_sys GetEstStopTime(T dProg) const
 		{
 			t_tp_st timeStop_st = std::chrono::steady_clock::now();
@@ -356,6 +414,10 @@ class Stopwatch
 			return tpEnd;
 		}
 
+
+		/**
+		 * get the estimated stop time as string
+		 */
 		std::string GetEstStopTimeStr(T dProg) const
 		{
 			return to_str(GetEstStopTime(dProg));

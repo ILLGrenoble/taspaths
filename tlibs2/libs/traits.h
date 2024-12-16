@@ -41,6 +41,7 @@
 #include <initializer_list>
 #include <utility>
 #include <concepts>
+#include <complex>
 
 
 namespace tl2 {

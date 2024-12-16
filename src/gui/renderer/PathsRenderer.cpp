@@ -52,6 +52,8 @@
 #include "tlibs2/libs/str.h"
 #include "tlibs2/libs/file.h"
 
+namespace algo = boost::algorithm;
+
 
 #define OBJNAME_FLOOR_PLANE  "floor"
 #define MAX_LIGHTS           4  // max. number allowed in shader

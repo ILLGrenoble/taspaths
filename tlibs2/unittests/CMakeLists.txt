@@ -32,7 +32,9 @@ cmake_policy(SET CMP0078 NEW)
 cmake_policy(SET CMP0086 NEW)
 enable_testing()
 
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/../cmake")
+list(APPEND CMAKE_MODULE_PATH
+	"${PROJECT_SOURCE_DIR}"
+	"${PROJECT_SOURCE_DIR}/../../setup/cmake")
 
 
 message("Build type: ${CMAKE_BUILD_TYPE}")
@@ -46,6 +48,8 @@ set(CMAKE_CXX_STANDARD 20)
 add_compile_options(-std=c++20)
 add_compile_options(-Wall -Wextra)
 
+add_definitions(-D__TLIBS2_MAGDYN_USE_MINUIT__)
+
 
 # -----------------------------------------------------------------------------
 # Boost
@@ -58,6 +62,7 @@ message("Using Boost version ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boo
 
 # -----------------------------------------------------------------------------
 # Lapacke
+find_package(GFortran)
 find_package(Lapacke REQUIRED)
 add_definitions(-DUSE_LAPACK)
 # -----------------------------------------------------------------------------
@@ -82,6 +87,9 @@ include_directories(
 add_executable(mat0 mat0.cpp)
 add_executable(mat1 mat1.cpp)
 add_executable(mat2 mat2.cpp)
+add_executable(mat3 mat3.cpp)
+add_executable(blume blume.cpp)
+add_executable(math math.cpp)
 add_executable(rotation rotation.cpp)
 add_executable(stat1 stat1.cpp)
 add_executable(quat1 quat1.cpp)
@@ -92,21 +100,30 @@ add_executable(eig eig.cpp)
 add_executable(chol chol.cpp)
 add_executable(ode ode.cpp)
 add_executable(min0 min0.cpp)
+add_executable(min1 min1.cpp)
 add_executable(fit0 fit0.cpp)
 add_executable(fit1 fit1.cpp)
 add_executable(cov cov.cpp)
 add_executable(fft fft.cpp)
+add_executable(magdyn magdyn.cpp)
+add_executable(magdyn2 magdyn2.cpp)
 
 target_link_libraries(expr Threads::Threads)
-target_link_libraries(mat0 ${Lapacke_LIBRARIES})
-target_link_libraries(mat2 ${Lapacke_LIBRARIES})
-target_link_libraries(rotation ${Lapacke_LIBRARIES})
-target_link_libraries(cryst ${Lapacke_LIBRARIES})
-target_link_libraries(leastsq ${Lapacke_LIBRARIES})
-target_link_libraries(eig ${Lapacke_LIBRARIES})
-target_link_libraries(chol ${Lapacke_LIBRARIES})
-target_link_libraries(ode ${Lapacke_LIBRARIES})
+target_link_libraries(magdyn ${Lapacke_LIBRARIES} ${Lapack_LIBRARIES} ${BLAS_LIBRARIES}
+	${GFortran_LIBRARIES} ${Minuit2_LIBRARIES} Threads::Threads)
+target_link_libraries(magdyn2 ${Lapacke_LIBRARIES} ${Lapack_LIBRARIES} ${BLAS_LIBRARIES}
+	${GFortran_LIBRARIES} ${Minuit2_LIBRARIES} Threads::Threads)
+target_link_libraries(mat0 ${Lapacke_LIBRARIES} ${Lapack_LIBRARIES} ${BLAS_LIBRARIES} ${GFortran_LIBRARIES})
+target_link_libraries(mat2 ${Lapacke_LIBRARIES} ${Lapack_LIBRARIES} ${BLAS_LIBRARIES} ${GFortran_LIBRARIES})
+target_link_libraries(mat3 ${Lapacke_LIBRARIES} ${Lapack_LIBRARIES} ${BLAS_LIBRARIES} ${GFortran_LIBRARIES})
+target_link_libraries(rotation ${Lapacke_LIBRARIES} ${Lapack_LIBRARIES} ${BLAS_LIBRARIES} ${GFortran_LIBRARIES})
+target_link_libraries(cryst ${Lapacke_LIBRARIES} ${Lapack_LIBRARIES} ${BLAS_LIBRARIES} ${GFortran_LIBRARIES})
+target_link_libraries(leastsq ${Lapacke_LIBRARIES} ${Lapack_LIBRARIES} ${BLAS_LIBRARIES} ${GFortran_LIBRARIES})
+target_link_libraries(eig ${Lapacke_LIBRARIES} ${Lapack_LIBRARIES} ${BLAS_LIBRARIES} ${GFortran_LIBRARIES})
+target_link_libraries(chol ${Lapacke_LIBRARIES} ${Lapack_LIBRARIES} ${BLAS_LIBRARIES} ${GFortran_LIBRARIES})
+target_link_libraries(ode ${Lapacke_LIBRARIES} ${Lapack_LIBRARIES} ${BLAS_LIBRARIES} ${GFortran_LIBRARIES})
 target_link_libraries(min0 ${Minuit2_LIBRARIES} Threads::Threads) #OpenMP::OpenMP_CXX)
+target_link_libraries(min1 ${Minuit2_LIBRARIES} Threads::Threads) #OpenMP::OpenMP_CXX)
 target_link_libraries(fit0 ${Minuit2_LIBRARIES} Threads::Threads) #OpenMP::OpenMP_CXX)
 target_link_libraries(fit1 ${Minuit2_LIBRARIES}) #OpenMP::OpenMP_CXX)
 # -----------------------------------------------------------------------------
@@ -115,20 +132,40 @@ target_link_libraries(fit1 ${Minuit2_LIBRARIES}) #OpenMP::OpenMP_CXX)
 # -----------------------------------------------------------------------------
 # run individual test cases
 add_test(expr expr)
+add_test(magdyn magdyn)
+add_test(magdyn2 magdyn2)
 add_test(cryst cryst)
 add_test(mat0 mat0)
 add_test(mat1 mat1)
 add_test(mat2 mat2)
+add_test(mat3 mat3)
+add_test(math math)
+add_test(blume blume)
 add_test(rotation rotation)
 add_test(stat1 stat1)
 add_test(quat1 quat1)
-add_test(lestsq leastsq)
+add_test(leastsq leastsq)
 add_test(eig eig)
 add_test(chol chol)
 add_test(ode ode)
 add_test(min0 min0)
+add_test(min1 min1)
 add_test(fit0 fit0)
 add_test(fit1 fit1)
 add_test(cov cov)
 add_test(fft fft)
+# -----------------------------------------------------------------------------
+
+
+# -----------------------------------------------------------------------------
+# add rpaths
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+	foreach(tool IN ITEMS magdyn magdyn2 eig chol ode cryst leastsq rotation mat0 mat1 mat2 mat3)
+		message(STATUS "Setting rpath for ${tool}...")
+
+		add_custom_command(TARGET ${tool} POST_BUILD
+			COMMAND install_name_tool -add_rpath /usr/local/lib $<TARGET_FILE:${tool}>
+			WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+	endforeach()
+endif()
 # -----------------------------------------------------------------------------

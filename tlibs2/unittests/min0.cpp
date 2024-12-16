@@ -43,7 +43,7 @@ using t_types_real = std::tuple<double, float>;
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_expr_real, t_real, t_types_real)
 {
-	std::string func{"(x-5.67)^2"};
+	std::string func{"(x - 5.67)^2"};
 
 	std::vector<std::string> params{{"x"}};
 	std::vector<t_real> vals{{0.}};

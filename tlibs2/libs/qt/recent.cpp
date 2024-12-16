@@ -56,12 +56,9 @@ void RecentFiles::Clear()
  */
 void RecentFiles::AddRecentFile(const QString &file)
 {
-	for(const auto &recentfile : m_recentFiles)
-	{
-		// file already in list?
-		if(recentfile == file)
-			return;
-	}
+	// remove the file if it's already in the list
+	if(int idx = m_recentFiles.indexOf(file); idx >= 0 && idx < m_recentFiles.size())
+		m_recentFiles.removeAt(idx);
 
 	m_recentFiles.push_back(file);
 	RebuildRecentFiles();
@@ -103,22 +100,26 @@ void RecentFiles::RebuildRecentFiles()
 			// restore iterator position
 			iter = m_recentFiles.rbegin() + positer;
 
+			// more files to check?
 			if(iter != m_recentFiles.rend())
 				continue;
-			else
-				break;
+			break;
 		}
 
 		auto *acFile = new QAction(
 			QIcon::fromTheme("document"), filename, m_menuOpenRecent);
 
+		// action when clicked on file name
 		QObject::connect(acFile, &QAction::triggered, [this, filename]()
 		{
 			if(!m_open_func)
 				return;
 
 			if((*m_open_func)(filename))
+			{
+				AddRecentFile(filename);  // move file to the front of the sub-menu
 				m_curFile = filename;
+			}
 		});
 
 		m_menuOpenRecent->addAction(acFile);
@@ -136,6 +137,8 @@ void RecentFiles::RebuildRecentFiles()
  */
 void RecentFiles::TrimEntries()
 {
+	m_recentFiles.removeDuplicates();
+
 	// remove superfluous entries and save the recent files list
 	while((std::size_t)m_recentFiles.size() > m_maxRecentFiles)
 		m_recentFiles.pop_front();

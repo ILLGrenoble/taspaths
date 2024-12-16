@@ -43,7 +43,6 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/info_parser.hpp>
 #include <boost/property_tree/xml_parser.hpp>
-namespace ptree = boost::property_tree;
 
 
 
@@ -236,6 +235,7 @@ template<class t_mat, class t_vec>
 requires tl2::is_mat<t_mat> && tl2::is_vec<t_vec>
 bool Spacegroups<t_mat, t_vec>::Load(const std::string& strFile)
 {
+	namespace ptree = boost::property_tree;
 	using t_real = typename t_mat::value_type;
 
 	// load xml database
@@ -247,7 +247,7 @@ bool Spacegroups<t_mat, t_vec>::Load(const std::string& strFile)
 	}
 	catch(const std::exception& ex)
 	{
-		std::cerr << ex.what() << std::endl;
+		std::cerr << "Magsg: " << ex.what() << std::endl;
 		return false;
 	}
 
@@ -256,7 +256,7 @@ bool Spacegroups<t_mat, t_vec>::Load(const std::string& strFile)
 	const auto& groups = prop.get_child_optional("mag_groups");
 	if(!groups)
 	{
-		std::cerr << "No space groups defined." << std::endl;
+		std::cerr << "Magsg: " << "No space groups defined." << std::endl;
 		return false;
 	}
 
@@ -293,11 +293,11 @@ bool Spacegroups<t_mat, t_vec>::Load(const std::string& strFile)
 		boost::split(vecNumbers, sg.m_nrBNS, [](auto c)->bool {return c=='.';}, boost::token_compress_on);
 		if(vecNumbers.size() < 2)
 		{	// purely-structural space group
-			std::cerr << "Non-magnetic space group: " << sg.m_nrBNS << std::endl;
+			std::cerr << "Magsg: " << "Non-magnetic space group: " << sg.m_nrBNS << std::endl;
 		}
 		else if(vecNumbers.size() > 2)
 		{	// unknown
-			std::cerr << "Unknown space group number: " << sg.m_nrBNS << std::endl;
+			std::cerr << "Magsg: " << "Unknown space group number: " << sg.m_nrBNS << std::endl;
 		}
 		else
 		{	// magnetic space group

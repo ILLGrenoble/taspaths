@@ -1,14 +1,13 @@
 /**
- * tlibs2
- * file library
+ * tlibs2 -- file library
  * @author Tobias Weber <tobias.weber@tum.de>, <tweber@ill.fr>
- * @date 2013-2021
+ * @date 2013-2024
  * @note Forked on 7-Nov-2018 from my privately and TUM-PhD-developed "tlibs" project (https://github.com/t-weber/tlibs).
  * @license GPLv3, see 'LICENSE' file
  *
  * ----------------------------------------------------------------------------
  * tlibs
- * Copyright (C) 2017-2021  Tobias WEBER (Institut Laue-Langevin (ILL),
+ * Copyright (C) 2017-2024  Tobias WEBER (Institut Laue-Langevin (ILL),
  *                          Grenoble, France).
  * Copyright (C) 2015-2017  Tobias WEBER (Technische Universitaet Muenchen
  *                          (TUM), Garching, Germany).
@@ -31,7 +30,7 @@
 #define __TLIBS2_FILE_H__
 
 
-#if __has_include(<filesystem>) /*&& !defined(__APPLE_CC__)*/
+#if __has_include(<filesystem>)
 	#include <filesystem>
 	namespace fs = std::filesystem;
 #else

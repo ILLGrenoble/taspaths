@@ -45,6 +45,7 @@
 #include <sstream>
 #include <string>
 #include <regex>
+#include <unordered_set>
 #include <unordered_map>
 #include <vector>
 #include <stack>
@@ -71,6 +72,11 @@
 namespace tl2 {
 
 
+// from str.h
+template<class T, class t_str, class t_cont>
+void get_tokens(const t_str& str, const t_str& strDelim, t_cont& vecRet);
+
+
 template<class t_num = double>
 t_num expr_modfunc(t_num t1, t_num t2)
 {
@@ -79,7 +85,7 @@ t_num expr_modfunc(t_num t1, t_num t2)
 	else if constexpr(std::is_integral_v<t_num>)
 		return t1%t2;
 	else if constexpr(is_complex<t_num>)
-		throw std::runtime_error{"Invalid mod operation."};
+		throw std::runtime_error("Invalid mod operation.");
 	else
 		static_assert(tl2::bool_value<0, t_num>, "Invalid type for mod function.");
 
@@ -100,7 +106,7 @@ t_num expr_binop(char op, t_num val_left, t_num val_right)
 		case '^': return static_cast<t_num>(std::pow(val_left, val_right));
 	}
 
-	throw std::runtime_error{"Invalid binary operator."};
+	throw std::runtime_error("Invalid binary operator.");
 }
 
 
@@ -113,7 +119,7 @@ t_num expr_unop(char op, t_num val)
 		case '-': return -val;
 	}
 
-	throw std::runtime_error{"Invalid unary operator."};
+	throw std::runtime_error("Invalid unary operator.");
 }
 
 
@@ -133,7 +139,7 @@ public:
 		NOP = 0,
 		BINOP, UNOP,
 		PUSH_VAR, PUSH_VAL,
-		CALL,
+		CALL, ASSIGN,
 	};
 
 
@@ -144,16 +150,19 @@ public:
 
 	t_num run(const std::uint8_t* code, std::size_t size, const ExprParser<t_num>& context)
 	{
-		for(std::size_t ip=0; ip<size;)
+		for(std::size_t ip = 0; ip < size;)
 		{
 			const Op op = *reinterpret_cast<const Op*>(code + ip++);
 
 			switch(op)
 			{
+				// no operation
 				case Op::NOP:
 				{
 					break;
 				}
+
+				// binary operation
 				case Op::BINOP:
 				{
 					char binop = *reinterpret_cast<const char*>(code + ip++);
@@ -168,6 +177,8 @@ public:
 						std::cout << val1 << " " << binop << " " << val2 << " = " << result << std::endl;
 					break;
 				}
+
+				// unary operation
 				case Op::UNOP:
 				{
 					char unop = *reinterpret_cast<const char*>(code + ip++);
@@ -178,9 +189,10 @@ public:
 
 					if(m_debug)
 						std::cout << unop << " " << val << " = " << result << std::endl;
-
 					break;
 				}
+
+				// push a variable onto the stack
 				case Op::PUSH_VAR:
 				{
 					std::size_t len = *reinterpret_cast<const std::size_t*>(code + ip);
@@ -195,9 +207,10 @@ public:
 
 					if(m_debug)
 						std::cout << var << " = " << val << std::endl;
-
 					break;
 				}
+
+				// push a value onto the stack
 				case Op::PUSH_VAL:
 				{
 					t_num val = *reinterpret_cast<const t_num*>(code + ip);
@@ -205,11 +218,12 @@ public:
 
 					m_stack.push(val);
 
-
 					if(m_debug)
 						std::cout << val << " = " << val << std::endl;
 					break;
 				}
+
+				// call a function
 				case Op::CALL:
 				{
 					std::uint8_t numargs = *reinterpret_cast<const std::uint8_t*>(code + ip);
@@ -259,6 +273,28 @@ public:
 
 					break;
 				}
+
+				// assign a variable
+				case Op::ASSIGN:
+				{
+					std::size_t identlen = *reinterpret_cast<const std::size_t*>(code + ip);
+					ip += sizeof(identlen);
+
+					std::string ident(reinterpret_cast<const char*>(code + ip),
+						reinterpret_cast<const char*>(code + ip+identlen));
+					ip += identlen;
+
+					t_num val = m_stack.top(); m_stack.pop();
+					context.register_var(ident, val);
+					m_stack.push(val);
+
+					if(m_debug)
+						std::cout << ident << " = " << val << std::endl;
+
+					break;
+				}
+
+				// unknown operation
 				default:
 				{
 					throw std::runtime_error("Invalid opcode.");
@@ -465,6 +501,51 @@ private:
 
 
 template<typename t_num = double>
+class ExprASTAssign : public ExprAST<t_num>
+{
+public:
+	ExprASTAssign(const std::string& ident, const std::shared_ptr<ExprAST<t_num>>& right)
+		: m_ident{ident}, m_right{right}
+	{}
+
+	ExprASTAssign(const ExprASTAssign<t_num>&) = delete;
+	const ExprASTAssign<t_num>& operator=(const ExprASTAssign<t_num>&) = delete;
+
+	virtual ~ExprASTAssign() = default;
+
+	virtual t_num eval(const ExprParser<t_num>& context) const override
+	{
+		const t_num val_right = m_right->eval(context);
+		context.register_var(m_ident, val_right);
+		return val_right;
+	}
+
+	virtual void codegen(std::ostream& ostr) const override
+	{
+		m_right->codegen(ostr);
+
+		auto op = ExprVM<t_num>::Op::ASSIGN;
+		std::size_t len = m_ident.length();
+
+		ostr.write(reinterpret_cast<const char*>(&op), sizeof(op));
+		ostr.write(reinterpret_cast<const char*>(&len), sizeof(len));
+		ostr.write(m_ident.c_str(), len);
+	}
+
+	virtual void print(std::ostream& ostr=std::cout, std::size_t indent=0) const override
+	{
+		for(std::size_t i=0; i<indent; ++i) ostr << " | ";
+		ostr << "assignment \"" << m_ident << "\" = " << "\n";
+		m_right->print(ostr, indent+1);
+	}
+
+private:
+	std::string m_ident{};
+	std::shared_ptr<ExprAST<t_num>> m_right{};
+};
+
+
+template<typename t_num = double>
 class ExprASTCall : public ExprAST<t_num>
 {
 public:
@@ -504,7 +585,10 @@ public:
 		else if(m_args.size() == 2)
 		{
 #ifdef TL2_USE_THREADS
-			auto fut_arg0 = std::async([this, &context]() { return m_args[0]->eval(context); });
+			auto fut_arg0 = std::async([this, &context]()
+			{
+				return m_args[0]->eval(context);
+			});
 			const t_num arg1 = m_args[1]->eval(context);
 			const t_num arg0 = fut_arg0.get();
 #else
@@ -562,7 +646,7 @@ class ExprParser
 
 public:
 	ExprParser(bool debug=false)
-		: m_debug{debug}, m_ast{}, m_code{},
+		: m_debug{debug}, m_asts{}, m_codes{},
 		m_vars{}, m_consts{}, m_funcs0{}, m_funcs1{}, m_funcs2{},
 		m_istr{}, m_lookahead_text{}
 	{
@@ -574,61 +658,118 @@ public:
 	/**
 	 * parse a given string into an ast (and generate code)
 	 */
-	bool parse(const std::string& str, bool codegen = true)
+	bool parse(const std::string& expr, bool codegen = true)
 	{
-		m_code.clear();
-		m_ast = nullptr;
+		m_unknown_vars.clear();
+		m_codes.clear();
+		m_asts.clear();
 
-		m_istr = std::make_shared<std::istringstream>(str);
-		next_lookahead();
+		// split individual commands by ';'
+		std::vector<std::string> lines;
+		tl2::get_tokens<std::string, std::string>(expr, ";", lines);
 
-		// no input given?
-		bool at_eof = (m_lookahead == (int)Token::TOK_INVALID || m_lookahead == (int)Token::TOK_END);
-		if(at_eof)
+		for(const std::string& line : lines)
 		{
-			// interpret empty input as 0
-			m_ast = std::make_shared<ExprASTValue<t_num>>(t_num{});
+			m_istr = std::make_shared<std::istringstream>(line);
+			next_lookahead();
+
+			// no input given?
+			bool at_eof = (m_lookahead == (int)Token::TOK_INVALID ||
+				m_lookahead == (int)Token::TOK_END);
+			if(at_eof)
+			{
+				// interpret empty input as 0
+				m_asts.emplace_back(std::make_shared<ExprASTValue<t_num>>(t_num{}));
+				return false;
+			}
+
+			t_ast ast = plus_term();
+			m_asts.push_back(ast);
+
+			// check if there would be are more tokens available?
+			next_lookahead();
+			at_eof = (m_lookahead == (int)Token::TOK_INVALID ||
+				m_lookahead == (int)Token::TOK_END);
+			if(!at_eof)
+				throw std::underflow_error("Not all input tokens have been consumed.");
+
+			bool ok = !!ast;
+			if(ok)
+			{
+				if(m_debug)
+				{
+					ast->print(std::cout);
+					std::cout << std::endl;
+				}
+
+				if(codegen)
+				{
+					std::stringstream str_code;
+					ast->codegen(str_code);
+
+					str_code.seekg(0, std::stringstream::end);
+					auto code_size = str_code.tellg();
+					str_code.seekg(0, std::stringstream::beg);
+
+					t_code code;
+					code.resize(code_size);
+					str_code.read(reinterpret_cast<char*>(code.data()), code_size);
+					m_codes.emplace_back(std::move(code));
+				}
+			}
+			else
+			{
+				// interpret invalid input as 0
+				if(m_invalid_0)
+					ast = std::make_shared<ExprASTValue<t_num>>(t_num{});
+			}
+
+			if(m_unknown_vars.size())
+				ok = false;
+
+			if(!ok)
+				return false;
+		}
+
+		return true;
+	}
+
+
+	bool parse_noexcept(const std::string& str, bool codegen = true) noexcept
+	{
+		try
+		{
+			if(parse(str, codegen))
+			{
+				return true;
+			}
+			else
+			{
+				std::ostringstream ostr;
+				if(m_unknown_vars.size())
+					ostr << "Unknown variables: ";
+				else
+					ostr << "Invalid AST";
+
+				std::size_t var_idx = 0;
+				for(const std::string& unknown_var : m_unknown_vars)
+				{
+					ostr << "\"" << unknown_var << "\"";
+
+					if(var_idx < m_unknown_vars.size() - 1)
+						ostr << ", ";
+					++var_idx;
+				}
+				ostr << ".";
+
+				throw std::runtime_error(ostr.str());
+			}
+		}
+		catch(const std::exception& ex)
+		{
+			std::cerr << "Parser error: " << ex.what() << std::endl;
 			return false;
 		}
-
-		m_ast = plus_term();
-
-		// check if there would be are more tokens available?
-		next_lookahead();
-		at_eof = (m_lookahead == (int)Token::TOK_INVALID || m_lookahead == (int)Token::TOK_END);
-		if(!at_eof)
-			throw std::underflow_error("Not all input tokens have been consumed.");
-
-		bool ok = !!m_ast;
-		if(ok)
-		{
-			if(m_debug)
-			{
-				m_ast->print(std::cout);
-				std::cout << std::endl;
-			}
-
-			if(codegen)
-			{
-				std::stringstream code;
-				m_ast->codegen(code);
-
-				code.seekg(0, std::stringstream::end);
-				auto code_size = code.tellg();
-				code.seekg(0, std::stringstream::beg);
-
-				m_code.resize(code_size);
-				code.read(reinterpret_cast<char*>(m_code.data()), code_size);
-			}
-		}
-		else
-		{
-			// interpret invalid input as 0
-			if(m_invalid_0)
-				m_ast = std::make_shared<ExprASTValue<t_num>>(t_num{});
-		}
-
-		return ok;
 	}
 
 
@@ -637,20 +778,68 @@ public:
 	 */
 	t_num eval() const
 	{
-		// is compiled code available?
-		if(m_code.size())
+		t_num result{};
+		bool ran_vm = false;
+
+		std::size_t ast_idx = 0;
+		for(const t_ast& ast : m_asts)
 		{
-			// run generated code
-			ExprVM<t_num> vm{m_debug};
-			return vm.run(m_code.data(), m_code.size(), *this);
+			// is compiled code available?
+			if(ast_idx < m_codes.size() && m_codes[ast_idx].size())
+			{
+				// run generated code
+				const t_code& code = m_codes[ast_idx];
+
+				if(m_debug)
+				{
+					std::cerr << "Expression: Info: "
+						<< "Running VM for AST #" << ast_idx << "."
+						<< std::endl;
+				}
+				ExprVM<t_num> vm{m_debug};
+				result = vm.run(code.data(), code.size(), *this);
+				ran_vm = true;
+			}
+
+			if(!ast)
+			{
+				std::ostringstream ostrErr;
+				ostrErr << "Invalid AST #" << ast_idx;
+				throw std::runtime_error(ostrErr.str());
+			}
+
+			if(!ran_vm)
+			{
+				if(m_debug)
+				{
+					std::cerr << "Expression: Warning: "
+						<< "No code available, interpreting AST #"
+						<< ast_idx << "."
+						<< std::endl;
+				}
+
+				result = ast->eval(*this);
+			}
+
+			++ast_idx;
 		}
 
-		if(m_debug)
-			std::cerr << "Warning: No code available, interpreting AST." << std::endl;
-		if(!m_ast)
-			throw std::runtime_error("Invalid AST.");
+		// return last result
+		return result;
+	}
 
-		return m_ast->eval(*this);
+
+	t_num eval_noexcept() const noexcept
+	{
+		try
+		{
+			return eval();
+		}
+		catch(const std::exception& ex)
+		{
+			std::cerr << "Parser error: " << ex.what() << std::endl;
+			return t_num{};
+		}
 	}
 
 
@@ -764,8 +953,8 @@ protected:
 		{
 #ifdef TL2_USE_UNITS
 			register_const("pi", __pi<t_num>);
-			register_const("hbar",  t_num(hbar<t_num>/meV<t_num>/sec<t_num>));      // hbar in [meV s]
-			register_const("kB",  t_num(kB<t_num>/meV<t_num>*kelvin<t_num>));       // kB in [meV / K]
+			register_const("hbar", t_num(hbar<t_num>/meV<t_num>/sec<t_num>));       // hbar in [meV s]
+			register_const("kB", t_num(kB<t_num>/meV<t_num>*kelvin<t_num>));        // kB in [meV / K]
 #endif
 		}
 
@@ -776,8 +965,8 @@ protected:
 
 			register_const("imag", t_num(0, 1));                                    // imaginary unit
 			register_const("pi", __pi<t_real>);
-			register_const("hbar",  t_real(hbar<t_real>/meV<t_real>/sec<t_real>));  // hbar in [meV s]
-			register_const("kB",  t_real(kB<t_real>/meV<t_real>*kelvin<t_real>));   // kB in [meV / K]
+			register_const("hbar", t_real(hbar<t_real>/meV<t_real>/sec<t_real>));   // hbar in [meV s]
+			register_const("kB", t_real(kB<t_real>/meV<t_real>*kelvin<t_real>));    // kB in [meV / K]
 		}
 
 		// integer constants
@@ -828,7 +1017,7 @@ protected:
 
 		if constexpr(std::is_floating_point_v<t_num>)
 		{	// real
-			std::regex regex{"[0-9]+(\\.)?[0-9]*(E|e|E\\+|E-|e\\+|e-)?[0-9]*"};
+			std::regex regex{"[0-9]*(\\.)?[0-9]*(E|e|E\\+|E-|e\\+|e-)?[0-9]*"};
 			std::smatch smatch;
 			if(std::regex_match(str, smatch, regex))
 			{
@@ -839,7 +1028,7 @@ protected:
 		}
 		else if constexpr(is_complex<t_num>)
 		{	// TODO: complex
-			std::regex regex{"[0-9]+(\\.)?[0-9]*(E|e|E\\+|E-|e\\+|e-)?[0-9]*"};
+			std::regex regex{"[0-9]*(\\.)?[0-9]*(E|e|E\\+|E-|e\\+|e-)?[0-9]*"};
 			std::smatch smatch;
 			if(std::regex_match(str, smatch, regex))
 			{
@@ -873,7 +1062,8 @@ protected:
 
 		{	// tokens represented by themselves
 			if(str == "+" || str == "-" || str == "*" || str == "/" ||
-				str == "%" || str == "^" || str == "(" || str == ")" || str == ",")
+				str == "%" || str == "^" || str == "(" || str == ")" ||
+				str == "," || str == "=")
 				matches.push_back(std::make_pair((int)str[0], 0.));
 		}
 
@@ -890,21 +1080,19 @@ protected:
 		std::vector<std::pair<int, t_num>> longest_matching;
 
 		// find longest matching token
-		while(1)
+		while(true)
 		{
 			char c = m_istr->get();
 
 			if(m_istr->eof())
 				break;
+
 			// if outside any other match...
 			if(longest_matching.size() == 0)
 			{
 				// ...ignore white spaces
-				if(c==' ' || c=='\t')
+				if(c == ' ' || c == '\t' || c == '\n' || c == '\r')
 					continue;
-				// ...end on new line
-				if(c=='\n')
-					return std::make_tuple((int)Token::TOK_END, t_num{0}, longest_input);
 			}
 
 			input += c;
@@ -934,21 +1122,22 @@ protected:
 		// nothing matches
 		if(longest_matching.size() == 0)
 		{
-			std::ostringstream ostr;
-			ostr << "Invalid input in lexer: \"" << input << "\".";
-			throw std::runtime_error(ostr.str());
+			throw std::runtime_error("Invalid input in lexer: \""
+				+ input + "\".");
 		}
 
 		// several possible matches
 		if(longest_matching.size() > 1)
 		{
-			std::ostringstream ostr;
-			ostr << "Warning: Ambiguous match in lexer for token \"" << longest_input << "\".";
-			throw std::runtime_error(ostr.str());
+			throw std::runtime_error("Ambiguous match in lexer for token \""
+				+ longest_input + "\".");
 		}
 
 		// found match
-		return std::make_tuple((int)std::get<0>(longest_matching[0]), std::get<1>(longest_matching[0]), longest_input);
+		return std::make_tuple(
+			(int)std::get<0>(longest_matching[0]),
+			std::get<1>(longest_matching[0]),
+			longest_input);
 	}
 	// ------------------------------------------------------------------------
 
@@ -968,7 +1157,8 @@ protected:
 		if(m_lookahead != expected)
 		{
 			std::ostringstream ostr;
-			ostr << "Could not match symbol! Expected: " << expected << ", got: " << m_lookahead << ".";
+			ostr << "Could not match symbol! Expected: "
+				<< expected << ", got: " << m_lookahead << ".";
 			throw std::runtime_error(ostr.str());
 		}
 	}
@@ -1224,7 +1414,8 @@ protected:
 					{
 						next_lookahead();
 
-						return std::make_shared<ExprASTCall<t_num>>(ident, expr_val1);
+						return std::make_shared<ExprASTCall<t_num>>(
+							ident, expr_val1);
 					}
 
 					// two-argument-function
@@ -1236,15 +1427,25 @@ protected:
 						match(')');
 						next_lookahead();
 
-						return std::make_shared<ExprASTCall<t_num>>(ident, expr_val1, expr_val2);
+						return std::make_shared<ExprASTCall<t_num>>(
+							ident, expr_val1, expr_val2);
 					}
 					else
 					{
-						std::ostringstream ostr;
-						ostr << "Invalid function call to \"" << ident << "\".";
-						throw std::runtime_error(ostr.str());
+						throw std::runtime_error("Invalid function call to \"" + ident + "\".");
 					}
 				}
+			}
+
+			// assignment
+			else if(m_lookahead == '=')
+			{
+				next_lookahead();
+				auto assign_val = plus_term();
+				register_var(ident, t_num{});
+
+				return std::make_shared<ExprASTAssign<t_num>>(
+					ident, assign_val);
 			}
 
 			// variable lookup
@@ -1252,9 +1453,14 @@ protected:
 			{
 				// register the variable if it doesn't exist yet
 				if(m_vars.find(ident) == m_vars.end() &&
-					m_consts.find(ident) == m_consts.end() &&
-					m_autoregister_var)
-					register_var(ident, t_num{});
+					m_consts.find(ident) == m_consts.end())
+				{
+					if(m_autoregister_var)
+						register_var(ident, t_num{});
+					else
+						m_unknown_vars.insert(ident);
+				}
+
 				return std::make_shared<ExprASTVar<t_num>>(ident);
 			}
 		}
@@ -1270,26 +1476,29 @@ public:
 	// register a function with no parameters
 	void register_func0(const std::string& name, t_num(*fkt)())
 	{
-		m_funcs0.emplace(std::make_pair(name, static_cast<t_num(*)()>(fkt)));
+		m_funcs0.emplace(std::make_pair(
+			name, static_cast<t_num(*)()>(fkt)));
 	}
 
 
 	// register a function with one parameter
 	void register_func1(const std::string& name, t_num(*fkt)(t_num))
 	{
-		m_funcs1.emplace(std::make_pair(name, static_cast<t_num(*)(t_num)>(fkt)));
+		m_funcs1.emplace(std::make_pair(
+			name, static_cast<t_num(*)(t_num)>(fkt)));
 	}
 
 
 	// register a function with two parameters
 	void register_func2(const std::string& name, t_num(*fkt)(t_num, t_num))
 	{
-		m_funcs2.emplace(std::make_pair(name, static_cast<t_num(*)(t_num, t_num)>(fkt)));
+		m_funcs2.emplace(std::make_pair(
+			name, static_cast<t_num(*)(t_num, t_num)>(fkt)));
 	}
 
 
 	// register a variable
-	void register_var(const std::string& name, t_num val)
+	void register_var(const std::string& name, t_num val) const
 	{
 		// overwrite value if key already exists
 		if(auto [iter, ok] = m_vars.emplace(std::make_pair(name, val)); !ok)
@@ -1332,22 +1541,26 @@ public:
 
 private:
 	// debug output
-	bool m_debug = false;
+	bool m_debug{ false };
 
 	// interpret invalid input as 0
-	bool m_invalid_0 = true;
+	bool m_invalid_0{ true };
 
 	// automatically register unknown variable
-	bool m_autoregister_var = true;
+	bool m_autoregister_var{ true };
+	std::unordered_set<std::string> m_unknown_vars{};
 
 	// ast root
-	std::shared_ptr<ExprAST<t_num>> m_ast{};
+	using t_ast = std::shared_ptr<ExprAST<t_num>>;
+	std::vector<t_ast> m_asts{};
 
 	// generated code
-	std::vector<std::uint8_t> m_code{};
+	using t_code = std::vector<std::uint8_t>;
+	std::vector<t_code> m_codes{};
 
 	// variables and constants
-	std::unordered_map<std::string, t_num> m_vars{}, m_consts{};
+	mutable std::unordered_map<std::string, t_num> m_vars{};
+	std::unordered_map<std::string, t_num> m_consts{};
 
 	// functions
 	std::unordered_map<std::string, t_num(*)()> m_funcs0{};
@@ -1359,8 +1572,8 @@ private:
 
 	// lookahead token
 	int m_lookahead = (int)Token::TOK_INVALID;
-	t_num m_lookahead_val = 0;
-	std::string m_lookahead_text = "";
+	t_num m_lookahead_val{};
+	std::string m_lookahead_text{};
 };
 
 

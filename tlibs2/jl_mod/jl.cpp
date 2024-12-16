@@ -219,7 +219,8 @@ static inline bool _invoke_minimise(void *_pFkt,
 	const std::vector<bool>& vecFixed)
 {
 	auto *pFkt = reinterpret_cast<tl2::t_fkt_vararg<t_real, iNumArgs>>(_pFkt);
-	return tl2::minimise<tl2::t_real_min, iNumArgs>(pFkt, vecParamNames, vecVals, vecErrs, &vecFixed, g_bDebug);
+	return tl2::minimise<tl2::t_real_min, iNumArgs>(pFkt, vecParamNames, vecVals, vecErrs,
+		&vecFixed, nullptr, nullptr, g_bDebug);
 }
 
 

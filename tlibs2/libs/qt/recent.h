@@ -82,7 +82,7 @@ private:
 	std::size_t m_maxRecentFiles{ 16 };
 
 	// recent file menu
-	QMenu* m_menuOpenRecent{ nullptr };
+	QMenu* m_menuOpenRecent{};
 
 	// recent file list
 	QStringList m_recentFiles{};
@@ -94,7 +94,7 @@ private:
 	QStringList m_forbiddenDirs{};
 
 	// function to be called when the menu element is clicked
-	const std::function<bool(const QString& filename)>* m_open_func{ nullptr };
+	const std::function<bool(const QString& filename)>* m_open_func{};
 };
 
 

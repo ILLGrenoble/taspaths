@@ -25,7 +25,7 @@
  * ----------------------------------------------------------------------------
  */
 
-#define BOOST_TEST_MODULE La1
+#define BOOST_TEST_MODULE Mat2
 #include <boost/test/included/unit_test.hpp>
 namespace test = boost::unit_test;
 namespace testtools = boost::test_tools;
@@ -47,6 +47,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_mat2, t_real, t_types)
 	using t_vec_cplx = tl2::vec<t_cplx, std::vector>;
 	using t_mat_cplx = tl2::mat<t_cplx, std::vector>;
 
+	const t_real eps = 1e-4;
+
 
 	{
 		auto M = tl2::create<t_mat>({
@@ -60,7 +62,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_mat2, t_real, t_types)
 		std::cout << "M = " << M << std::endl;
 		std::cout << "|M| = " << det << std::endl;
 
-		BOOST_TEST(tl2::equals<t_real>(det, 15., 1e-4));
+		BOOST_TEST(tl2::equals<t_real>(det, 15., eps));
+
+
+		// test splitting
+		auto [M_S, M_A] = tl2::split_symm(M);
+		BOOST_TEST(tl2::equals<t_mat>(M, M_S + M_A, eps));
 	}
 
 
@@ -76,7 +83,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_mat2, t_real, t_types)
 		std::cout << "M = " << M << std::endl;
 		std::cout << "|M| = " << det << std::endl;
 
-		BOOST_TEST(tl2::equals<t_real>(det, -15., 1e-4));
+		BOOST_TEST(tl2::equals<t_real>(det, -15., eps));
+
+
+		// test splitting
+		auto [M_S, M_A] = tl2::split_symm(M);
+		BOOST_TEST(tl2::equals<t_mat>(M, M_S + M_A, eps));
 	}
 
 
@@ -92,6 +104,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_mat2, t_real, t_types)
 		std::cout << "M = " << M << std::endl;
 		std::cout << "|M| = " << det << std::endl;
 
-		BOOST_TEST(tl2::equals<t_cplx>(det, 15., 1e-4));
+		BOOST_TEST(tl2::equals<t_cplx>(det, 15., eps));
+
+
+		// test splitting
+		auto [M_S, M_A] = tl2::split_symm(M);
+		BOOST_TEST(tl2::equals<t_mat_cplx>(M, M_S + M_A, eps));
 	}
 }

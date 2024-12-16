@@ -36,6 +36,7 @@ namespace testtools = boost::test_tools;
 #include <vector>
 #include <random>
 
+#include "libs/algos.h"
 #include "libs/maths.h"
 
 

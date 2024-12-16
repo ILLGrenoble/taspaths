@@ -4,8 +4,6 @@
  * @date 28-mar-20
  * @license GPLv3, see 'LICENSE' file
  *
- * g++-10 -std=c++20 -I.. -o expr expr.cpp ../libs/log.cpp
- *
  * ----------------------------------------------------------------------------
  * tlibs
  * Copyright (C) 2017-2021  Tobias WEBER (Institut Laue-Langevin (ILL),
@@ -44,74 +42,118 @@ using t_types_int = std::tuple<int, long>;
 using t_types_cplx = std::tuple<std::complex<double>, std::complex<float>>;
 
 
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_expr_real, t_real, t_types_real)
 {
 	static constexpr t_real eps = 1e-6;
-	tl2::ExprParser<t_real> parser;
 
-	bool ok = parser.parse("1 + 2*3");
-	auto result = parser.eval();
-	BOOST_TEST(ok);
-	BOOST_TEST(tl2::equals<t_real>(result, 7, eps));
+	for(bool codegen : { false, true })
+	{
+		tl2::ExprParser<t_real> parser;
+		//parser.SetDebug(true);
 
-	ok = parser.parse("4 + 5*6");
-	result = parser.eval();
-	BOOST_TEST(ok);
-	BOOST_TEST(tl2::equals<t_real>(result, 34, eps));
+		bool ok = parser.parse("1 + 2*3", codegen);
+		auto result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_real>(result, 7, eps));
 
-	ok = parser.parse(" - (sqrt(4)-5)^3 - 5/2 ");
-	result = parser.eval();
-	BOOST_TEST(ok);
-	BOOST_TEST(tl2::equals<t_real>(result, 24.5, eps));
+		ok = parser.parse("4 + 5*6", codegen);
+		result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_real>(result, 34, eps));
 
-	ok = parser.parse("-cos(sin(1.23*pi))^(-1.2 + 3.2)");
-	result = parser.eval();
-	BOOST_TEST(ok);
-	BOOST_TEST(tl2::equals<t_real>(result, -0.6228, 1e-3));
+		ok = parser.parse(" - (sqrt(4)-5)^3 - 5/2 ", codegen);
+		result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_real>(result, 24.5, eps));
 
-	ok = parser.parse("-1.23e1 + 5e-4");
-	result = parser.eval();
-	BOOST_TEST(ok);
-	BOOST_TEST(tl2::equals<t_real>(result, -12.2995, 1e-3));
+		ok = parser.parse("-cos(sin(1.23*pi))^(-1.2 + 3.2)", codegen);
+		result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_real>(result, -0.6228, 1e-3));
+
+		ok = parser.parse("-1.23e1 + 5e-4", codegen);
+		result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_real>(result, -12.2995, 1e-3));
+
+		ok = parser.parse("a = 4 + 5*6", codegen);
+		result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_real>(result, 34, eps));
+
+		ok = parser.parse("a", codegen);
+		result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_real>(result, 34, eps));
+
+		ok = parser.parse("b = 12 + 34*56 - 20; b + 4;", codegen);
+		result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_real>(result, 1900, eps));
+
+		ok = parser.parse("x = 12 + 5; y = 4 * 2; x * y", codegen);
+		result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_real>(result, 136, eps));
+	}
 }
 
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_expr_cplx, t_cplx, t_types_cplx)
 {
 	using t_real = typename t_cplx::value_type;
-
 	static constexpr t_real eps = 1e-5;
-	tl2::ExprParser<t_cplx> parser;
 
-	bool ok = parser.parse("imag * imag");
-	auto result = parser.eval();
-	BOOST_TEST(ok);
-	BOOST_TEST(tl2::equals<t_cplx>(result, -1, eps));
+	for(bool codegen : { false, true })
+	{
+		tl2::ExprParser<t_cplx> parser;
 
-	ok = parser.parse("1 + 2*3");
-	result = parser.eval();
-	BOOST_TEST(ok);
-	BOOST_TEST(tl2::equals<t_cplx>(result, 7, eps));
+		bool ok = parser.parse("imag * imag", codegen);
+		auto result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_cplx>(result, -1, eps));
 
-	ok = parser.parse("4 + 5*6");
-	result = parser.eval();
-	BOOST_TEST(ok);
-	BOOST_TEST(tl2::equals<t_cplx>(result, 34, eps));
+		ok = parser.parse("1 + 2*3", codegen);
+		result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_cplx>(result, 7, eps));
 
-	ok = parser.parse(" - (sqrt(4)-5)^3 - 5/2 ");
-	result = parser.eval();
-	BOOST_TEST(ok);
-	BOOST_TEST(tl2::equals<t_cplx>(result, 24.5, eps));
+		ok = parser.parse("4 + 5*6", codegen);
+		result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_cplx>(result, 34, eps));
 
-	ok = parser.parse("-cos(sin(1.23*pi))^(-1.2 + 3.2)");
-	result = parser.eval();
-	BOOST_TEST(ok);
-	BOOST_TEST(tl2::equals<t_cplx>(result, -0.6228, 1e-3));
+		ok = parser.parse(" - (sqrt(4)-5)^3 - 5/2 ", codegen);
+		result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_cplx>(result, 24.5, eps));
 
-	ok = parser.parse("-1.23e1 + 5e-4");
-	result = parser.eval();
-	BOOST_TEST(ok);
-	BOOST_TEST(tl2::equals<t_cplx>(result, -12.2995, 1e-3));
+		ok = parser.parse("-cos(sin(1.23*pi))^(-1.2 + 3.2)", codegen);
+		result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_cplx>(result, -0.6228, 1e-3));
+
+		ok = parser.parse("-1.23e1 + 5e-4", codegen);
+		result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_cplx>(result, -12.2995, 1e-3));
+
+		ok = parser.parse("a = imag * imag", codegen);
+		result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_cplx>(result, -1, eps));
+
+		ok = parser.parse("a", codegen);
+		result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_cplx>(result, -1, eps));
+
+		ok = parser.parse("b = 5 * imag * imag; b + 1;", codegen);
+		result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(tl2::equals<t_cplx>(result, -4, eps));
+	}
 }
 
 
@@ -128,15 +170,18 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_expr_func, t_real, t_types_real)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_expr_int, t_int, t_types_int)
 {
-	tl2::ExprParser<t_int> parser;
+	for(bool codegen : { false, true })
+	{
+		tl2::ExprParser<t_int> parser;
 
-	bool ok = parser.parse("1 + 2*3");
-	t_int result = parser.eval();
-	BOOST_TEST(ok);
-	BOOST_TEST(result == 7);
+		bool ok = parser.parse("1 + 2*3", codegen);
+		t_int result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(result == 7);
 
-	ok = parser.parse("4 + 5*6");
-	result = parser.eval();
-	BOOST_TEST(ok);
-	BOOST_TEST(result == 34);
+		ok = parser.parse("4 + 5*6", codegen);
+		result = parser.eval();
+		BOOST_TEST(ok);
+		BOOST_TEST(result == 34);
+	}
 }

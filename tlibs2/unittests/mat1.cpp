@@ -42,14 +42,10 @@ using namespace tl2_ops;
 using t_types = std::tuple<double, float>;
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_mat1, t_real, t_types)
 {
-	//using t_cplx = std::complex<t_real>;
 	using t_vec = std::vector<t_real>;
-	//using t_mat = tl2::mat<t_real, std::vector>;
-	//using t_vec_cplx = std::vector<t_cplx>;
-	//using t_mat_cplx = tl2::mat<t_cplx, std::vector>;
 
 
-	std::cout << tl2::stoval<unsigned int>("123") << std::endl;
+	std::cout << tl2::stoval<unsigned int>(std::string("123")) << std::endl;
 
 	std::vector vec1{{
 		tl2::create<t_vec>({1, 2, 3, 4, 5, 6, 7, 8, 9, 10}),

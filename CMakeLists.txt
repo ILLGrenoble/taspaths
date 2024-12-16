@@ -30,9 +30,9 @@ enable_language(CXX)
 
 
 list(APPEND CMAKE_MODULE_PATH
-	"${PROJECT_SOURCE_DIR}"
-	"${PROJECT_SOURCE_DIR}/cmake"
-	"${PROJECT_SOURCE_DIR}/tlibs2/cmake"
+	${PROJECT_SOURCE_DIR}
+	${PROJECT_SOURCE_DIR}/cmake
+	${PROJECT_SOURCE_DIR}/tlibs2/cmake
 )
 
 #if(NOT "$ENV{LOCAL_BOOST_CMAKE_DIR}" STREQUAL "")
@@ -45,7 +45,7 @@ list(APPEND CMAKE_MODULE_PATH
 
 
 option(USE_QT6 "use qt 6" FALSE)
-option(USE_LAPACK "use lapack" TRUE)
+option(USE_LAPACK "use lapack" FALSE)
 option(USE_OVD "use openvoronoi" FALSE)
 option(USE_CGAL "use cgal" TRUE)
 option(USE_OCV "use opencv" TRUE)
@@ -123,13 +123,13 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	add_compile_options(-mmacosx-version-min=11.0)
 endif()
 
-include_directories("${PROJECT_SOURCE_DIR}")
-include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/externals")
+include_directories(${PROJECT_SOURCE_DIR})
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/externals)
 
 if(QT_VER EQUAL 6)
-	include_directories("${Qt6Core_INCLUDE_DIRS}/..")
+	include_directories(${Qt6Core_INCLUDE_DIRS}/..)
 elseif(QT_VER EQUAL 5)
-	include_directories("${Qt5Core_INCLUDE_DIRS}/..")
+	include_directories(${Qt5Core_INCLUDE_DIRS}/..)
 endif()
 # -----------------------------------------------------------------------------
 
@@ -145,23 +145,23 @@ set(Boost_FIND_QUIETLY FALSE)
 
 find_package(Boost REQUIRED COMPONENTS filesystem${BOOST_SUFFIX})
 message("Using Boost version ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION}.")
-include_directories("${Boost_INCLUDE_DIRS}/..")
+include_directories(${Boost_INCLUDE_DIRS}/..)
 
 
 find_package(Qhull)
 if(Qhull_FOUND)
 	add_definitions(-DUSE_QHULL)
-	include_directories(BEFORE SYSTEM "${Qhull_INCLUDE_DIRS}" "${Qhull_INCLUDE_DIRS}/..")
+	include_directories(BEFORE SYSTEM ${Qhull_INCLUDE_DIRS} ${Qhull_INCLUDE_DIRS}/..)
 endif()
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 	# hard-code the library path for mingw
-	set(QCP_LIBRARIES "${PROJECT_SOURCE_DIR}/externals/qcustomplot/libqcustomplot.dll")
+	set(QCP_LIBRARIES ${PROJECT_SOURCE_DIR}/externals/qcustomplot/libqcustomplot.dll)
 else()
 	find_package(QCP)
 	if(QCP_FOUND)
-		include_directories("${QCP_INCLUDE_DIRS}")
+		include_directories(${QCP_INCLUDE_DIRS})
 	endif()
 endif()
 
@@ -171,7 +171,7 @@ if(USE_OVD)
 	if(OVD_FOUND)
 		message("Openvoronoi enabled.")
 		add_definitions(-DUSE_OVD)
-		include_directories("${OVD_INCLUDE_DIRS}")
+		include_directories(${OVD_INCLUDE_DIRS})
 	else()
 		message("Openvoronoi disabled.")
 		set(OVD_LIBRARIES "")
@@ -185,7 +185,7 @@ if(USE_OCV)
 	if(OpenCV_FOUND)
 		message("OpenCV enabled.")
 		add_definitions(-DUSE_OCV)
-		include_directories("${OpenCV_INCLUDE_DIRS}")
+		include_directories(${OpenCV_INCLUDE_DIRS})
 	else()
 		message("OpenCV disabled.")
 	endif()
@@ -204,7 +204,7 @@ if(USE_LAPACK)
 	if(Lapacke_FOUND)
 		message("Lapacke enabled.")
 		add_definitions(-DUSE_LAPACK)
-		include_directories("${Lapacke_INCLUDE_DIRS}")
+		include_directories(${Lapacke_INCLUDE_DIRS})
 	else()
 		message("Lapacke disabled.")
 	endif()
@@ -232,7 +232,8 @@ if(USE_PY)
 		target_link_libraries(taspaths_py
 			taspaths_core
 			Python3::Python Threads::Threads
-			"${Boost_LIBRARIES}" "${Lapacke_LIBRARIES}"
+			${Boost_LIBRARIES}
+			${Lapacke_LIBRARIES}
 		)
 	endif()
 else()
@@ -270,7 +271,7 @@ add_compile_options(${Boost_CXX_FLAGS})
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
 	# disable some warnings for generated source files
-	set_source_files_properties("${PROJECT_BINARY_DIR}/taspaths_autogen/mocs_compilation.cpp"
+	set_source_files_properties(${PROJECT_BINARY_DIR}/taspaths_autogen/mocs_compilation.cpp
 		PROPERTIES COMPILE_FLAGS "-Wno-effc++")
 endif()
 # -----------------------------------------------------------------------------
@@ -300,11 +301,11 @@ set_property(TARGET taspaths_core
 	PROPERTY POSITION_INDEPENDENT_CODE True)
 
 target_link_libraries(taspaths_core
-	"${Boost_LIBRARIES}"
-	"${Lapacke_LIBRARIES}"
-	#"${Qhull_LIBRARIES}"
-	"${CGAL_LIBRARIES}"
-	"${OpenCV_LIBRARIES}"
+	${Boost_LIBRARIES}
+	${Lapacke_LIBRARIES}
+	#${Qhull_LIBRARIES}
+	${CGAL_LIBRARIES}
+	${OpenCV_LIBRARIES}
 	Threads::Threads
 )
 # -----------------------------------------------------------------------------
@@ -423,16 +424,16 @@ endif()
 
 target_link_libraries(taspaths
 	taspaths_core
-	"${Boost_LIBRARIES}"
-	"${Lapacke_LIBRARIES}"
-	"${Qhull_LIBRARIES}"
-	"${CGAL_LIBRARIES}"
-	"${OpenCV_LIBRARIES}"
-	"${OVD_LIBRARIES}"
-	"${MINGW_WINSOCK}"
+	${Boost_LIBRARIES}
+	${Lapacke_LIBRARIES}
+	${Qhull_LIBRARIES}
+	${CGAL_LIBRARIES}
+	${OpenCV_LIBRARIES}
+	${OVD_LIBRARIES}
+	${MINGW_WINSOCK}
 	Threads::Threads
-	"${QtAllLibraries}"
-	"${QCP_LIBRARIES}"
+	${QtAllLibraries}
+	${QCP_LIBRARIES}
 )
 
 
@@ -453,29 +454,29 @@ if(BUILD_TEST_TOOLS)
 
 
 	target_link_libraries(taspaths-hull
-		"${Boost_LIBRARIES}"
-		"${Lapacke_LIBRARIES}"
-		"${Qhull_LIBRARIES}"
+		${Boost_LIBRARIES}
+		${Lapacke_LIBRARIES}
+		${Qhull_LIBRARIES}
 		##/usr/x86_64-w64-mingw32/sys-root/mingw/lib/libqhullstatic.a
 		#/usr/x86_64-w64-mingw32/sys-root/mingw/lib/libqhullstatic_r.a
 		##/usr/x86_64-w64-mingw32/sys-root/mingw/lib/libqhullcpp.a
-		"${QtBaseLibraries}"
+		${QtBaseLibraries}
 	)
 
 	target_link_libraries(taspaths-lines
-		"${Boost_LIBRARIES}"
-		"${Lapacke_LIBRARIES}"
-		"${CGAL_LIBRARIES}"
-		"${OVD_LIBRARIES}"
-		"${MINGW_WINSOCK}"
+		${Boost_LIBRARIES}
+		${Lapacke_LIBRARIES}
+		${CGAL_LIBRARIES}
+		${OVD_LIBRARIES}
+		${MINGW_WINSOCK}
 		Threads::Threads
-		"${QtBaseLibraries}"
+		${QtBaseLibraries}
 	)
 
 	target_link_libraries(taspaths-poly
-		"${Boost_LIBRARIES}"
-		"${Lapacke_LIBRARIES}"
-		"${QtBaseLibraries}"
+		${Boost_LIBRARIES}
+		${Lapacke_LIBRARIES}
+		${QtBaseLibraries}
 	)
 endif()
 

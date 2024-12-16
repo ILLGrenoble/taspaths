@@ -1,8 +1,7 @@
 /**
- * tlibs2
- * physics library
+ * tlibs2 -- physics library
  * @author Tobias Weber <tobias.weber@tum.de>, <tweber@ill.fr>
- * @date 2012 - 2023
+ * @date 2012 - 2024
  * @license GPLv3, see 'LICENSE' file
  *
  * @note Forked on 7-Nov-2018 from my privately and TUM-PhD-developed "tlibs" project (https://github.com/t-weber/tlibs).
@@ -13,7 +12,7 @@
  *
  * ----------------------------------------------------------------------------
  * tlibs
- * Copyright (C) 2017-2023  Tobias WEBER (Institut Laue-Langevin (ILL),
+ * Copyright (C) 2017-2024  Tobias WEBER (Institut Laue-Langevin (ILL),
  *                          Grenoble, France).
  * Copyright (C) 2015-2017  Tobias WEBER (Technische Universitaet Muenchen
  *                          (TUM), Garching, Germany).
@@ -71,10 +70,10 @@ template<class T = double> constexpr T E2KSQ = T(1) / KSQ2E<T>;
  * n dG = 2dk sin(th) + 2k cos(th) dth
  * dG/G = dk/k + cos(th)/sin(th) dth
  */
-template<class Sys, class Y=double>
-Y bragg_diff(Y dDoverD, const t_angle<Sys,Y>& theta, Y dTheta)
+template<class Sys, class T = double>
+T bragg_diff(T dDoverD, const t_angle<Sys, T>& theta, T dTheta)
 {
-	Y dLamOverLam = dDoverD + units::cos(theta)/units::sin(theta) * dTheta;
+	T dLamOverLam = dDoverD + units::cos(theta)/units::sin(theta) * dTheta;
 	return dLamOverLam;
 }
 
@@ -95,20 +94,20 @@ Y bragg_diff(Y dDoverD, const t_angle<Sys,Y>& theta, Y dTheta)
  * using: dE = Ei - Ef, Ef = Ei - dE
  * Q^2 = [2 Ei - dE - 2 sqrt(Ei (Ei - dE)) cos 2th] * 2 mn / hbar^2
  */
-template<class Sys, class Y>
-t_wavenumber<Sys,Y> kinematic_plane(bool bFixedKi,
-	const t_energy<Sys,Y>& EiEf, const t_energy<Sys,Y>& DeltaE,
-	const t_angle<Sys,Y>& twotheta)
+template<class Sys, class T = double>
+t_wavenumber<Sys, T> kinematic_plane(bool bFixedKi,
+	const t_energy<Sys, T>& EiEf, const t_energy<Sys, T>& DeltaE,
+	const t_angle<Sys, T>& twotheta)
 {
-	t_energy<Sys,Y> dE = DeltaE;
+	t_energy<Sys, T> dE = DeltaE;
 	if(bFixedKi)
 		dE = -dE;
 
-	auto c = Y(2.)*m_n<Y> / (hbar<Y>*hbar<Y>);
-	t_wavenumber<Sys,Y> Q =
-		my_units_sqrt<t_wavenumber<Sys,Y>>(c *
-			(Y(2.)*EiEf + dE - Y(2.)*units::cos(twotheta) *
-			my_units_sqrt<t_wavenumber<Sys,Y>>(EiEf*(EiEf + dE))));
+	auto c = T(2.)*m_n<T> / (hbar<T>*hbar<T>);
+	t_wavenumber<Sys, T> Q =
+		my_units_sqrt<t_wavenumber<Sys, T>>(c *
+			(T(2.)*EiEf + dE - T(2.)*units::cos(twotheta) *
+			my_units_sqrt<t_wavenumber<Sys, T>>(EiEf*(EiEf + dE))));
 
 	return Q;
 }
@@ -123,30 +122,30 @@ t_wavenumber<Sys,Y> kinematic_plane(bool bFixedKi,
  *   equ = (Q^2 -2*Ei*c + dE*c)^2 == 4*Ei*(Ei-dE)*c^2*ctt^2
  *   equ.solve(dE)
  */
-template<class Sys, class Y>
-t_energy<Sys,Y> kinematic_plane(bool bFixedKi, bool bBranch,
-	const t_energy<Sys,Y>& EiEf, const t_wavenumber<Sys,Y>& Q,
-	const t_angle<Sys,Y>& twotheta)
+template<class Sys, class T = double>
+t_energy<Sys, T> kinematic_plane(bool bFixedKi, bool bBranch,
+	const t_energy<Sys, T>& EiEf, const t_wavenumber<Sys, T>& Q,
+	const t_angle<Sys, T>& twotheta)
 {
 	using t_cE = units::quantity<units::unit<typename units::derived_dimension<
 		units::length_base_dimension, -2>::type,
-		Sys>, Y>;
+		Sys>, T>;
 
-	auto c = Y(2.)*m_n<Y> / (hbar<Y>*hbar<Y>);
+	auto c = T(2.)*m_n<T> / (hbar<T>*hbar<T>);
 	auto c2 = c*c;
 	auto EiEf2 = EiEf*EiEf;
 
-	Y ctt = units::cos(twotheta);
-	Y ctt2 = ctt*ctt;
+	T ctt = units::cos(twotheta);
+	T ctt2 = ctt*ctt;
 
-	Y dSign = bBranch ? Y(1.) : Y(-1.);
-	Y dSignFixedKf = bFixedKi ? Y(-1.) : Y(1.);
+	T dSign = bBranch ? T(1.) : T(-1.);
+	T dSignFixedKf = bFixedKi ? T(-1.) : T(1.);
 
-	t_energy<Sys,Y> dE =
-		dSignFixedKf*Y(2.) * EiEf * ctt2
-		- dSignFixedKf*Y(2.) * EiEf
+	t_energy<Sys, T> dE =
+		dSignFixedKf*T(2.) * EiEf * ctt2
+		- dSignFixedKf*T(2.) * EiEf
 		+ dSignFixedKf * Q*Q / c
-		+ dSign*Y(2.) * ctt/c * my_units_sqrt<t_cE>(
+		+ dSign*T(2.) * ctt/c * my_units_sqrt<t_cE>(
 			c2*ctt2*EiEf2 - c2*EiEf2 + c*EiEf*Q*Q);
 
 	return dE;
@@ -170,7 +169,7 @@ t_energy<Sys,Y> kinematic_plane(bool bFixedKi, bool bBranch,
  * 2*<ki|kf> = ki^2 + kf^2 - Q^2
  * cos phi = (ki^2 + kf^2 - Q^2) / (2 ki kf)
  */
-template<typename t_real>
+template<typename t_real = double>
 std::optional<t_real> calc_tas_angle_ki_kf(
 	t_real ki, t_real kf, t_real Q, t_real sense = 1)
 {
@@ -185,16 +184,16 @@ std::optional<t_real> calc_tas_angle_ki_kf(
  * angle between ki and kf in the scattering triangle (a4)
  * (version with units)
  */
-template<class Sys, class Y>
-t_angle<Sys,Y> calc_tas_angle_ki_kf(const t_wavenumber<Sys,Y>& ki,
-	const t_wavenumber<Sys,Y>& kf, const t_wavenumber<Sys,Y>& Q,
+template<class Sys, class T = double>
+t_angle<Sys, T> calc_tas_angle_ki_kf(const t_wavenumber<Sys, T>& ki,
+	const t_wavenumber<Sys, T>& kf, const t_wavenumber<Sys, T>& Q,
 	bool bPosSense = true)
 {
-	t_dimensionless<Sys,Y> ttCos = (ki*ki + kf*kf - Q*Q)/(Y(2.)*ki*kf);
-	if(units::abs(ttCos) > Y(1.))
+	t_dimensionless<Sys, T> ttCos = (ki*ki + kf*kf - Q*Q)/(T(2.)*ki*kf);
+	if(units::abs(ttCos) > T(1.))
 		throw std::runtime_error("Scattering triangle not closed.");
 
-	t_angle<Sys,Y> tt = units::acos(ttCos);
+	t_angle<Sys, T> tt = units::acos(ttCos);
 
 	if(!bPosSense)
 		tt = -tt;
@@ -212,7 +211,7 @@ t_angle<Sys,Y> calc_tas_angle_ki_kf(const t_wavenumber<Sys,Y>& ki,
  * 2*<ki|Q> = ki^2 + Q^2 - kf^2
  * cos phi = (ki^2 + Q^2 - kf^2) / (2 ki*Q)
  */
-template<typename t_real>
+template<typename t_real = double>
 std::optional<t_real> calc_tas_angle_ki_Q(
 	t_real ki, t_real kf, t_real Q, t_real sense = 1)
 {
@@ -227,30 +226,30 @@ std::optional<t_real> calc_tas_angle_ki_Q(
  * angle between ki and Q in the scattering triangle
  * (version with units)
  */
-template<class Sys, class Y>
-t_angle<Sys,Y> calc_tas_angle_ki_Q(const t_wavenumber<Sys,Y>& ki,
-	const t_wavenumber<Sys,Y>& kf,
-	const t_wavenumber<Sys,Y>& Q,
+template<class Sys, class T = double>
+t_angle<Sys, T> calc_tas_angle_ki_Q(const t_wavenumber<Sys, T>& ki,
+	const t_wavenumber<Sys, T>& kf,
+	const t_wavenumber<Sys, T>& Q,
 	bool bPosSense = true,
 	bool bAngleOutsideTriag = false)
 {
-	t_angle<Sys,Y> angle;
+	t_angle<Sys, T> angle;
 
-	if(Q*angstrom<Y> == Y(0.))
+	if(Q*angstrom<T> == T(0.))
 	{
-		angle = pi<Y>/Y(2) * radians<Y>;
+		angle = pi<T>/T(2) * radians<T>;
 	}
 	else
 	{
-		auto c = (ki*ki - kf*kf + Q*Q) / (Y(2.)*ki*Q);
-		if(units::abs(c) > Y(1.))
+		auto c = (ki*ki - kf*kf + Q*Q) / (T(2.)*ki*Q);
+		if(units::abs(c) > T(1.))
 			throw std::runtime_error("Scattering triangle not closed.");
 
 		angle = units::acos(c);
 	}
 
 	if(bAngleOutsideTriag)
-		angle = pi<Y>*radians<Y> - angle;
+		angle = pi<T>*radians<T> - angle;
 	if(!bPosSense)
 		angle = -angle;
 
@@ -267,28 +266,28 @@ t_angle<Sys,Y> calc_tas_angle_ki_Q(const t_wavenumber<Sys,Y>& ki,
  * ki^2 = Q^2 + kf^2 + 2Q kf cos th
  * cos th = (ki^2 - Q^2 - kf^2) / (2Q kf)
  */
-template<class Sys, class Y>
-t_angle<Sys,Y> calc_tas_angle_kf_Q(const t_wavenumber<Sys,Y>& ki,
-	const t_wavenumber<Sys,Y>& kf,
-	const t_wavenumber<Sys,Y>& Q,
+template<class Sys, class T = double>
+t_angle<Sys, T> calc_tas_angle_kf_Q(const t_wavenumber<Sys, T>& ki,
+	const t_wavenumber<Sys, T>& kf,
+	const t_wavenumber<Sys, T>& Q,
 	bool bPosSense = true,
 	bool bAngleOutsideTriag = true)
 {
-	t_angle<Sys,Y> angle;
+	t_angle<Sys, T> angle;
 
-	if(Q*angstrom<Y> == Y(0.))
-		angle = pi<Y>/Y(2) * radians<Y>;
+	if(Q*angstrom<T> == T(0.))
+		angle = pi<T>/T(2) * radians<T>;
 	else
 	{
-		auto c = (ki*ki - kf*kf - Q*Q) / (Y(2.)*kf*Q);
-		if(units::abs(c) > Y(1.))
+		auto c = (ki*ki - kf*kf - Q*Q) / (T(2.)*kf*Q);
+		if(units::abs(c) > T(1.))
 			throw std::runtime_error("Scattering triangle not closed.");
 
 		angle = units::acos(c);
 	}
 
 	if(!bAngleOutsideTriag)
-		angle = pi<Y>*radians<Y> - angle;
+		angle = pi<T>*radians<T> - angle;
 	if(!bPosSense)
 		angle = -angle;
 
@@ -302,7 +301,7 @@ t_angle<Sys,Y> calc_tas_angle_kf_Q(const t_wavenumber<Sys,Y>& ki,
  * Q^2 = ki^2 + kf^2 - 2*<ki|kf>
  * Q^2 = ki^2 + kf^2 - 2*ki*kf*cos(a4)
  */
-template<typename t_real>
+template<typename t_real = double>
 t_real calc_tas_Q_len(t_real ki, t_real kf, t_real a4)
 {
 	t_real Qsq = ki*ki + kf*kf - t_real(2)*ki*kf*std::cos(a4);
@@ -313,21 +312,21 @@ t_real calc_tas_Q_len(t_real ki, t_real kf, t_real a4)
 /**
  * get length of Q (version with units)
  */
-template<class Sys, class Y>
-t_wavenumber<Sys,Y>
-calc_tas_Q_len(const t_wavenumber<Sys,Y>& ki,
-	const t_wavenumber<Sys,Y>& kf, const t_angle<Sys,Y>& tt)
+template<class Sys, class T = double>
+t_wavenumber<Sys, T>
+calc_tas_Q_len(const t_wavenumber<Sys, T>& ki,
+	const t_wavenumber<Sys, T>& kf, const t_angle<Sys, T>& tt)
 {
-	t_dimensionless<Sys,Y> ctt = units::cos(tt);
-	decltype(ki*ki) Qsq = ki*ki + kf*kf - Y(2.)*ki*kf*ctt;
+	t_dimensionless<Sys, T> ctt = units::cos(tt);
+	decltype(ki*ki) Qsq = ki*ki + kf*kf - T(2.)*ki*kf*ctt;
 
-	if(Y(Qsq*angstrom<Y>*angstrom<Y>) < Y(0.))
+	if(T(Qsq*angstrom<T>*angstrom<T>) < T(0.))
 	{
 		// TODO
 		Qsq = -Qsq;
 	}
 
-	t_wavenumber<Sys,Y> Q = my_units_sqrt<t_wavenumber<Sys,Y>>(Qsq);
+	t_wavenumber<Sys, T> Q = my_units_sqrt<t_wavenumber<Sys, T>>(Qsq);
 	return Q;
 }
 
@@ -345,7 +344,7 @@ std::tuple<bool, t_real, t_real, t_real> calc_tas_a3a4(
 requires is_basic_mat<t_mat> && is_basic_vec<t_vec>
 {
 	// metric from crystal B matrix
-	t_mat G = tl2::metric<t_mat>(B);
+	t_mat G = metric<t_mat>(B);
 
 	// length of Q vector
 	t_real Q_len_lab = norm<t_mat, t_vec>(G, Q_rlu);
@@ -429,7 +428,7 @@ requires is_basic_mat<t_mat> && is_basic_vec<t_vec>
  * n pi / k = d sin(theta)
  * theta = asin(n pi / (k d))
  */
-template<class t_real>
+template<class t_real = double>
 std::optional<t_real> calc_tas_a1(t_real k, t_real d)
 {
 	t_real sintheta = pi<t_real> / (k*d);
@@ -444,17 +443,17 @@ std::optional<t_real> calc_tas_a1(t_real k, t_real d)
  * (version with units)
  * @see https://en.wikipedia.org/wiki/Bragg's_law
  */
-template<class Sys, class Y>
-t_angle<Sys,Y> calc_tas_a1(const t_wavenumber<Sys,Y>& k,
-	const t_length<Sys,Y>& d, bool bPosSense = true)
+template<class Sys, class T = double>
+t_angle<Sys, T> calc_tas_a1(const t_wavenumber<Sys, T>& k,
+	const t_length<Sys, T>& d, bool bPosSense = true)
 {
-	const Y order = Y(1.);
-	t_length<Sys,Y> lam = Y(2.)*pi<Y> / k;
-	auto dS = order*lam/(Y(2.)*d);
-	if(std::abs(Y(dS)) > Y(1))
+	const T order = T(1.);
+	t_length<Sys, T> lam = T(2.)*pi<T> / k;
+	auto dS = order*lam/(T(2.)*d);
+	if(std::abs(T(dS)) > T(1))
 		throw std::runtime_error("Invalid twotheta angle.");
 
-	t_angle<Sys,Y> theta = units::asin(dS);
+	t_angle<Sys, T> theta = units::asin(dS);
 	if(!bPosSense)
 		theta = -theta;
 	return theta;
@@ -467,7 +466,7 @@ t_angle<Sys,Y> calc_tas_a1(const t_wavenumber<Sys,Y>& k,
  *
  * k = n pi / (d sin(theta))
  */
-template<class t_real>
+template<class t_real = double>
 t_real calc_tas_k(t_real theta, t_real d)
 {
 	t_real sintheta = std::abs(std::sin(theta));
@@ -480,19 +479,19 @@ t_real calc_tas_k(t_real theta, t_real d)
  * (version with units)
  * @see https://en.wikipedia.org/wiki/Bragg's_law
  */
-template<class Sys, class Y>
-t_wavenumber<Sys,Y> calc_tas_k(const t_angle<Sys,Y>& _theta,
-	const t_length<Sys,Y>& d, bool bPosSense = true)
+template<class Sys, class T = double>
+t_wavenumber<Sys, T> calc_tas_k(const t_angle<Sys, T>& _theta,
+	const t_length<Sys, T>& d, bool bPosSense = true)
 {
-	t_angle<Sys,Y> theta = _theta;
+	t_angle<Sys, T> theta = _theta;
 	if(!bPosSense)
 		theta = -theta;
 
-	const Y order = Y(1.);
+	const T order = T(1.);
 
 	// https://en.wikipedia.org/wiki/Bragg%27s_law
-	t_length<Sys, Y> lam = Y(2.)*d/order * units::sin(theta);
-	t_wavenumber<Sys,Y> k = Y(2.)*pi<Y> / lam;
+	t_length<Sys, T> lam = T(2.)*d/order * units::sin(theta);
+	t_wavenumber<Sys, T> k = T(2.)*pi<T> / lam;
 
 	return k;
 }
@@ -501,7 +500,7 @@ t_wavenumber<Sys,Y> calc_tas_k(const t_angle<Sys,Y>& _theta,
 /**
  * get ki from kf and energy transfer
  */
-template<class t_real>
+template<class t_real = double>
 t_real calc_tas_ki(t_real kf, t_real E)
 {
 	return std::sqrt(kf*kf + E2KSQ<t_real>*E);
@@ -511,7 +510,7 @@ t_real calc_tas_ki(t_real kf, t_real E)
 /**
  * get kf from ki and energy transfer
  */
-template<class t_real>
+template<class t_real = double>
 t_real calc_tas_kf(t_real ki, t_real E)
 {
 	return std::sqrt(ki*ki - E2KSQ<t_real>*E);
@@ -528,23 +527,23 @@ t_real calc_tas_E(t_real ki, t_real kf)
 }
 
 
-template<class Sys, class Y>
-t_energy<Sys,Y> k2E(const t_wavenumber<Sys,Y>& k)
+template<class Sys, class T = double>
+t_energy<Sys, T> k2E(const t_wavenumber<Sys, T>& k)
 {
-	Y dk = k*angstrom<Y>;
-	Y dE = KSQ2E<Y> * dk*dk;
-	return dE * meV<Y>;
+	T dk = k*angstrom<T>;
+	T dE = KSQ2E<T> * dk*dk;
+	return dE * meV<T>;
 }
 
 
-template<class Sys, class Y>
-t_wavenumber<Sys,Y> E2k(const t_energy<Sys,Y>& _E, bool &bImag)
+template<class Sys, class T = double>
+t_wavenumber<Sys, T> E2k(const t_energy<Sys, T>& _E, bool &bImag)
 {
-	bImag = (_E < Y(0.)*meV<Y>);
-	t_energy<Sys,Y> E = bImag ? -_E : _E;
-	const Y dE = E / meV<Y>;
-	const Y dk = std::sqrt(E2KSQ<Y> * dE);
-	return dk / angstrom<Y>;
+	bImag = (_E < T(0.)*meV<T>);
+	t_energy<Sys, T> E = bImag ? -_E : _E;
+	const T dE = E / meV<T>;
+	const T dk = std::sqrt(E2KSQ<T> * dE);
+	return dk / angstrom<T>;
 }
 
 
@@ -552,11 +551,11 @@ t_wavenumber<Sys,Y> E2k(const t_energy<Sys,Y>& _E, bool &bImag)
  * get energy transfer from ki and kf
  * (version with units)
  */
-template<class Sys, class Y>
-t_energy<Sys,Y> get_energy_transfer(const t_wavenumber<Sys,Y>& ki,
-	const t_wavenumber<Sys,Y>& kf)
+template<class Sys, class T = double>
+t_energy<Sys, T> get_energy_transfer(const t_wavenumber<Sys, T>& ki,
+	const t_wavenumber<Sys, T>& kf)
 {
-	return k2E<Sys,Y>(ki) - k2E<Sys,Y>(kf);
+	return k2E<Sys, T>(ki) - k2E<Sys, T>(kf);
 }
 
 
@@ -565,19 +564,19 @@ t_energy<Sys,Y> get_energy_transfer(const t_wavenumber<Sys,Y>& ki,
  * 1) ki^2  =  +E * 2*mn / hbar^2  +  kf^2
  * 2) kf^2  =  -E * 2*mn / hbar^2  +  ki^2
  */
-template<class Sys, class Y>
-t_wavenumber<Sys,Y> get_other_k(const t_energy<Sys,Y>& E,
-	const t_wavenumber<Sys,Y>& kfix, bool bFixedKi)
+template<class Sys, class T = double>
+t_wavenumber<Sys, T> get_other_k(const t_energy<Sys, T>& E,
+	const t_wavenumber<Sys, T>& kfix, bool bFixedKi)
 {
-	auto kE_sq = E*Y(2.)*(m_n<Y>/hbar<Y>)/hbar<Y>;
+	auto kE_sq = E*T(2.)*(m_n<T>/hbar<T>)/hbar<T>;
 	if(bFixedKi)
 		kE_sq = -kE_sq;
 
 	auto k_sq = kE_sq + kfix*kfix;
-	if(k_sq*angstrom<Y>*angstrom<Y> < Y(0.))
+	if(k_sq*angstrom<T>*angstrom<T> < T(0.))
 		throw std::runtime_error("Scattering triangle not closed.");
 
-	return my_units_sqrt<t_wavenumber<Sys,Y>>(k_sq);
+	return my_units_sqrt<t_wavenumber<Sys, T>>(k_sq);
 }
 
 // --------------------------------------------------------------------------------
@@ -590,10 +589,10 @@ t_wavenumber<Sys,Y> get_other_k(const t_energy<Sys,Y>& E,
  * kf^3 mono/ana reflectivity factor
  * @see (Shirane 2002) p. 125
  */
-template<class Sys, class Y>
-Y ana_effic_factor(const t_wavenumber<Sys, Y>& kf, const t_angle<Sys, Y>& theta)
+template<class Sys, class T = double>
+T ana_effic_factor(const t_wavenumber<Sys, T>& kf, const t_angle<Sys, T>& theta)
 {
-	return kf*kf*kf / units::tan(theta) * angstrom<Y>*angstrom<Y>*angstrom<Y>;
+	return kf*kf*kf / units::tan(theta) * angstrom<T>*angstrom<T>*angstrom<T>;
 }
 
 
@@ -601,11 +600,11 @@ Y ana_effic_factor(const t_wavenumber<Sys, Y>& kf, const t_angle<Sys, Y>& theta)
  * kf^3 mono/ana reflectivity factor,
  * @see (Shirane 2002) p. 125
  */
-template<class Sys, class Y>
-Y ana_effic_factor(const t_wavenumber<Sys, Y>& kf, const t_length<Sys, Y>& d)
+template<class Sys, class T = double>
+T ana_effic_factor(const t_wavenumber<Sys, T>& kf, const t_length<Sys, T>& d)
 {
-	t_angle<Sys, Y> theta = units::abs(calc_tas_a1<Sys, Y>(kf, d, true));
-	return ana_effic_factor<Sys, Y>(kf, theta);
+	t_angle<Sys, T> theta = units::abs(calc_tas_a1<Sys, T>(kf, d, true));
+	return ana_effic_factor<Sys, T>(kf, theta);
 }
 
 // --------------------------------------------------------------------------------
@@ -658,15 +657,15 @@ t_real bose_cutoff(t_real E, t_real T, t_real E_cutoff=t_real(0.02))
  * Bose factor
  * @see https://en.wikipedia.org/wiki/Bose%E2%80%93Einstein_statistics
  */
-template<class Sys, class Y>
-Y bose(const t_energy<Sys,Y>& E, const t_temperature<Sys,Y>& T,
-	t_energy<Sys,Y> E_cutoff = -meV<Y>)
+template<class Sys, class T = double>
+T bose(const t_energy<Sys, T>& E, const t_temperature<Sys, T>& temp,
+	t_energy<Sys, T> E_cutoff = -meV<T>)
 {
-	if(E_cutoff < Y(0)*meV<Y>)
-		return bose<Y>(Y(E/meV<Y>), Y(T/kelvin<Y>));
+	if(E_cutoff < T(0)*meV<T>)
+		return bose<T>(T(E/meV<T>), T(temp/kelvin<T>));
 	else
-		return bose_cutoff<Y>(Y(E/meV<Y>), Y(T/kelvin<Y>),
-			Y(E_cutoff/meV<Y>));
+		return bose_cutoff<T>(T(E/meV<T>), T(temp/kelvin<T>),
+			T(E_cutoff/meV<T>));
 }
 
 
@@ -702,11 +701,11 @@ t_real fermi(t_real E, t_real mu, t_real T)
  * Fermi distribution
  * @see https://en.wikipedia.org/wiki/Fermi%E2%80%93Dirac_statistics
  */
-template<class Sys, class Y>
-Y fermi(const t_energy<Sys,Y>& E, const t_energy<Sys,Y>& mu,
-	const t_temperature<Sys,Y>& T)
+template<class Sys, class T = double>
+T fermi(const t_energy<Sys, T>& E, const t_energy<Sys, T>& mu,
+	const t_temperature<Sys, T>& temp)
 {
-	return fermi<Y>(Y(E/meV<Y>), Y(mu/meV<Y>), Y(T/kelvin<Y>));
+	return fermi<T>(T(E/meV<T>), T(mu/meV<T>), T(temp/kelvin<T>));
 }
 
 // --------------------------------------------------------------------------------
@@ -715,11 +714,11 @@ Y fermi(const t_energy<Sys,Y>& E, const t_energy<Sys,Y>& mu,
 /**
  * get macroscopic from microscopic cross-section
  */
-template<class Sys, class Y=double>
-t_length_inverse<Sys, Y> macro_xsect(const t_area<Sys, Y>& xsect,
-	unsigned int iNumAtoms, const t_volume<Sys, Y>& volUC)
+template<class Sys, class T = double>
+t_length_inverse<Sys, T> macro_xsect(const t_area<Sys, T>& xsect,
+	unsigned int iNumAtoms, const t_volume<Sys, T>& volUC)
 {
-	return xsect * Y(iNumAtoms) / volUC;
+	return xsect * T(iNumAtoms) / volUC;
 }
 
 
@@ -730,11 +729,11 @@ t_length_inverse<Sys, Y> macro_xsect(const t_area<Sys, Y>& xsect,
  * thin lens equation: 1/f = 1/lenB + 1/lenA
  * @see https://en.wikipedia.org/wiki/Thin_lens
  */
-template<class Sys, class Y=double>
-t_length<Sys, Y> focal_len(const t_length<Sys, Y>& lenBefore, const t_length<Sys, Y>& lenAfter)
+template<class Sys, class T = double>
+t_length<Sys, T> focal_len(const t_length<Sys, T>& lenBefore, const t_length<Sys, T>& lenAfter)
 {
-	const t_length_inverse<Sys, Y> f_inv = Y(1)/lenBefore + Y(1)/lenAfter;
-	return Y(1) / f_inv;
+	const t_length_inverse<Sys, T> f_inv = T(1)/lenBefore + T(1)/lenAfter;
+	return T(1) / f_inv;
 }
 
 
@@ -744,18 +743,35 @@ t_length<Sys, Y> focal_len(const t_length<Sys, Y>& lenBefore, const t_length<Sys
  * @see NICOS: https://forge.frm2.tum.de/cgit/cgit.cgi/frm2/nicos/nicos-core.git/plain/nicos/devices/tas/mono.py
  * @see McStas: https://github.com/McStasMcXtrace/McCode/blob/master/mcstas-comps/optics/Monochromator_curved.comp
  */
-template<class Sys, class Y=double>
-t_length<Sys, Y> foc_curv(const t_length<Sys, Y>& lenBefore, const t_length<Sys, Y>& lenAfter,
-	const t_angle<Sys, Y>& tt, bool bVert)
+template<class Sys, class T = double>
+t_length<Sys, T> foc_curv(const t_length<Sys, T>& lenBefore, const t_length<Sys, T>& lenAfter,
+	const t_angle<Sys, T>& tt, bool vert_focus)
 {
-	const t_length<Sys, Y> f = focal_len<Sys, Y>(lenBefore, lenAfter);
-	const Y s = Y(units::abs(units::sin(Y(0.5)*tt)));
+	const t_length<Sys, T> f = focal_len<Sys, T>(lenBefore, lenAfter);
+	const T s = T(units::abs(units::sin(T(0.5)*tt)));
 
-	const t_length<Sys, Y> curv = bVert ? Y(2)*f*s : Y(2)*f/s;
-
+	const t_length<Sys, T> curv = vert_focus ? T(2)*f*s : T(2)*f/s;
 	return curv;
 }
 
+
+/**
+ * optimal mono/ana curvature,
+ * @see e.g. (Shirane 2002) p. 66
+ * @see e.g. McStas: https://github.com/McStasMcXtrace/McCode/blob/master/mcstas-comps/optics/Monochromator_curved.comp
+ * @see e.g. Nicos: https://forge.frm2.tum.de/cgit/cgit.cgi/frm2/nicos/nicos.git/tree/nicos/devices/tas/mono.py
+ * @see e.g. [eck14], equs. 59-61
+ */
+template<class Sys, class T = double>
+t_length<Sys, T> foc_curv(const t_length<Sys, T>& lenBefore, const t_length<Sys, T>& lenAfter,
+	const t_wavenumber<Sys, T>& k, const t_length<Sys, T>& d, bool vert_focus)
+{
+	const t_length<Sys, T> f = focal_len<Sys, T>(lenBefore, lenAfter);
+	const T s = T(units::abs(pi<T> / d / k));
+
+	const t_length<Sys, T> curv = vert_focus ? T(2)*f*s : T(2)*f/s;
+	return curv;
+}
 
 // --------------------------------------------------------------------------------
 
@@ -771,13 +787,13 @@ t_length<Sys, Y> foc_curv(const t_length<Sys, Y>& lenBefore, const t_length<Sys,
  * @return burst time
  * @see NIMA 492, pp. 97-104 (2002), doi: https://doi.org/10.1016/S0168-9002(02)01285-8
  */
-template<class Sys, class Y=double>
-t_time<Sys,Y> burst_time(const t_length<Sys,Y>& r,
-	const t_length<Sys,Y>& L, const t_freq<Sys,Y>& om, bool bCounterRot,
+template<class Sys, class T = double>
+t_time<Sys, T> burst_time(const t_length<Sys, T>& r,
+	const t_length<Sys, T>& L, const t_freq<Sys, T>& om, bool bCounterRot,
 	bool bSigma = true)
 {
-	const Y tSig = bSigma ? FWHM2SIGMA<Y> : Y(1);
-	Y tScale = bCounterRot ? Y(2) : Y(1);
+	const T tSig = bSigma ? FWHM2SIGMA<T> : T(1);
+	T tScale = bCounterRot ? T(2) : T(1);
 	return L / (r * om * tScale) * tSig;
 }
 
@@ -786,13 +802,13 @@ t_time<Sys,Y> burst_time(const t_length<Sys,Y>& r,
  * @brief disc chopper burst time
  * @see NIMA 492, pp. 97-104 (2002), doi: https://doi.org/10.1016/S0168-9002(02)01285-8
  */
-template<class Sys, class Y=double>
-t_length<Sys,Y> burst_time_L(const t_length<Sys,Y>& r,
-	const t_time<Sys,Y>& dt, const t_freq<Sys,Y>& om, bool bCounterRot,
+template<class Sys, class T = double>
+t_length<Sys, T> burst_time_L(const t_length<Sys, T>& r,
+	const t_time<Sys, T>& dt, const t_freq<Sys, T>& om, bool bCounterRot,
 	bool bSigma = true)
 {
-	const Y tSig = bSigma ? FWHM2SIGMA<Y> : Y(1);
-	Y tScale = bCounterRot ? Y(2) : Y(1);
+	const T tSig = bSigma ? FWHM2SIGMA<T> : T(1);
+	T tScale = bCounterRot ? T(2) : T(1);
 	return dt * r * om * tScale / tSig;
 }
 
@@ -801,13 +817,13 @@ t_length<Sys,Y> burst_time_L(const t_length<Sys,Y>& r,
  * @brief disc chopper burst time
  * @see NIMA 492, pp. 97-104 (2002), doi: https://doi.org/10.1016/S0168-9002(02)01285-8
  */
-template<class Sys, class Y=double>
-t_length<Sys,Y> burst_time_r(const t_time<Sys,Y>& dt,
-	const t_length<Sys,Y>& L, const t_freq<Sys,Y>& om, bool bCounterRot,
+template<class Sys, class T = double>
+t_length<Sys, T> burst_time_r(const t_time<Sys, T>& dt,
+	const t_length<Sys, T>& L, const t_freq<Sys, T>& om, bool bCounterRot,
 	bool bSigma = true)
 {
-	const Y tSig = bSigma ? FWHM2SIGMA<Y> : Y(1);
-	Y tScale = bCounterRot ? Y(2) : Y(1);
+	const T tSig = bSigma ? FWHM2SIGMA<T> : T(1);
+	T tScale = bCounterRot ? T(2) : T(1);
 	return L / (dt * om * tScale) * tSig;
 }
 
@@ -816,13 +832,13 @@ t_length<Sys,Y> burst_time_r(const t_time<Sys,Y>& dt,
  * @brief disc chopper burst time
  * @see NIMA 492, pp. 97-104 (2002), doi: https://doi.org/10.1016/S0168-9002(02)01285-8
  */
-template<class Sys, class Y=double>
-t_freq<Sys,Y> burst_time_om(const t_length<Sys,Y>& r,
-	const t_length<Sys,Y>& L, const t_time<Sys,Y>& dt, bool bCounterRot,
+template<class Sys, class T = double>
+t_freq<Sys, T> burst_time_om(const t_length<Sys, T>& r,
+	const t_length<Sys, T>& L, const t_time<Sys, T>& dt, bool bCounterRot,
 	bool bSigma = true)
 {
-	const Y tSig = bSigma ? FWHM2SIGMA<Y> : Y(1);
-	Y tScale = bCounterRot ? Y(2) : Y(1);
+	const T tSig = bSigma ? FWHM2SIGMA<T> : T(1);
+	T tScale = bCounterRot ? T(2) : T(1);
 	return L / (r * dt * tScale) * tSig;
 }
 // --------------------------------------------------------------------------------
@@ -839,10 +855,10 @@ t_freq<Sys,Y> burst_time_om(const t_length<Sys,Y>& r,
  * @return angular divergence
  * @see (Shirane 2002), Ch. 3.3
  */
-template<class Sys, class Y=double>
-t_angle<Sys,Y> colli_div(const t_length<Sys,Y>& L, const t_length<Sys,Y>& w, bool bSigma = true)
+template<class Sys, class T = double>
+t_angle<Sys, T> colli_div(const t_length<Sys, T>& L, const t_length<Sys, T>& w, bool bSigma = true)
 {
-	const Y tSig = bSigma ? FWHM2SIGMA<Y> : Y(1);
+	const T tSig = bSigma ? FWHM2SIGMA<T> : T(1);
 	return units::atan(w/L) * tSig;
 }
 
@@ -851,10 +867,10 @@ t_angle<Sys,Y> colli_div(const t_length<Sys,Y>& L, const t_length<Sys,Y>& w, boo
  * @brief collimation
  * @see (Shirane 2002), Ch. 3.3
  */
-template<class Sys, class Y=double>
-t_length<Sys,Y> colli_div_L(const t_angle<Sys,Y>& ang, const t_length<Sys,Y>& w, bool bSigma = true)
+template<class Sys, class T = double>
+t_length<Sys, T> colli_div_L(const t_angle<Sys, T>& ang, const t_length<Sys, T>& w, bool bSigma = true)
 {
-	const Y tSig = bSigma ? FWHM2SIGMA<Y> : Y(1);
+	const T tSig = bSigma ? FWHM2SIGMA<T> : T(1);
 	return w/units::tan(ang/tSig);
 }
 
@@ -863,10 +879,10 @@ t_length<Sys,Y> colli_div_L(const t_angle<Sys,Y>& ang, const t_length<Sys,Y>& w,
  * @brief collimation
  * @see (Shirane 2002), Ch. 3.3
  */
-template<class Sys, class Y=double>
-t_length<Sys,Y> colli_div_w(const t_length<Sys,Y>& L, const t_angle<Sys,Y>& ang, bool bSigma = true)
+template<class Sys, class T = double>
+t_length<Sys, T> colli_div_w(const t_length<Sys, T>& L, const t_angle<Sys, T>& ang, bool bSigma = true)
 {
-	const Y tSig = bSigma ? FWHM2SIGMA<Y> : Y(1);
+	const T tSig = bSigma ? FWHM2SIGMA<T> : T(1);
 	return units::tan(ang/tSig) * L;
 }
 
@@ -880,15 +896,15 @@ t_length<Sys,Y> colli_div_w(const t_length<Sys,Y>& L, const t_angle<Sys,Y>& ang,
  * @return selector angular frequency
  * @see https://doi.org/10.1016/0921-4526(95)00336-8
  */
-template<class Sys, class Y=double>
-t_freq<Sys, Y> vsel_freq(const t_length<Sys,Y>& lam,
-	const t_length<Sys,Y>& len, const t_angle<Sys,Y>& twist)
+template<class Sys, class T = double>
+t_freq<Sys, T> vsel_freq(const t_length<Sys, T>& lam,
+	const t_length<Sys, T>& len, const t_angle<Sys, T>& twist)
 {
 	// https://en.wikiversity.org/wiki/De_Broglie_wavelength
-	t_wavenumber<Sys,Y> k = Y(2.)*pi<Y> / lam;
-	t_velocity<Sys,Y> v_n = hbar<Y>*k / m_n<Y>;
+	t_wavenumber<Sys, T> k = T(2.)*pi<T> / lam;
+	t_velocity<Sys, T> v_n = hbar<T>*k / m_n<T>;
 
-	return v_n*twist / (len * radian<Y>);
+	return v_n*twist / (len * radian<T>);
 }
 
 
@@ -896,15 +912,15 @@ t_freq<Sys, Y> vsel_freq(const t_length<Sys,Y>& lam,
  * @brief velocity selector
  * @see https://doi.org/10.1016/0921-4526(95)00336-8
  */
-template<class Sys, class Y=double>
-t_length<Sys,Y> vsel_len(const t_length<Sys,Y>& lam,
-	const t_freq<Sys, Y>& om, const t_angle<Sys,Y>& twist)
+template<class Sys, class T = double>
+t_length<Sys, T> vsel_len(const t_length<Sys, T>& lam,
+	const t_freq<Sys, T>& om, const t_angle<Sys, T>& twist)
 {
 	// https://en.wikiversity.org/wiki/De_Broglie_wavelength
-	t_wavenumber<Sys,Y> k = Y(2.)*pi<Y> / lam;
-	t_velocity<Sys,Y> v_n = hbar<Y>*k / m_n<Y>;
+	t_wavenumber<Sys, T> k = T(2.)*pi<T> / lam;
+	t_velocity<Sys, T> v_n = hbar<T>*k / m_n<T>;
 
-	return v_n*twist / (om * radian<Y>);
+	return v_n*twist / (om * radian<T>);
 }
 
 
@@ -912,15 +928,15 @@ t_length<Sys,Y> vsel_len(const t_length<Sys,Y>& lam,
  * @brief velocity selector
  * @see https://doi.org/10.1016/0921-4526(95)00336-8
  */
-template<class Sys, class Y=double>
-t_angle<Sys,Y> vsel_twist(const t_length<Sys,Y>& lam,
-	const t_freq<Sys, Y>& om, const t_length<Sys,Y>& len)
+template<class Sys, class T = double>
+t_angle<Sys, T> vsel_twist(const t_length<Sys, T>& lam,
+	const t_freq<Sys, T>& om, const t_length<Sys, T>& len)
 {
 	// https://en.wikiversity.org/wiki/De_Broglie_wavelength
-	t_wavenumber<Sys,Y> k = Y(2.)*pi<Y> / lam;
-	t_velocity<Sys,Y> v_n = hbar<Y>*k / m_n<Y>;
+	t_wavenumber<Sys, T> k = T(2.)*pi<T> / lam;
+	t_velocity<Sys, T> v_n = hbar<T>*k / m_n<T>;
 
-	return  (len * om * radian<Y>) / v_n;
+	return  (len * om * radian<T>) / v_n;
 }
 
 
@@ -928,13 +944,13 @@ t_angle<Sys,Y> vsel_twist(const t_length<Sys,Y>& lam,
  * @brief velocity selector
  * @see https://doi.org/10.1016/0921-4526(95)00336-8
  */
-template<class Sys, class Y=double>
-t_length<Sys,Y> vsel_lam(const t_angle<Sys,Y>& twist,
-	const t_freq<Sys, Y>& om, const t_length<Sys,Y>& len)
+template<class Sys, class T = double>
+t_length<Sys, T> vsel_lam(const t_angle<Sys, T>& twist,
+	const t_freq<Sys, T>& om, const t_length<Sys, T>& len)
 {
-	t_velocity<Sys,Y> v_n = (len * om * radian<Y>) / twist;
-	t_wavenumber<Sys,Y> k = m_n<Y>*v_n/hbar<Y>;
-	t_length<Sys,Y> lam = Y(2.)*pi<Y> / k;
+	t_velocity<Sys, T> v_n = (len * om * radian<T>) / twist;
+	t_wavenumber<Sys, T> k = m_n<T>*v_n/hbar<T>;
+	t_length<Sys, T> lam = T(2.)*pi<T> / k;
 
 	return lam;
 }
@@ -951,8 +967,8 @@ t_length<Sys,Y> vsel_lam(const t_angle<Sys,Y>& twist,
  * gamma*B = omega
  * @see https://en.wikipedia.org/wiki/Larmor_precession
  */
-template<class Sys, class Y=double>
-t_freq<Sys,Y> larmor_om(const t_flux<Sys,Y>& B)
+template<class Sys, class T = double>
+t_freq<Sys, T> larmor_om(const t_flux<Sys, T>& B)
 {
 	return co::gamma_n * B;
 }
@@ -962,8 +978,8 @@ t_freq<Sys,Y> larmor_om(const t_flux<Sys,Y>& B)
  * B = omega/gamma
  * @see https://en.wikipedia.org/wiki/Larmor_precession
  */
-template<class Sys, class Y=double>
-t_flux<Sys,Y> larmor_B(const t_freq<Sys,Y>& om)
+template<class Sys, class T = double>
+t_flux<Sys, T> larmor_B(const t_freq<Sys, T>& om)
 {
 	return om/co::gamma_n;
 }
@@ -977,13 +993,13 @@ t_flux<Sys,Y> larmor_B(const t_freq<Sys,Y>& om)
  *
  * @see https://en.wikipedia.org/wiki/Larmor_precession
  */
-template<class Sys, class Y=double>
-t_flux<Sys,Y> larmor_field(const t_length<Sys,Y>& lam,
-	const t_length<Sys,Y>& len,
-	const t_angle<Sys,Y>& phi)
+template<class Sys, class T = double>
+t_flux<Sys, T> larmor_field(const t_length<Sys, T>& lam,
+	const t_length<Sys, T>& len,
+	const t_angle<Sys, T>& phi)
 {
-	t_velocity<Sys,Y> v = h<Y> / lam / co::m_n;
-	t_freq<Sys,Y> om = -Y(phi/radians<Y>)*v/len;
+	t_velocity<Sys, T> v = h<T> / lam / co::m_n;
+	t_freq<Sys, T> om = -T(phi/radians<T>)*v/len;
 	return om/co::gamma_n;
 }
 
@@ -1019,60 +1035,6 @@ requires is_vec<t_vec> && is_mat<t_mat>
 
 /**
  * Blume-Maleev equation
- * @returns scattering intensity and final polarisation vector
- *
- * @see https://doi.org/10.1016/B978-044451050-1/50006-9 - p. 225-226
- */
-template<class t_vec, typename t_cplx = typename t_vec::value_type>
-std::tuple<t_cplx, t_vec> blume_maleev(const t_vec& P_i, const t_vec& Mperp, const t_cplx& N)
-requires is_vec<t_vec>
-{
-	const t_vec MperpConj = conj(Mperp);
-	const t_cplx NConj = std::conj(N);
-	constexpr t_cplx imag(0, 1);
-
-	// ------------------------------------------------------------------------
-	// intensity
-	// nuclear
-	t_cplx I = NConj*N;
-
-	// nuclear-magnetic
-	I += NConj*inner<t_vec>(P_i, Mperp);
-	I += N*inner<t_vec>(Mperp, P_i);
-
-	// magnetic, non-chiral
-	I += inner<t_vec>(Mperp, Mperp);
-
-	// magnetic, chiral
-	I += imag * inner<t_vec>(P_i, cross<t_vec>({ MperpConj, Mperp }));
-	// ------------------------------------------------------------------------
-
-	// ------------------------------------------------------------------------
-	// polarisation vector
-	// nuclear
-	t_vec P_f = P_i * N*NConj;
-
-	// nuclear-magnetic
-	P_f += NConj * Mperp;
-	P_f += N * MperpConj;
-	P_f += imag * N * cross<t_vec>({ P_i, MperpConj });
-	P_f += -imag * NConj * cross<t_vec>({ P_i, Mperp });
-
-	// magnetic, non-chiral
-	P_f += Mperp * inner<t_vec>(Mperp, P_i);
-	P_f += MperpConj * inner<t_vec>(P_i, Mperp);
-	P_f += -P_i * inner<t_vec>(Mperp, Mperp);
-
-	// magnetic, chiral
-	P_f += imag * cross<t_vec>({ Mperp, MperpConj });
-	// ------------------------------------------------------------------------
-
-	return std::make_tuple(I, P_f/I);
-}
-
-
-/**
- * Blume-Maleev equation
  * calculate equation indirectly with density matrix
  *   (based on a proof from a lecture by P. J. Brown, 2006)
  *
@@ -1085,7 +1047,8 @@ requires is_vec<t_vec>
  * @see https://doi.org/10.1016/B978-044451050-1/50006-9 - p. 225-226
  */
 template<class t_mat, class t_vec, typename t_cplx = typename t_vec::value_type>
-std::tuple<t_cplx, t_vec> blume_maleev_indir(const t_vec& P_i, const t_vec& Mperp, const t_cplx& N)
+std::tuple<t_cplx, t_vec>
+blume_maleev_indir(const t_vec& P_i, const t_vec& Mperp, const t_cplx& N)
 requires is_mat<t_mat> && is_vec<t_vec>
 {
 	// spin-1/2
@@ -1116,6 +1079,125 @@ requires is_mat<t_mat> && is_vec<t_vec>
 	// ------------------------------------------------------------------------
 
 	return std::make_tuple(I, P_f/I);
+}
+
+
+/**
+ * Blume-Maleev equation
+ * @returns scattering intensity and final polarisation vector
+ *
+ * @see https://doi.org/10.1016/B978-044451050-1/50006-9 - p. 225-226
+ */
+template<class t_vec, typename t_cplx = typename t_vec::value_type>
+std::tuple<t_cplx, t_vec>
+blume_maleev(const t_vec& P_i, const t_vec& Mperp, const t_cplx& N)
+requires is_vec<t_vec>
+{
+	const t_vec MperpConj = conj(Mperp);
+	const t_cplx NConj = std::conj(N);
+	constexpr t_cplx imag(0, 1);
+
+	t_cplx N2 = N * NConj;
+	t_cplx M2 = inner<t_vec>(Mperp, Mperp);
+	t_vec Mx2 = cross<t_vec>({ MperpConj, Mperp });
+
+	// ------------------------------------------------------------------------
+	// intensity
+	// nuclear and magnetic non-chiral
+	t_cplx I = N2 + M2;
+
+	// magnetic chiral
+	I += imag * inner<t_vec>(P_i, Mx2);
+
+	// nuclear-magnetic
+	t_cplx I_nm = N * inner<t_vec>(Mperp, P_i);
+	I += I_nm + std::conj(I_nm);
+	// ------------------------------------------------------------------------
+
+	// ------------------------------------------------------------------------
+	// polarisation vector
+	// nuclear
+	t_vec P_f = N2 * P_i;                           // rotates P
+
+	// magnetic non-chiral
+	t_vec rot_ch = Mperp * inner<t_vec>(Mperp, P_i);
+	P_f += rot_ch + tl2::conj(rot_ch);              // rotates P
+	P_f -= M2 * P_i;                                // rotates P
+
+	// magnetic chiral
+	P_f -= imag * Mx2;                              // creates P
+
+	// nuclear-magnetic
+	t_vec rot_nm = imag * NConj * cross<t_vec>({ Mperp, P_i });
+	t_vec create_nm = NConj * Mperp;
+	P_f += rot_nm + tl2::conj(rot_nm);              // rotates P
+	P_f += create_nm + tl2::conj(create_nm);        // creates P
+	// ------------------------------------------------------------------------
+
+	return std::make_tuple(I, P_f/I);
+}
+
+
+/**
+ * Blume-Maleev in tensor form
+ *   (based on a lecture by P. J. Brown, 2006, 2009)
+ *
+ * @see https://doi.org/10.1016/B978-044451050-1/50006-9 - p. 225-226
+ */
+template<class t_mat, class t_vec, typename t_cplx = typename t_vec::value_type>
+std::tuple<t_cplx, t_mat, t_vec, t_vec>
+blume_maleev_tensor(const t_vec& P_i, const t_vec& Mperp, const t_cplx& N)
+requires is_mat<t_mat> && is_vec<t_vec>
+{
+	using t_real = typename t_cplx::value_type;
+
+	const t_vec MperpConj = conj(Mperp);
+	const t_cplx NConj = std::conj(N);
+
+	t_cplx N2 = N * NConj;
+	t_cplx M2 = inner<t_vec>(Mperp, Mperp);
+	t_mat Mo = t_real(2) * outer<t_mat, t_vec>(Mperp, Mperp);
+	t_vec NM = t_real(2) * N * MperpConj;
+
+	auto [ Mor, Moi ] = split_cplx<t_mat, t_mat>(Mo);
+	auto [ NMr, NMi ] = split_cplx<t_vec, t_vec>(NM);
+
+	// cross product vector of imaginary component of Mo
+	t_vec Moivec = create<t_vec>({ Moi(2, 1), Moi(0, 2), Moi(1, 0) });
+
+	// ------------------------------------------------------------------------
+	// intensity
+	// nuclear-magnetic and magnetic chiral intensity
+	t_cplx I = inner<t_vec>(P_i, NMr + Moivec);
+
+	// nuclear and magnetic non-chiral intensity
+	I += N2 + M2;
+	// ------------------------------------------------------------------------
+
+	// ------------------------------------------------------------------------
+	// rotates polarisation
+	// nuclear and magnetic non-chiral components
+	t_mat Prot = diag<t_mat>({ N2 - M2, N2 - M2, N2 - M2 });
+
+	// magnetic non-chiral component
+	// Mor * P_i corresponds to rot_ch + tl2::conj(rot_ch) in the case above
+	Prot += Mor;
+
+	// nuclear-magnetic component
+	Prot += skewsymmetric<t_mat>(NMi);
+
+	Prot /= I;
+	// ------------------------------------------------------------------------
+
+	// ------------------------------------------------------------------------
+	// creates polarisation (nuclear-magnetic and magnetic chiral components)
+	// Moivec correspond to imag * Mx2 in the case above
+	t_vec Pcreate = NMr - Moivec;
+	Pcreate /= I;
+	// ------------------------------------------------------------------------
+
+	t_vec P_f = Prot * P_i + Pcreate;
+	return std::make_tuple(I, Prot, Pcreate, P_f);
 }
 
 
