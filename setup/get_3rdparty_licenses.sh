@@ -72,13 +72,13 @@ fi
 
 # qt
 #if ! wget https://raw.githubusercontent.com/qt/qt5/dev/LICENSE.QT-LICENSE-AGREEMENT -O ${LICDIR}/Qt_license.txt; then
-if ! wget https://raw.githubusercontent.com/qt/qt5/dev/LICENSE.GPL3 -O ${LICDIR}/Qt_license.txt; then
+if ! wget https://raw.githubusercontent.com/qt/qt5/dev/LICENSES/GPL-3.0-only.txt -O ${LICDIR}/Qt_license.txt; then
 	echo -e "Error: Cannot download Qt license.";
 	exit -1
 fi
 
 # qcustomplot
-if ! wget https://gitlab.com/DerManu/QCustomPlot/-/raw/master/GPL.txt -O ${LICDIR}/QCustomPlot_license.txt; then
+if ! wget https://gitlab.com/ecme2/QCustomPlot/-/raw/master/GPL.txt -O ${LICDIR}/QCustomPlot_license.txt; then
 	echo -e "Error: Cannot download QCustomPlot license.";
 	exit -1
 fi
@@ -156,7 +156,7 @@ if ! wget https://raw.githubusercontent.com/sethtroisi/libgmp/master/COPYINGv3 -
 fi
 
 # pcre
-if ! wget https://raw.githubusercontent.com/PCRE2Project/pcre2/master/LICENCE -O ${LICDIR}/libpcre2_license.txt; then
+if ! wget https://raw.githubusercontent.com/PCRE2Project/pcre2/refs/heads/master/LICENCE.md -O ${LICDIR}/libpcre2_license.txt; then
 	echo -e "Error: Cannot download libpcre2 license.";
 	exit -1
 fi
