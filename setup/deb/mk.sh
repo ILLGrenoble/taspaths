@@ -64,7 +64,32 @@ if [ $create_appdir -ne 0 ]; then
 	echo -e "Maintainer: tweber@ill.fr" >> ${APPDIRNAME}/DEBIAN/control
 
 	# qcustomplot dependency is not needed if it's anyway installed in externals
-	if [ "$1" == "jammy" ] || [  "$1" == "" ]; then
+	if [ "$1" == "noble" ] || [  "$1" == "" ]; then
+		echo -e "Choosing debendencies for Jammy..."
+
+		echo -e "Depends:"\
+			"libstdc++6 (>=10.0.0),"\
+			"libboost-system1.74.0 (>=1.74.0),"\
+			"libboost-filesystem1.74.0 (>=1.74.0),"\
+			"libqhull-r8.0 (>=2020.2),"\
+			"libqhullcpp8.0 (>=2020.2),"\
+			"libgmp10 (>=2:6.2),"\
+			"libqt5core5a (>=5.12.0),"\
+			"libqt5gui5 (>=5.12.0),"\
+			"libqt5widgets5 (>=5.12.0),"\
+			"libqt5svg5 (>=5.12.0),"\
+			"libqt5printsupport5 (>=5.12.0),"\
+			"libqcustomplot2.1 (>=2.0.0),"\
+			"python3 (>=3.10.0),"\
+			"python3-matplotlib,"\
+			"libopencv-core406t64,"\
+			"libopencv-imgproc406t64,"\
+			"liblapacke (>=3.11),"\
+			"libopengl0 (>=1.3.0)\n" \
+				>> ${APPDIRNAME}/DEBIAN/control
+
+		PY_DISTDIR=/usr/local/lib/python3.10/dist-packages
+	elif [ "$1" == "jammy" ]; then
 		echo -e "Choosing debendencies for Jammy..."
 
 		echo -e "Depends:"\

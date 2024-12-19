@@ -890,9 +890,9 @@ requires tl2::is_vec<t_vec>
 	std::vector<std::tuple<std::size_t, std::size_t, t_vec>> intersections;
 	intersections.reserve(lines.size()*lines.size()/2);
 
-	for(std::size_t i=0; i<lines.size(); ++i)
+	for(std::size_t i = 0; i < lines.size(); ++i)
 	{
-		for(std::size_t j=i+1; j<lines.size(); ++j)
+		for(std::size_t j = i + 1; j < lines.size(); ++j)
 		{
 			const t_line& line1 = lines[i];
 			const t_line& line2 = lines[j];
@@ -1253,14 +1253,16 @@ std::vector<std::tuple<std::size_t, std::size_t, t_vec>> intersect_sweep(
 			{
 				if(std::find_if(intersections.begin(), intersections.end(),
 					[&evt, eps](const auto& inters) -> bool
-						{ return tl2::equals<t_vec>(std::get<2>(inters), *evt.intersection, eps); })
-					== intersections.end())
+					{
+						if(!evt.intersection)
+							return false;
+						return tl2::equals<t_vec>(std::get<2>(inters), *evt.intersection, eps);
+					}) == intersections.end())
 				{
 					if constexpr(use_line_groups)
 					{
 						// if the lines belong to the same group, don't report the intersection
-						if(std::get<2>(lines[*evt.lower_idx])
-							!= std::get<2>(lines[*evt.upper_idx]))
+						if(std::get<2>(lines[*evt.lower_idx]) != std::get<2>(lines[*evt.upper_idx]))
 						{
 							// report an intersection
 							intersections.emplace_back(
@@ -1688,9 +1690,9 @@ requires tl2::is_vec<t_vec>
 	std::vector<t_vec> intersections;
 	intersections.reserve(num_edges*num_edges / 2);
 
-	for(std::size_t i=0; i<num_edges; ++i)
+	for(std::size_t i = 0; i < num_edges; ++i)
 	{
-		for(std::size_t j=i+1; j<num_edges; ++j)
+		for(std::size_t j = i + 1; j < num_edges; ++j)
 		{
 			if(auto [ok, inters] = intersect_lines<t_vec>(
 				edges[i].first, edges[i].second,
