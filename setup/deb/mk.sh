@@ -65,7 +65,7 @@ if [ $create_appdir -ne 0 ]; then
 
 	# qcustomplot dependency is not needed if it's anyway installed in externals
 	if [ "$1" == "noble" ] || [  "$1" == "" ]; then
-		echo -e "Choosing debendencies for Jammy..."
+		echo -e "Choosing debendencies for Noble..."
 
 		echo -e "Depends:"\
 			"libstdc++6 (>=10.0.0),"\
