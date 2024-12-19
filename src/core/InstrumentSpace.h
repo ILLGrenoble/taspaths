@@ -103,7 +103,7 @@ public:
 
 private:
 	t_real m_floorlen[2] = { 10., 10. };
-	t_vec m_floorcol = tl2::create<t_vec>({0.5, 0.5, 0.5});
+	t_vec m_floorcol = tl2::create<t_vec>({ 0.5, 0.5, 0.5 });
 
 	// wall segments
 	std::vector<std::shared_ptr<Geometry>> m_walls{};
@@ -117,11 +117,11 @@ private:
 	using t_sig_update = boost::signals2::signal<void(const InstrumentSpace&)>;
 	std::shared_ptr<t_sig_update> m_sigUpdate{};
 
-	t_real m_eps = 1e-6;
+	t_real m_eps{ 1e-6 };
 
 	// which polygon intersection method should be used?
 	// 0: sweep, 1: half-plane test
-	int m_poly_intersection_method = 1;
+	int m_poly_intersection_method{ 1 };
 };
 // ----------------------------------------------------------------------------
 

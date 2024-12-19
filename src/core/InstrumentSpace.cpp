@@ -586,11 +586,11 @@ bool InstrumentSpace::CheckCollision2D() const
 		const std::vector<std::tuple<t_vec2, t_real>>& circles1,
 		const std::vector<std::tuple<t_vec2, t_real>>& circles2) -> bool
 	{
-		for(std::size_t idx1=0; idx1<circles1.size(); ++idx1)
+		for(std::size_t idx1 = 0; idx1 < circles1.size(); ++idx1)
 		{
 			const auto& circle1 = circles1[idx1];
 
-			for(std::size_t idx2=0; idx2<circles2.size(); ++idx2)
+			for(std::size_t idx2 = 0; idx2 < circles2.size(); ++idx2)
 			{
 				const auto& circle2 = circles2[idx2];
 
@@ -619,11 +619,11 @@ bool InstrumentSpace::CheckCollision2D() const
 		if(!tl2::collide_bounding_boxes(bbCircles, bbPolys))
 			return false;
 
-		for(std::size_t idx1=0; idx1<circles.size(); ++idx1)
+		for(std::size_t idx1 = 0; idx1 < circles.size(); ++idx1)
 		{
 			const auto& circle = circles[idx1];
 
-			for(std::size_t idx2=0; idx2<polys.size(); ++idx2)
+			for(std::size_t idx2 = 0; idx2 < polys.size(); ++idx2)
 			{
 				const auto& poly = polys[idx2];
 
