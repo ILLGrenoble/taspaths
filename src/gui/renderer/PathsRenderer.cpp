@@ -1151,6 +1151,7 @@ void PathsRenderer::DoPaintGL(qgl_funcs *pGl)
 		pGl->glClearColor(1., 1., 1., 1.);
 	pGl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	pGl->glEnable(GL_DEPTH_TEST);
+	pGl->glDepthMask(GL_TRUE);
 
 	if(m_viewportNeedsUpdate)
 	{
@@ -1159,6 +1160,8 @@ void PathsRenderer::DoPaintGL(qgl_funcs *pGl)
 
 		pGl->glViewport(0, 0, dims[0], dims[1]);
 		pGl->glDepthRange(z_near, z_far);
+		pGl->glClearDepth(z_far);
+		pGl->glDepthFunc(GL_LEQUAL);
 		LOGGLERR(pGl);
 
 		m_viewportNeedsUpdate = false;
