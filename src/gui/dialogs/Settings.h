@@ -97,7 +97,7 @@ struct SettingsVariable
  * settings dialog
  */
 template<std::size_t num_settingsvariables,
-	const std::array<SettingsVariable, 
+	const std::array<SettingsVariable,
 		num_settingsvariables> *settingsvariables>
 class SettingsDlg : public QDialog
 {
@@ -421,7 +421,7 @@ public:
 	}
 
 
-	// common gui settings	
+	// common gui settings
 	static void SetGuiTheme(QString* str) { s_theme = str; }
 	static void SetGuiFont(QString* str) { s_font = str; }
 	static void SetGuiUseNativeMenubar(int *i) { s_use_native_menubar = i; }

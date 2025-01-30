@@ -523,7 +523,7 @@ void PathsRenderer::SetLight(std::size_t idx, const t_vec3_gl& pos)
 	target[2] = 0;
 
 	// up vector
-	t_vec3_gl up = tl2::create<t_vec3_gl>({0, 1, 0});
+	t_vec3_gl up = tl2::create<t_vec3_gl>({ 0, 1, 0 });
 
 	m_lightcam.SetLookAt(pos, target, up);
 }
@@ -587,8 +587,8 @@ void PathsRenderer::UpdateLights()
 	t_real ratio = 1;
 	if(m_fboshadow)
 	{
-		ratio = t_real_gl(m_fboshadow->height()) /
-			t_real_gl(m_fboshadow->width());
+		ratio = static_cast<t_real_gl>(m_fboshadow->height()) /
+			static_cast<t_real_gl>(m_fboshadow->width());
 	}
 
 	bool persp_proj = m_cam.GetPerspectiveProjection();
@@ -707,7 +707,7 @@ void PathsRenderer::UpdatePicker()
 				emit FloorPlaneCoordsChanged(vecInters4[0], vecInters4[1]);
 
 				if(m_light_follows_cursor)
-					SetLight(0, tl2::create<t_vec3_gl>({vecInters4[0], vecInters4[1], 10}));
+					SetLight(0, tl2::create<t_vec3_gl>({ vecInters4[0], vecInters4[1], static_cast<t_real_gl>(g_light_height) }));
 			}
 
 			// intersection with other objects
@@ -765,7 +765,7 @@ void PathsRenderer::tick(const std::chrono::milliseconds& ms)
 	if(m_arrowDown[0] || m_arrowDown[1] || m_arrowDown[2] || m_arrowDown[3]
 		|| m_pageDown[0] || m_pageDown[1])
 	{
-		t_real_gl move_scale = t_real_gl(ms.count()) * g_move_scale;
+		t_real_gl move_scale = static_cast<t_real_gl>(ms.count()) * g_move_scale;
 
 		m_cam.Translate(
 			move_scale * (t_real(m_arrowDown[0]) - t_real(m_arrowDown[1])),
@@ -782,7 +782,7 @@ void PathsRenderer::tick(const std::chrono::milliseconds& ms)
 		if(m_bracketDown[1])
 			zoom_dir = 1;
 
-		t_real zoom_scale = t_real_gl(ms.count()) * g_zoom_scale;
+		t_real zoom_scale = static_cast<t_real_gl>(ms.count()) * g_zoom_scale;
 		m_cam.Zoom(zoom_dir * zoom_scale);
 
 		needs_update = true;
@@ -949,7 +949,7 @@ void PathsRenderer::initializeGL()
 	m_uniCursorCoords = m_shaders->uniformLocation("cursor_coords");
 	LOGGLERR(pGl);
 
-	SetLight(0, tl2::create<t_vec3_gl>({0, 0, 10}));
+	SetLight(0, tl2::create<t_vec3_gl>({ 0., 0., static_cast<t_real_gl>(g_light_height) }));
 
 	m_initialised = true;
 	emit AfterGLInitialisation();
@@ -1005,8 +1005,7 @@ void PathsRenderer::UpdateShadowFramebuffer()
 	fbformat.setTextureTarget(GL_TEXTURE_2D);
 	fbformat.setInternalTextureFormat(GL_RGBA32F);
 	fbformat.setAttachment(QOpenGLFramebufferObject::Depth);
-	m_fboshadow = std::make_shared<QOpenGLFramebufferObject>(
-		w, h, fbformat);
+	m_fboshadow = std::make_shared<QOpenGLFramebufferObject>(w, h, fbformat);
 	LOGGLERR(pGl);
 
 	BOOST_SCOPE_EXIT(pGl, m_fboshadow)
@@ -1757,7 +1756,7 @@ void PathsRenderer::mouseReleaseEvent(QMouseEvent *pEvt)
  */
 void PathsRenderer::wheelEvent(QWheelEvent *pEvt)
 {
-	const t_real_gl degrees = pEvt->angleDelta().y() / 8.;
+	const t_real_gl degrees = static_cast<t_real_gl>(pEvt->angleDelta().y() / 8.);
 	if(tl2::equals_0<t_real_gl>(degrees, t_real_gl(g_eps)))
 	{
 		pEvt->ignore();

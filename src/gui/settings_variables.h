@@ -137,6 +137,7 @@ extern unsigned int g_pathtracker_interpolation;
 // render timer ticks per second
 extern unsigned int g_timer_tps;
 
+// rendering options
 extern int g_light_follows_cursor;
 extern int g_enable_shadow_rendering;
 
@@ -155,6 +156,10 @@ extern tl2::t_real_gl g_wheel_zoom_scale;
 
 // camera rotation scaling factor
 extern tl2::t_real_gl g_rotation_scale;
+
+// light z position
+extern /*tl2::t_real_gl*/ t_real g_light_height;
+
 
 
 // gui theme
@@ -187,7 +192,7 @@ extern int g_nested_docks;
 // ----------------------------------------------------------------------------
 // variables register
 // ----------------------------------------------------------------------------
-constexpr std::array<SettingsVariable, 31> g_settingsvariables
+constexpr std::array<SettingsVariable, 32> g_settingsvariables
 {{
 	// epsilons and precisions
 	{
@@ -351,6 +356,11 @@ constexpr std::array<SettingsVariable, 31> g_settingsvariables
 		.description = "Timer ticks per second.",
 		.key = "settings/timer_tps",
 		.value = &g_timer_tps,
+	},
+	{
+		.description = "Light z position (also for shadow rendering).",
+		.key = "settings/light_height",
+		.value = &g_light_height,
 	},
 	{
 		.description = "Light follows cursor.",
