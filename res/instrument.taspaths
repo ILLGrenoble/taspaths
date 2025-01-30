@@ -8,6 +8,17 @@
 	<variables>
 		<guide_height value="1.75" />
 		<guide_depth value="0.35" />
+
+		<wall_height value="3" />
+
+		<monochromator_radius value="1.5" />
+		<sample_radius value="1" />
+		<analyser_radius value="1" />
+
+		<reactor_monochromator_distance value="5" />
+		<monochromator_sample_distance value="3.5" />
+		<sample_analyser_distance value="2.5" />
+		<analyser_detector_distance value="2" />
 	</variables>
 
 
@@ -25,7 +36,7 @@
 					<box>
 						<pos1> 10 -10 </pos1>
 						<pos2> 10 10 </pos2>
-						<height> 3 </height>
+						<height> wall_height </height>
 						<depth> 0.5 </depth>
 						<colour> 1 0 0 </colour>
 					</box>
@@ -37,7 +48,7 @@
 					<box id="">
 						<pos1> -10 10 </pos1>
 						<pos2> 10 10 </pos2>
-						<height> 3 </height>
+						<height> wall_height </height>
 						<depth> 0.5 </depth>
 						<colour> 1 0 0 </colour>
 					</box>
@@ -49,7 +60,7 @@
 					<box id="">
 						<pos1> -10 10 </pos1>
 						<pos2> -10 -10 </pos2>
-						<height> 3 </height>
+						<height> wall_height </height>
 						<depth> 0.5 </depth>
 						<colour> 1 0 0 </colour>
 					</box>
@@ -61,7 +72,7 @@
 					<box id="">
 						<pos1> -10 -10 </pos1>
 						<pos2> 10 -10 </pos2>
-						<height> 3 </height>
+						<height> wall_height </height>
 						<depth> 0.5 </depth>
 						<colour> 1 0 0 </colour>
 					</box>
@@ -74,7 +85,7 @@
 					<box id="">
 						<pos1> -3 -1 </pos1>
 						<pos2> 1 -1 </pos2>
-						<height> 3 </height>
+						<height> wall_height </height>
 						<depth> 1 </depth>
 						<colour> 1 0 0 </colour>
 					</box>
@@ -87,7 +98,7 @@
 					<box id="">
 						<pos1> 1 -3 </pos1>
 						<pos2> 1 1 </pos2>
-						<height> 3 </height>
+						<height> wall_height </height>
 						<depth> 1 </depth>
 						<colour> 1 0 0 </colour>
 					</box>
@@ -110,7 +121,7 @@
 
 				<geometry_in>
 					<box id="reactor-monochromator guide">
-						<pos1> -5 0 </pos1>
+						<pos1> -reactor_monochromator_distance 0 </pos1>
 						<pos2> 0 0 </pos2>
 						<height> guide_height </height>
 						<depth> guide_depth </depth>
@@ -122,7 +133,7 @@
 					<cylinder>
 						<pos> 0 0 </pos>
 						<height> 2 </height>
-						<radius> 1.5 </radius>
+						<radius> monochromator_radius </radius>
 						<colour> 0 0 1 </colour>
 					</cylinder>
 
@@ -138,7 +149,7 @@
 				<geometry_out>
 					<box id="monochromator-sample guide">
 						<pos1> 0 0 </pos1>
-						<pos2> 3.5 0 </pos2>
+						<pos2> monochromator_sample_distance 0 </pos2>
 						<height> guide_height </height>
 						<depth> guide_depth </depth>
 						<colour> 0 1 1 </colour>
@@ -148,7 +159,7 @@
 
 
 			<sample>
-				<pos> 3.5 0 </pos>
+				<pos> monochromator_sample_distance 0 </pos>
 				<angle_in> 0 </angle_in>
 				<angle_internal> 45 </angle_internal>
 				<angle_out> -90 </angle_out>
@@ -162,13 +173,13 @@
 					<cylinder>
 						<pos> 0 0 </pos>
 						<height> 2 </height>
-						<radius> 1 </radius>
+						<radius> sample_radius </radius>
 						<colour> 0 0 1 </colour>
 					</cylinder>
 
 					<box id="sample crystal angle">
-						<pos1> -0.75 0 </pos1>
-						<pos2> 0.75 0 </pos2>
+						<pos1> -sample_radius/2 0 </pos1>
+						<pos2> sample_radius/2 0 </pos2>
 						<height> 2.25 </height>
 						<depth> 0.1 </depth>
 						<colour> 1 0.5 0.5 </colour>
@@ -178,7 +189,7 @@
 				<geometry_out>
 					<box id="sample-analyser guide">
 						<pos1> 0 0 </pos1>
-						<pos2> 2.5 0 </pos2>
+						<pos2> sample_analyser_distance 0 </pos2>
 						<height> guide_height </height>
 						<depth> guide_depth </depth>
 						<colour> 0 1 1 </colour>
@@ -188,7 +199,7 @@
 
 
 			<analyser>
-				<pos> 2.5 0 </pos>
+				<pos> sample_analyser_distance 0 </pos>
 				<angle_in> 0 </angle_in>
 				<angle_internal> 45 </angle_internal>
 				<angle_out> 90 </angle_out>
@@ -202,13 +213,13 @@
 					<cylinder>
 						<pos> 0 0 </pos>
 						<height> 2 </height>
-						<radius> 1 </radius>
+						<radius> analyser_radius </radius>
 						<colour> 0 0 1 </colour>
 					</cylinder>
 
 					<box id="analyser crystal angle">
-						<pos1> -0.75 0 </pos1>
-						<pos2> 0.75 0 </pos2>
+						<pos1> -analyser_radius/2 0 </pos1>
+						<pos2> analyser_radius/2 0 </pos2>
 						<height> 2.25 </height>
 						<depth> 0.1 </depth>
 						<colour> 1 0.5 0.5 </colour>
@@ -217,8 +228,8 @@
 
 				<geometry_out>
 					<box id="detector">
-						<pos1> 0.5 0 </pos1>
-						<pos2> 2.5 0 </pos2>
+						<pos1> analyser_radius/2 0 </pos1>
+						<pos2> analyser_detector_distance 0 </pos2>
 						<height> 1.5 </height>
 						<depth> 0.5 </depth>
 						<colour> 1 1 0 </colour>
