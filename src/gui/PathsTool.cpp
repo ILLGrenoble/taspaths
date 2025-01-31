@@ -2259,6 +2259,8 @@ void PathsTool::InitSettings()
 
 	if(m_renderer)
 	{
+		m_renderer->SetLight(0, tl2::create<t_vec3_gl>(
+			{ 0., 0., static_cast<t_real_gl>(g_light_height) }));
 		m_renderer->SetLightFollowsCursor(g_light_follows_cursor);
 		m_renderer->EnableShadowRendering(g_enable_shadow_rendering);
 	}

@@ -6,10 +6,17 @@
 
 
 	<variables>
+		<floor_width value="20" />
+		<floor_depth value="20" />
+
 		<guide_height value="1.75" />
 		<guide_depth value="0.35" />
 
 		<wall_height value="3" />
+		<monochromator_height value="2.25" />
+		<sample_height value="2.25" />
+		<analyser_height value="2.25" />
+		<detector_height value="1.5" />
 
 		<monochromator_radius value="1.5" />
 		<sample_radius value="1" />
@@ -24,8 +31,8 @@
 
 	<instrument_space>
 		<floor>
-			<len_x> 20 </len_x>
-			<len_y> 20 </len_y>
+			<len_x> floor_width </len_x>
+			<len_y> floor_depth </len_y>
 			<colour> 0.5 0.5 0.5 </colour>
 		</floor>
 
@@ -34,8 +41,8 @@
 			<wall id="wall 1">
 				<geometry>
 					<box>
-						<pos1> 10 -10 </pos1>
-						<pos2> 10 10 </pos2>
+						<pos1> floor_width/2 -floor_depth/2 </pos1>
+						<pos2> floor_width/2 floor_depth/2 </pos2>
 						<height> wall_height </height>
 						<depth> 0.5 </depth>
 						<colour> 1 0 0 </colour>
@@ -46,8 +53,8 @@
 			<wall id="wall 2">
 				<geometry>
 					<box id="">
-						<pos1> -10 10 </pos1>
-						<pos2> 10 10 </pos2>
+						<pos1> -floor_width/2 floor_depth/2 </pos1>
+						<pos2> floor_width/2 floor_depth/2 </pos2>
 						<height> wall_height </height>
 						<depth> 0.5 </depth>
 						<colour> 1 0 0 </colour>
@@ -58,8 +65,8 @@
 			<wall id="wall 3">
 				<geometry>
 					<box id="">
-						<pos1> -10 10 </pos1>
-						<pos2> -10 -10 </pos2>
+						<pos1> -floor_width/2 floor_depth/2 </pos1>
+						<pos2> -floor_width/2 -floor_depth/2 </pos2>
 						<height> wall_height </height>
 						<depth> 0.5 </depth>
 						<colour> 1 0 0 </colour>
@@ -70,8 +77,8 @@
 			<wall id="wall 4">
 				<geometry>
 					<box id="">
-						<pos1> -10 -10 </pos1>
-						<pos2> 10 -10 </pos2>
+						<pos1> -floor_width/2 -floor_depth/2 </pos1>
+						<pos2> floor_width/2 -floor_depth/2 </pos2>
 						<height> wall_height </height>
 						<depth> 0.5 </depth>
 						<colour> 1 0 0 </colour>
@@ -140,7 +147,7 @@
 					<box id="monochromator crystal angle">
 						<pos1> -1 0 </pos1>
 						<pos2> 1 0 </pos2>
-						<height> 2.25 </height>
+						<height> monochromator_height </height>
 						<depth> 0.1 </depth>
 						<colour> 1 0.5 0.5 </colour>
 					</box>
@@ -180,7 +187,7 @@
 					<box id="sample crystal angle">
 						<pos1> -sample_radius/2 0 </pos1>
 						<pos2> sample_radius/2 0 </pos2>
-						<height> 2.25 </height>
+						<height> sample_height </height>
 						<depth> 0.1 </depth>
 						<colour> 1 0.5 0.5 </colour>
 					</box>
@@ -220,7 +227,7 @@
 					<box id="analyser crystal angle">
 						<pos1> -analyser_radius/2 0 </pos1>
 						<pos2> analyser_radius/2 0 </pos2>
-						<height> 2.25 </height>
+						<height> analyser_height </height>
 						<depth> 0.1 </depth>
 						<colour> 1 0.5 0.5 </colour>
 					</box>
@@ -230,7 +237,7 @@
 					<box id="detector">
 						<pos1> analyser_radius/2 0 </pos1>
 						<pos2> analyser_detector_distance 0 </pos2>
-						<height> 1.5 </height>
+						<height> detector_height </height>
 						<depth> 0.5 </depth>
 						<colour> 1 1 0 </colour>
 					</box>
