@@ -87,6 +87,7 @@ MAGDYN_TYPE::SofQE MAGDYN_INST::UniteEnergies(const MAGDYN_TYPE::SofQE& S) const
 			iter->S_perp_sum  += curState.S_perp_sum;
 			iter->weight      += curState.weight;
 			iter->weight_full += curState.weight_full;
+			iter->degeneracy  += curState.degeneracy;
 		}
 	}
 
@@ -162,6 +163,8 @@ MAGDYN_INST::CalcEnergies(const t_vec_real& Q_rlu, bool only_energies) const
 			S.E_and_S.emplace_back(std::move(EandW));
 		for(EnergyAndWeight& EandW : S_m.E_and_S)
 			S.E_and_S.emplace_back(std::move(EandW));
+
+		SortByEnergies(S);
 	}
 
 	if(!only_energies)

@@ -499,7 +499,7 @@ void PathsRenderer::CentreCam(const std::string& objid)
 	if(auto iter = m_objs.find(objid); iter!=m_objs.end())
 	{
 		PathsObj& obj = iter->second;
-		m_cam.Centre(obj.m_mat);
+		m_cam.Centre(obj.m_mat/*, false*/);
 
 		UpdateCam();
 	}
@@ -789,6 +789,12 @@ void PathsRenderer::tick(const std::chrono::milliseconds& ms)
 
 		t_real zoom_scale = static_cast<t_real_gl>(ms.count()) * g_zoom_scale;
 		m_cam.Zoom(zoom_dir * zoom_scale);
+
+		if(!m_cam.GetPerspectiveProjection())
+		{
+			m_cam.UpdateViewport();
+			m_viewportNeedsUpdate = true;
+		}
 
 		needs_update = true;
 	}
@@ -1770,6 +1776,13 @@ void PathsRenderer::wheelEvent(QWheelEvent *pEvt)
 	}
 
 	m_cam.Zoom(degrees * g_wheel_zoom_scale);
+
+	if(!m_cam.GetPerspectiveProjection())
+	{
+		m_cam.UpdateViewport();
+		m_viewportNeedsUpdate = true;
+	}
+
 	UpdateCam();
 
 	pEvt->accept();

@@ -2,8 +2,12 @@
  * tlibs2 -- GL plotter
  * @author Tobias Weber <tweber@ill.fr>
  * @date 2017-2021
- * @note The present version was forked on 8-Nov-2018 from my privately developed "magtools" project (https://github.com/t-weber/magtools).
  * @license GPLv3, see 'LICENSE' file
+ *
+ * @note this file is based on code from my following projects:
+ *         - "geo" (https://github.com/t-weber/geo),
+ *         - "mathlibs" (https://github.com/t-weber/mathlibs),
+ *         - "magtools" (https://github.com/t-weber/magtools).
  *
  * References:
  *   - http://doc.qt.io/qt-5/qopenglwidget.html#details
@@ -11,7 +15,7 @@
  *
  * ----------------------------------------------------------------------------
  * tlibs
- * Copyright (C) 2017-2021  Tobias WEBER (Institut Laue-Langevin (ILL),
+ * Copyright (C) 2017-2025  Tobias WEBER (Institut Laue-Langevin (ILL),
  *                          Grenoble, France).
  * Copyright (C) 2015-2017  Tobias WEBER (Technische Universitaet Muenchen
  *                          (TUM), Garching, Germany).
@@ -40,8 +44,10 @@
 #include <QtWidgets/QDialog>
 #include <QtGui/QMouseEvent>
 
+#include <functional>
 #include <memory>
 #include <chrono>
+#include <tuple>
 #include <atomic>
 
 #include "gl.h"
@@ -85,17 +91,19 @@ protected:
 	GLint m_uniConstCol = -1;
 	GLint m_uniLightPos = -1;
 	GLint m_uniNumActiveLights = -1;
+	GLint m_uniLighting = -1;
 	GLint m_uniMatrixProj = -1;
 	GLint m_uniMatrixCam = -1;
 	GLint m_uniMatrixCamInv = -1;
 	GLint m_uniMatrixObj = -1;
 	GLint m_uniMatrixA = -1;
 	GLint m_uniMatrixB = -1;
+	GLint m_uniIsRealSpace = -1;
 	GLint m_uniCoordSys = -1;
 
 	t_mat_gl m_matA = tl2::unit<t_mat_gl>();
 	t_mat_gl m_matB = tl2::unit<t_mat_gl>();
-	t_real_gl m_CoordMax = 2.5;		// extent of coordinate axes
+	t_real_gl m_CoordMax = 2.5;       // extent of coordinate axes
 
 	std::atomic<bool> m_platform_supported = true;
 	std::atomic<bool> m_initialised = false;
@@ -106,13 +114,15 @@ protected:
 	std::atomic<bool> m_Btrafo_needs_update = false;
 	std::atomic<bool> m_cull = true;
 	std::atomic<bool> m_blend = false;
-	std::atomic<int> m_coordsys = 0;
+	std::atomic<bool> m_is_real_space = true;
+	std::atomic<int> m_coordsys = 0;  // 0: orthogonal, 1: using crystal matrix
 	t_real_gl m_pickerSphereRadius = 1;
 	bool m_showLabels = true;
 
 	std::vector<t_vec3_gl> m_lights{};
 	std::vector<GlPlotObj> m_objs{};
-	std::optional<std::size_t> m_coordCross{};
+	std::optional<std::size_t> m_coordCrossLab{}, m_coordCrossXtal{};
+	std::optional<std::size_t> m_coordCubeLab{};
 
 	QPointF m_posMouse{};
 	QPointF m_posMouseRotationStart{}, m_posMouseRotationEnd{};
@@ -124,7 +134,10 @@ protected:
 
 
 protected:
-	qgl_funcs* GetGlFunctions() { return get_gl_functions((QOpenGLWidget*)m_pPlot); }
+	qgl_funcs* GetGlFunctions()
+	{
+		return get_gl_functions((QOpenGLWidget*)m_pPlot);
+	}
 
 	void UpdateCam();
 	void UpdatePicker();
@@ -136,6 +149,11 @@ protected:
 	void DoPaintNonGL(QPainter &painter);
 
 	void tick(const std::chrono::milliseconds& ms);
+
+	std::size_t AddCoordinateCross(t_real_gl min, t_real_gl max);
+	std::size_t AddCoordinateCube(t_real_gl min, t_real_gl max);
+
+	void CollectGarbage();
 
 
 public:
@@ -150,18 +168,28 @@ public:
 
 	QPointF GlToScreenCoords(const t_vec_gl& vec, bool *pVisible = nullptr) const;
 
-	const t_cam& GetCamera() const { return m_cam; }
-	t_cam& GetCamera() { return m_cam; }
+	const t_cam& GetCamera() const
+	{
+		return m_cam;
+	}
+
+	t_cam& GetCamera()
+	{
+		return m_cam;
+	}
 
 	std::tuple<std::string, std::string, std::string, std::string>
-		GetGlDescr() const
+	GetGlDescr() const
 	{
 		return std::make_tuple(
 			m_strGlVer, m_strGlShaderVer,
 			m_strGlVendor, m_strGlRenderer);
 	}
 
-	void SetPickerSphereRadius(t_real_gl rad) { m_pickerSphereRadius = rad; }
+	void SetPickerSphereRadius(t_real_gl rad)
+	{
+		m_pickerSphereRadius = rad;
+	}
 
 	GlPlotObj CreateTriangleObject(const std::vector<t_vec3_gl>& verts,
 		const std::vector<t_vec3_gl>& triag_verts, const std::vector<t_vec3_gl>& norms,
@@ -170,37 +198,52 @@ public:
 
 	std::size_t GetNumObjects() const { return m_objs.size(); }
 	void RemoveObject(std::size_t obj);
+	void RemoveObjects();
+
 	std::size_t AddLinkedObject(std::size_t linkTo,
-		t_real_gl x=0, t_real_gl y=0, t_real_gl z=0,
-		t_real_gl r=1, t_real_gl g=1, t_real_gl b=1, t_real_gl a=1);
-	std::size_t AddSphere(t_real_gl rad=1,
-		t_real_gl x=0, t_real_gl y=0, t_real_gl z=0,
-		t_real_gl r=0, t_real_gl g=0, t_real_gl b=0, t_real_gl a=1);
-	std::size_t AddCylinder(t_real_gl rad=1, t_real_gl h=1,
-		t_real_gl x=0, t_real_gl y=0, t_real_gl z=0,
-		t_real_gl r=0, t_real_gl g=0, t_real_gl b=0, t_real_gl a=1);
-	std::size_t AddCone(t_real_gl rad=1, t_real_gl h=1,
-		t_real_gl x=0, t_real_gl y=0, t_real_gl z=0,
-		t_real_gl r=0, t_real_gl g=0, t_real_gl b=0, t_real_gl a=1);
-	std::size_t AddArrow(t_real_gl rad=1, t_real_gl h=1,
-		t_real_gl x=0, t_real_gl y=0, t_real_gl z=0,
-		t_real_gl r=0, t_real_gl g=0, t_real_gl b=0, t_real_gl a=1);
-	std::size_t AddPlane(t_real_gl nx=0, t_real_gl ny=0, t_real_gl nz=1,
-		t_real_gl x=0, t_real_gl y=0, t_real_gl z=1, t_real_gl size=10,
-		t_real_gl r=0, t_real_gl g=0, t_real_gl b=0, t_real_gl a=1);
+		t_real_gl x = 0, t_real_gl y = 0, t_real_gl z = 0,
+		t_real_gl r = 1, t_real_gl g = 1, t_real_gl b = 1, t_real_gl a = 1);
+
+	std::size_t AddCuboid(t_real_gl lx = 1, t_real_gl ly = 1, t_real_gl lz = 1,
+		t_real_gl x = 0, t_real_gl y = 0, t_real_gl z = 0,
+		t_real_gl r = 0, t_real_gl g = 0, t_real_gl b = 0, t_real_gl a = 1);
+	std::size_t AddSphere(t_real_gl rad = 1,
+		t_real_gl x = 0, t_real_gl y = 0, t_real_gl z = 0,
+		t_real_gl r = 0, t_real_gl g = 0, t_real_gl b = 0, t_real_gl a = 1);
+	std::size_t AddCylinder(t_real_gl rad = 1, t_real_gl h = 1,
+		t_real_gl x = 0, t_real_gl y = 0, t_real_gl z = 0,
+		t_real_gl r = 0, t_real_gl g = 0, t_real_gl b = 0, t_real_gl a = 1);
+	std::size_t AddCone(t_real_gl rad = 1, t_real_gl h = 1,
+		t_real_gl x = 0, t_real_gl y = 0, t_real_gl z = 0,
+		t_real_gl r = 0, t_real_gl g = 0, t_real_gl b = 0, t_real_gl a = 1);
+	std::size_t AddArrow(t_real_gl rad = 1, t_real_gl h = 1,
+		t_real_gl x = 0, t_real_gl y = 0, t_real_gl z = 0,
+		t_real_gl r = 0, t_real_gl g = 0, t_real_gl b = 0, t_real_gl a = 1);
+	std::size_t AddPlane(t_real_gl nx = 0, t_real_gl ny = 0, t_real_gl nz = 1,
+		t_real_gl x = 0, t_real_gl y = 0, t_real_gl z = 1, t_real_gl size = 10,
+		t_real_gl r = 0, t_real_gl g = 0, t_real_gl b = 0, t_real_gl a = 1);
+	std::size_t AddPatch(
+		std::function<std::pair<t_real_gl, bool>(t_real_gl, t_real_gl, std::size_t, std::size_t)> fkt,
+		t_real_gl x = 0, t_real_gl y = 0, t_real_gl z = 0,
+		t_real_gl w = 10, t_real_gl h = 10, std::size_t pts_x = 16, std::size_t pts_y = 16,
+		t_real_gl r = 0, t_real_gl g = 0, t_real_gl b = 0, t_real_gl a = 1);
+
 	std::size_t AddTriangleObject(const std::vector<t_vec3_gl>& triag_verts,
 		const std::vector<t_vec3_gl>& triag_norms,
-		t_real_gl r=0, t_real_gl g=0, t_real_gl b=0, t_real_gl a=1);
-	std::size_t AddCoordinateCross(t_real_gl min, t_real_gl max);
+		t_real_gl r = 0, t_real_gl g = 0, t_real_gl b = 0, t_real_gl a = 1);
 
 	void SetObjectMatrix(std::size_t idx, const t_mat_gl& mat);
-	void SetObjectCol(std::size_t idx, t_real_gl r, t_real_gl g, t_real_gl b, t_real_gl a=1);
+	void SetObjectCol(std::size_t idx, t_real_gl r, t_real_gl g, t_real_gl b, t_real_gl a = 1);
 	void SetObjectLabel(std::size_t idx, const std::string& label);
 	void SetObjectDataString(std::size_t idx, const std::string& data);
 	void SetObjectVisible(std::size_t idx, bool visible);
 	void SetObjectIntersectable(std::size_t idx, bool intersect);
-	void SetObjectHighlight(std::size_t idx, bool highlight);
 	void SetObjectPriority(std::size_t idx, int prio);
+	void SetObjectInvariant(std::size_t idx, bool invariant);
+	void SetObjectForceCull(std::size_t idx, bool cull);
+	void SetObjectCullBack(std::size_t idx, bool cull_back);
+	void SetObjectLighting(std::size_t idx, int lighting);
+	void SetObjectHighlight(std::size_t idx, bool highlight);
 	void SetObjectsHighlight(bool highlight);
 
 	const t_mat_gl& GetObjectMatrix(std::size_t idx) const;
@@ -210,22 +253,60 @@ public:
 	bool GetObjectHighlight(std::size_t idx) const;
 
 	void SetScreenDims(int w, int h);
-	void SetCoordMax(t_real_gl d) { m_CoordMax = d; }
+
+	void SetCoordMax(t_real_gl d)
+	{
+		m_CoordMax = d;
+	}
 
 	void SetLight(std::size_t idx, const t_vec3_gl& pos);
 
-	void SetCull(bool b) { m_cull = b; }
-	void SetBlend(bool b) { m_blend = b; }
-	void SetRestrictCamTheta(bool b) { m_restrict_cam_theta = b; }
+	void SetCull(bool b)
+	{
+		m_cull = b;
+	}
 
-	void SetBTrafo(const t_mat_gl& matB, const t_mat_gl* matA = nullptr);
+	void SetBlend(bool b)
+	{
+		m_blend = b;
+	}
+
+	void SetRestrictCamTheta(bool b)
+	{
+		m_restrict_cam_theta = b;
+	}
+
+	void SetBTrafo(const t_mat_gl& matB, const t_mat_gl* matA = nullptr, bool is_real_space = true);
 	void SetCoordSys(int iSys);
 
-	bool IsInitialised() const { return m_initialised; }
-	const QPointF& GetMousePosition() const { return m_posMouse; };
+	bool IsInitialised() const
+	{
+		return m_initialised;
+	}
 
-	void SetLabelsVisible(bool show) { m_showLabels = show; }
-	std::optional<std::size_t> GetCoordCross() const { return m_coordCross; }
+	const QPointF& GetMousePosition() const
+	{
+		return m_posMouse;
+	}
+
+	void SetLabelsVisible(bool show)
+	{
+		m_showLabels = show;
+	}
+
+	std::optional<std::size_t> GetCoordCross(bool xtal = false) const
+	{
+		if(xtal)
+			return m_coordCrossXtal;
+		return m_coordCrossLab;
+	}
+
+	std::optional<std::size_t> GetCoordCube(bool xtal = false) const
+	{
+		if(xtal)
+			return std::nullopt;
+		return m_coordCubeLab;
+	}
 
 	void RequestViewportUpdate();
 	void UpdateViewport();
@@ -274,7 +355,11 @@ public:
 	GlPlot(const GlPlot&) = delete;
 	const GlPlot& operator=(const GlPlot&) = delete;
 
-	GlPlotRenderer* GetRenderer() { return m_renderer.get(); }
+	GlPlotRenderer* GetRenderer()
+	{
+		return m_renderer.get();
+	}
+
 	static constexpr bool m_isthreaded = GlPlotRenderer::m_isthreaded;
 
 

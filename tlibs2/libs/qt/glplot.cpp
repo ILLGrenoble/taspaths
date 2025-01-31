@@ -2,8 +2,12 @@
  * tlibs2 -- GL plotter
  * @author Tobias Weber <tweber@ill.fr>
  * @date 2017-2021
- * @note The present version was forked on 8-Nov-2018 from my privately developed "magtools" project (https://github.com/t-weber/magtools).
  * @license GPLv3, see 'LICENSE' file
+ *
+ * @note this file is based on code from my following projects:
+ *         - "geo" (https://github.com/t-weber/geo),
+ *         - "mathlibs" (https://github.com/t-weber/mathlibs),
+ *         - "magtools" (https://github.com/t-weber/magtools).
  *
  * References:
  *   - http://doc.qt.io/qt-5/qopenglwidget.html#details
@@ -11,7 +15,7 @@
  *
  * ----------------------------------------------------------------------------
  * tlibs
- * Copyright (C) 2017-2021  Tobias WEBER (Institut Laue-Langevin (ILL),
+ * Copyright (C) 2017-2025  Tobias WEBER (Institut Laue-Langevin (ILL),
  *                          Grenoble, France).
  * Copyright (C) 2015-2017  Tobias WEBER (Technische Universitaet Muenchen
  *                          (TUM), Garching, Germany).
@@ -206,6 +210,14 @@ bool GlPlotRenderer::GetObjectVisible(std::size_t idx) const
 }
 
 
+void GlPlotRenderer::SetObjectLighting(std::size_t idx, int lighting)
+{
+	if(idx >= m_objs.size())
+		return;
+	m_objs[idx].m_lighting = lighting;
+}
+
+
 void GlPlotRenderer::SetObjectHighlight(std::size_t idx, bool highlight)
 {
 	if(idx >= m_objs.size())
@@ -240,6 +252,30 @@ bool GlPlotRenderer::GetObjectHighlight(std::size_t idx) const
 }
 
 
+void GlPlotRenderer::SetObjectInvariant(std::size_t idx, bool invariant)
+{
+	if(idx >= m_objs.size())
+		return;
+	m_objs[idx].m_invariant = invariant;
+}
+
+
+void GlPlotRenderer::SetObjectForceCull(std::size_t idx, bool cull)
+{
+	if(idx >= m_objs.size())
+		return;
+	m_objs[idx].m_force_cull = cull;
+}
+
+
+void GlPlotRenderer::SetObjectCullBack(std::size_t idx, bool cull_back)
+{
+	if(idx >= m_objs.size())
+		return;
+	m_objs[idx].m_cull_back = cull_back;
+}
+
+
 void GlPlotRenderer::RemoveObject(std::size_t idx)
 {
 	m_objs[idx].m_valid = false;
@@ -251,7 +287,42 @@ void GlPlotRenderer::RemoveObject(std::size_t idx)
 	m_objs[idx].m_vertices.clear();
 	m_objs[idx].m_triangles.clear();
 
-	// TODO: remove if object has no follow-up indices
+	CollectGarbage();
+}
+
+
+void GlPlotRenderer::RemoveObjects()
+{
+	for(std::size_t obj = 0; obj < m_objs.size(); ++obj)
+	{
+		// keep coordinate crosses
+		if(m_coordCrossLab && obj == *m_coordCrossLab)
+			continue;
+		if(m_coordCrossXtal && obj == *m_coordCrossXtal)
+			continue;
+		if(m_coordCubeLab && obj == *m_coordCubeLab)
+			continue;
+
+		RemoveObject(obj);
+	}
+
+	CollectGarbage();
+}
+
+
+/**
+ * remove invalid objects
+ */
+void GlPlotRenderer::CollectGarbage()
+{
+	// remove all invalid objects at the end of the list
+	for(std::ptrdiff_t idx = m_objs.size() - 1; idx >= 0; --idx)
+	{
+		if(m_objs[idx].m_valid)
+			break;
+
+		m_objs.erase(m_objs.begin() + idx);
+	}
 }
 
 
@@ -265,6 +336,29 @@ std::size_t GlPlotRenderer::AddLinkedObject(std::size_t linkTo,
 	obj.m_colour = tl2::create<t_vec_gl>({r, g, b, a});
 
 	QMutexLocker _locker{&m_mutexObj};
+	m_objs.emplace_back(std::move(obj));
+
+	return m_objs.size() - 1;		// object handle
+}
+
+
+std::size_t GlPlotRenderer::AddCuboid(
+	t_real_gl lx, t_real_gl ly, t_real_gl lz,
+	t_real_gl x, t_real_gl y, t_real_gl z,
+	t_real_gl r, t_real_gl g, t_real_gl b, t_real_gl a)
+{
+	auto solid = tl2::create_cuboid<t_vec3_gl>(lx, ly, lz);
+	auto [triagverts, norms, uvs] = tl2::create_triangles<t_vec3_gl>(solid);
+	auto [boundingSpherePos, boundingSphereRad] =
+		tl2::bounding_sphere<t_vec3_gl>(triagverts);
+
+	QMutexLocker _locker{&m_mutexObj};
+
+	auto obj = CreateTriangleObject(std::get<0>(solid),
+		triagverts, norms, tl2::create<t_vec_gl>({ r, g, b, a }), false);
+	obj.m_mat = tl2::hom_translation<t_mat_gl>(x, y, z);
+	obj.m_boundingSpherePos = std::move(boundingSpherePos);
+	obj.m_boundingSphereRad = boundingSphereRad;
 	m_objs.emplace_back(std::move(obj));
 
 	return m_objs.size() - 1;		// object handle
@@ -287,7 +381,7 @@ std::size_t GlPlotRenderer::AddSphere(
 	QMutexLocker _locker{&m_mutexObj};
 
 	auto obj = CreateTriangleObject(std::get<0>(solid),
-		triagverts, norms, tl2::create<t_vec_gl>({r,g,b,a}), true);
+		triagverts, norms, tl2::create<t_vec_gl>({ r, g, b, a }), true);
 	obj.m_mat = tl2::hom_translation<t_mat_gl>(x, y, z);
 	obj.m_boundingSpherePos = std::move(boundingSpherePos);
 	obj.m_boundingSphereRad = boundingSphereRad;
@@ -310,7 +404,7 @@ std::size_t GlPlotRenderer::AddCylinder(t_real_gl rad, t_real_gl h,
 	QMutexLocker _locker{&m_mutexObj};
 
 	auto obj = CreateTriangleObject(std::get<0>(solid),
-		triagverts, norms, tl2::create<t_vec_gl>({r,g,b,a}), false);
+		triagverts, norms, tl2::create<t_vec_gl>({ r, g, b, a }), false);
 	obj.m_mat = tl2::hom_translation<t_mat_gl>(x, y, z);
 	obj.m_boundingSpherePos = std::move(boundingSpherePos);
 	obj.m_boundingSphereRad = boundingSphereRad;
@@ -332,7 +426,7 @@ std::size_t GlPlotRenderer::AddCone(t_real_gl rad, t_real_gl h,
 	QMutexLocker _locker{&m_mutexObj};
 
 	auto obj = CreateTriangleObject(std::get<0>(solid),
-		triagverts, norms, tl2::create<t_vec_gl>({r,g,b,a}), false);
+		triagverts, norms, tl2::create<t_vec_gl>({ r, g, b, a }), false);
 	obj.m_mat = tl2::hom_translation<t_mat_gl>(x, y, z);
 	obj.m_boundingSpherePos = std::move(boundingSpherePos);
 	obj.m_boundingSphereRad = boundingSphereRad;
@@ -396,6 +490,34 @@ std::size_t GlPlotRenderer::AddPlane(
 }
 
 
+std::size_t GlPlotRenderer::AddPatch(
+	std::function<std::pair<t_real_gl, bool>(
+	t_real_gl, t_real_gl, std::size_t, std::size_t)> fkt,
+	t_real_gl x, t_real_gl y, t_real_gl z,
+	t_real_gl w, t_real_gl h, std::size_t pts_x, std::size_t pts_y,
+	t_real_gl r, t_real_gl g, t_real_gl b, t_real_gl a)
+{
+	using t_fkt = std::function<std::pair<t_real_gl, bool>(t_real_gl, t_real_gl, std::size_t, std::size_t)>;
+
+	auto solid = tl2::create_patch<t_fkt, t_mat_gl, t_vec3_gl>(
+		fkt, w, h, pts_x, pts_y);
+	auto [verts, norms, uvs] = tl2::create_triangles<t_vec3_gl>(solid);
+	auto [boundingSpherePos, boundingSphereRad] =
+		tl2::bounding_sphere<t_vec3_gl>(verts);
+
+	QMutexLocker _locker{&m_mutexObj};
+
+	auto obj = CreateTriangleObject(std::get<0>(solid),
+		verts, norms, tl2::create<t_vec_gl>({ r, g, b, a }), false);
+	obj.m_mat = tl2::hom_translation<t_mat_gl>(x, y, z);
+	obj.m_boundingSpherePos = std::move(boundingSpherePos);
+	obj.m_boundingSphereRad = boundingSphereRad;
+	m_objs.emplace_back(std::move(obj));
+
+	return m_objs.size() - 1;		// object handle
+}
+
+
 std::size_t GlPlotRenderer::AddTriangleObject(
 	const std::vector<t_vec3_gl>& triag_verts,
 	const std::vector<t_vec3_gl>& triag_norms,
@@ -434,9 +556,24 @@ std::size_t GlPlotRenderer::AddCoordinateCross(t_real_gl min, t_real_gl max)
 	obj.m_invariant = true;
 	m_objs.emplace_back(std::move(obj));
 
-	return m_objs.size() - 1;		// object handle
+	return m_objs.size() - 1;  // object handle
 }
 
+
+std::size_t GlPlotRenderer::AddCoordinateCube(t_real_gl min, t_real_gl max)
+{
+	t_real_gl w = max - min;
+	auto obj = AddCuboid(1., 1., 1.,  0., 0., 0.,  0.75, 0.75, 0.75, 1.);
+
+	SetObjectMatrix(obj, hom_scaling<t_mat_gl>(w, w, w));
+	SetObjectIntersectable(obj, false);
+	SetObjectInvariant(obj, true);
+	SetObjectForceCull(obj, true);
+	SetObjectCullBack(obj, false);
+	SetObjectLighting(obj, 2);
+
+	return obj;  // object handle
+}
 
 
 void GlPlotRenderer::initialiseGL()
@@ -460,9 +597,9 @@ out vec4 outcol;
 // ----------------------------------------------------------------------------
 // lighting
 // ----------------------------------------------------------------------------
-uniform vec4 constcol = vec4(1, 1, 1, 1);
-uniform vec3 lightpos[] = vec3[]( vec3(5, 5, 5), vec3(0, 0, 0), vec3(0, 0, 0), vec3(0, 0, 0) );
-uniform int activelights = 1;	// how many lights to use?
+uniform vec4 const_col = vec4(1, 1, 1, 1);
+uniform vec3 light_pos[] = vec3[]( vec3(5, 5, 5), vec3(0, 0, 0), vec3(0, 0, 0), vec3(0, 0, 0) );
+uniform int active_lights = 1;	// how many lights to use?
 
 float g_diffuse = 1.;
 float g_specular = 0.25;
@@ -477,6 +614,7 @@ float g_ambient = 0.2;
 uniform mat4 cam = mat4(1.);
 uniform mat4 cam_inv = mat4(1.);
 uniform mat4 obj = mat4(1.);
+uniform int lighting = 1;
 // ----------------------------------------------------------------------------
 
 
@@ -508,7 +646,7 @@ vec3 get_campos()
  * phong lighting model
  * @see: https://en.wikipedia.org/wiki/Phong_reflection_model
  */
-float lighting(vec4 objVert, vec4 objNorm)
+float phong_lighting(vec4 objVert, vec4 objNorm)
 {
 	float I_diff = 0.;
 	float I_spec = 0.;
@@ -521,10 +659,10 @@ float lighting(vec4 objVert, vec4 objNorm)
 
 
 	// iterate (active) light sources
-	for(int lightidx = 0; lightidx < min(lightpos.length(), activelights); ++lightidx)
+	for(int lightidx = 0; lightidx < min(light_pos.length(), active_lights); ++lightidx)
 	{
 		// diffuse lighting
-		vec3 dirLight = normalize(lightpos[lightidx]-objVert.xyz);
+		vec3 dirLight = normalize(light_pos[lightidx] - objVert.xyz);
 
 		if(g_diffuse > 0.)
 		{
@@ -564,12 +702,29 @@ float lighting(vec4 objVert, vec4 objNorm)
 }
 
 
+/**
+ * simple flat lighting model
+ */
+float flat_lighting(vec4 objNorm)
+{
+	// choose colours bases on normal components
+	const vec3 dir_cols = vec3(1., 0.9, 0.8);
+
+	return abs(dot(objNorm.xyz, dir_cols));
+}
+
+
 void main()
 {
-	float I = lighting(fragpos, fragnorm);
+	float I = 1.;
+	if(lighting == 1)
+		I = phong_lighting(fragpos, fragnorm);
+	else if(lighting == 2)
+		I = flat_lighting(fragnorm);
+
 	outcol = fragcol;
 	outcol.rgb *= I;
-	outcol *= constcol;
+	outcol *= const_col;
 })RAW";
 	// --------------------------------------------------------------------
 
@@ -583,7 +738,7 @@ void main()
 // ----------------------------------------------------------------------------
 in vec4 vertex;
 in vec4 normal;
-in vec4 vertexcol;
+in vec4 vertex_col;
 
 out vec4 fragcol;
 out vec4 fragpos;
@@ -604,6 +759,7 @@ uniform mat4 obj = mat4(1.);
 uniform mat4 trafoA = mat4(1.);
 uniform mat4 trafoB = mat4(1.);  // B = 2 pi / A
 
+uniform int is_real_space = 1;   // real or reciprocal space
 uniform int coordsys = 0;        // 0: crystal system, 1: lab system
 // ----------------------------------------------------------------------------
 
@@ -613,10 +769,16 @@ void main()
 	mat4 coordTrafo = mat4(1.);
 	mat4 coordTrafo_inv = mat4(1.);
 
-	if(coordsys == 1)
+	if(coordsys == 1 && is_real_space == 1)
 	{
 		coordTrafo = trafoA;
 		coordTrafo_inv = trafoB / (2.*pi);
+		coordTrafo_inv[3][3] = 1.;
+	}
+	else if(coordsys == 1 && is_real_space == 0)
+	{
+		coordTrafo = trafoB;
+		coordTrafo_inv = trafoA / (2.*pi);
 		coordTrafo_inv[3][3] = 1.;
 	}
 
@@ -627,7 +789,7 @@ void main()
 
 	fragpos = objPos;
 	fragnorm = objNorm;
-	fragcol = vertexcol;
+	fragcol = vertex_col;
 })RAW";
 // --------------------------------------------------------------------
 
@@ -700,22 +862,29 @@ void main()
 		m_uniMatrixObj = m_pShaders->uniformLocation("obj");
 		m_uniMatrixA = m_pShaders->uniformLocation("trafoA");
 		m_uniMatrixB = m_pShaders->uniformLocation("trafoB");
+		m_uniIsRealSpace = m_pShaders->uniformLocation("is_real_space");
 		m_uniCoordSys = m_pShaders->uniformLocation("coordsys");
-		m_uniConstCol = m_pShaders->uniformLocation("constcol");
-		m_uniLightPos = m_pShaders->uniformLocation("lightpos");
-		m_uniNumActiveLights = m_pShaders->uniformLocation("activelights");
+		m_uniConstCol = m_pShaders->uniformLocation("const_col");
+		m_uniLightPos = m_pShaders->uniformLocation("light_pos");
+		m_uniNumActiveLights = m_pShaders->uniformLocation("active_lights");
+		m_uniLighting = m_pShaders->uniformLocation("lighting");
 		m_attrVertex = m_pShaders->attributeLocation("vertex");
 		m_attrVertexNorm = m_pShaders->attributeLocation("normal");
-		m_attrVertexCol = m_pShaders->attributeLocation("vertexcol");
+		m_attrVertexCol = m_pShaders->attributeLocation("vertex_col");
 	}
 	LOGGLERR(pGl);
 
 
 	// 3d objects
-	m_coordCross = AddCoordinateCross(-m_CoordMax, m_CoordMax);
-
+	m_coordCrossLab = AddCoordinateCross(-m_CoordMax, m_CoordMax);
+	m_coordCrossXtal = AddCoordinateCross(-m_CoordMax, m_CoordMax);
+	m_coordCubeLab = AddCoordinateCube(-m_CoordMax, m_CoordMax);
+	SetObjectVisible(*m_coordCrossLab, true);
+	SetObjectVisible(*m_coordCrossXtal, false);
+	SetObjectVisible(*m_coordCubeLab, false);
 
 	m_initialised = true;
+
 
 	// check threading compatibility
 	if constexpr(m_isthreaded)
@@ -757,6 +926,8 @@ void GlPlotRenderer::UpdateViewport()
 
 	pGl->glViewport(0, 0, w, h);
 	pGl->glDepthRange(z_near, z_far);
+	pGl->glClearDepth(z_far);
+	pGl->glDepthFunc(GL_LEQUAL);
 
 	// bind shaders
 	m_pShaders->bind();
@@ -785,9 +956,10 @@ void GlPlotRenderer::RequestViewportUpdate()
 /**
  * set up a (crystal) B matrix
  */
-void GlPlotRenderer::SetBTrafo(const t_mat_gl& matB, const t_mat_gl* matA)
+void GlPlotRenderer::SetBTrafo(const t_mat_gl& matB, const t_mat_gl* matA, bool is_real_space)
 {
 	m_matB = matB;
+	m_is_real_space = is_real_space;
 
 	// if A matix is not given, calculate it
 	if(matA)
@@ -810,6 +982,9 @@ void GlPlotRenderer::SetBTrafo(const t_mat_gl& matB, const t_mat_gl* matA)
 		}
 	}
 
+	if(m_coordCrossXtal)
+		SetObjectMatrix(*m_coordCrossXtal, m_matB);
+
 	m_Btrafo_needs_update = true;
 	RequestPlotUpdate();
 }
@@ -829,6 +1004,7 @@ void GlPlotRenderer::UpdateBTrafo()
 {
 	m_pShaders->setUniformValue(m_uniMatrixA, m_matA);
 	m_pShaders->setUniformValue(m_uniMatrixB, m_matB);
+	m_pShaders->setUniformValue(m_uniIsRealSpace, m_is_real_space ? 1 : 0);
 
 	m_Btrafo_needs_update = false;
 }
@@ -1156,6 +1332,7 @@ void GlPlotRenderer::DoPaintGL(qgl_funcs *pGl)
 	pGl->glClearColor(1., 1., 1., 1.);
 	pGl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	pGl->glEnable(GL_DEPTH_TEST);
+	pGl->glDepthMask(GL_TRUE);
 	LOGGLERR(pGl);
 
 
@@ -1164,8 +1341,10 @@ void GlPlotRenderer::DoPaintGL(qgl_funcs *pGl)
 	BOOST_SCOPE_EXIT(m_pShaders) { m_pShaders->release(); } BOOST_SCOPE_EXIT_END
 	LOGGLERR(pGl);
 
-	if(m_lights_need_update) UpdateLights();
-	if(m_Btrafo_needs_update) UpdateBTrafo();
+	if(m_lights_need_update)
+		UpdateLights();
+	if(m_Btrafo_needs_update)
+		UpdateBTrafo();
 
 	// set cam matrix
 	m_pShaders->setUniformValue(m_uniMatrixCam, m_cam.GetTransformation());
@@ -1189,6 +1368,9 @@ void GlPlotRenderer::DoPaintGL(qgl_funcs *pGl)
 	{
 		const auto& obj = m_objs[obj_idx];
 
+		if(!obj.m_visible || !obj.m_valid)
+			continue;
+
 		const GlPlotObj *linkedObj = &obj;
 		if(obj.linkedObj)
 		{
@@ -1207,9 +1389,28 @@ void GlPlotRenderer::DoPaintGL(qgl_funcs *pGl)
 			m_pShaders->setUniformValue(m_uniConstCol, colOverride);
 		}
 
-		if(!obj.m_visible || !obj.m_valid)
-			continue;
+		m_pShaders->setUniformValue(m_uniLighting, obj.m_lighting);
 
+		// force object culling?
+		if(obj.m_force_cull)
+			pGl->glEnable(GL_CULL_FACE);
+		BOOST_SCOPE_EXIT(this_, pGl, &obj)
+		{
+			if(obj.m_force_cull)
+			{
+				// set cull back to global default
+				if(this_->m_cull)
+					pGl->glEnable(GL_CULL_FACE);
+				else
+					pGl->glDisable(GL_CULL_FACE);
+			}
+		}
+		BOOST_SCOPE_EXIT_END
+
+		if(obj.m_cull_back)
+			pGl->glCullFace(GL_BACK);
+		else
+			pGl->glCullFace(GL_FRONT);
 
 		m_pShaders->setUniformValue(m_uniMatrixObj, obj.m_mat);
 
@@ -1235,12 +1436,14 @@ void GlPlotRenderer::DoPaintGL(qgl_funcs *pGl)
 		LOGGLERR(pGl);
 
 
+		// draw object
 		if(linkedObj->m_type == GlPlotObjType::TRIANGLES)
 			pGl->glDrawArrays(GL_TRIANGLES, 0, linkedObj->m_triangles.size());
 		else if(linkedObj->m_type == GlPlotObjType::LINES)
 			pGl->glDrawArrays(GL_LINES, 0, linkedObj->m_vertices.size());
 		else
 			std::cerr << "Unknown plot object type." << std::endl;
+
 
 		LOGGLERR(pGl);
 	}
@@ -1263,8 +1466,8 @@ void GlPlotRenderer::DoPaintNonGL(QPainter &painter)
 	painter.setPen(penLabel);
 
 
-	// draw coordinate system
-	auto objCoordCross = GetCoordCross();
+	// draw coordinate system in orthogonal lab system in 1/A
+	auto objCoordCross = GetCoordCross(false);
 	if(objCoordCross && GetObjectVisible(*objCoordCross))
 	{
 		// coordinate labels
@@ -1284,12 +1487,57 @@ void GlPlotRenderer::DoPaintNonGL(QPainter &painter)
 				tl2::create<t_vec_gl>({0.,0.,f,1.})), ostrF.str().c_str());
 		}
 
-		painter.drawText(GlToScreenCoords(
-			tl2::create<t_vec_gl>({m_CoordMax*t_real_gl(1.2), 0., 0., 1.})), "x");
-		painter.drawText(GlToScreenCoords(
-			tl2::create<t_vec_gl>({0., m_CoordMax*t_real_gl(1.2), 0., 1.})), "y");
-		painter.drawText(GlToScreenCoords(
-			tl2::create<t_vec_gl>({0., 0., m_CoordMax*t_real_gl(1.2), 1.})), "z");
+		t_vec_gl x = tl2::create<t_vec_gl>({m_CoordMax*t_real_gl(1.2), 0., 0., 1.});
+		t_vec_gl y = tl2::create<t_vec_gl>({0., m_CoordMax*t_real_gl(1.2), 0., 1.});
+		t_vec_gl z = tl2::create<t_vec_gl>({0., 0., m_CoordMax*t_real_gl(1.2), 1.});
+
+		painter.drawText(GlToScreenCoords(x), m_is_real_space ? "x" : "Qx");
+		painter.drawText(GlToScreenCoords(y), m_is_real_space ? "y" : "Qy");
+		painter.drawText(GlToScreenCoords(z), m_is_real_space ? "z" : "Qz");
+	}
+
+
+	// draw coordinate system in generally non-orthogonal crystal system in rlu
+	objCoordCross = GetCoordCross(true);
+	if(objCoordCross && GetObjectVisible(*objCoordCross))
+	{
+		// coordinate labels
+		painter.drawText(GlToScreenCoords(tl2::create<t_vec_gl>({0.,0.,0.,1.})), "0");
+		for(t_real_gl f = -std::floor(m_CoordMax); f <= std::floor(m_CoordMax); f += 0.5)
+		{
+			if(tl2::equals<t_real_gl>(f, 0))
+				continue;
+
+			std::ostringstream ostrF;
+			ostrF << f;
+			painter.drawText(GlToScreenCoords(
+				tl2::create<t_vec_gl>({f,0.,0.,1.})), ostrF.str().c_str());
+			painter.drawText(GlToScreenCoords(
+				tl2::create<t_vec_gl>({0.,f,0.,1.})), ostrF.str().c_str());
+			painter.drawText(GlToScreenCoords(
+				tl2::create<t_vec_gl>({0.,0.,f,1.})), ostrF.str().c_str());
+		}
+
+		t_vec_gl h = tl2::create<t_vec_gl>({m_CoordMax*t_real_gl(1.2), 0., 0., 1.});
+		t_vec_gl k = tl2::create<t_vec_gl>({0., m_CoordMax*t_real_gl(1.2), 0., 1.});
+		t_vec_gl l = tl2::create<t_vec_gl>({0., 0., m_CoordMax*t_real_gl(1.2), 1.});
+
+		if(m_is_real_space)
+		{
+			h = m_matA * h;
+			k = m_matA * k;
+			l = m_matA * l;
+		}
+		else
+		{
+			h = m_matB * h;
+			k = m_matB * k;
+			l = m_matB * l;
+		}
+
+		painter.drawText(GlToScreenCoords(h), m_is_real_space ? "x_xtl" : "h");
+		painter.drawText(GlToScreenCoords(k), m_is_real_space ? "y_xtl" : "k");
+		painter.drawText(GlToScreenCoords(l), m_is_real_space ? "z_xtl" : "l");
 	}
 
 
@@ -1356,7 +1604,8 @@ void GlPlotRenderer::paintGL()
 		{
 			BOOST_SCOPE_EXIT(&painter) { painter.endNativePainting(); } BOOST_SCOPE_EXIT_END
 
-			if(m_picker_needs_update) UpdatePicker();
+			if(m_picker_needs_update)
+				UpdatePicker();
 
 			auto *pGl = GetGlFunctions();
 			painter.beginNativePainting();

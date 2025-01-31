@@ -46,12 +46,7 @@
 
 #include "tlibs2/libs/maths.h"
 #include "tlibs2/libs/qt/gl.h"
-
-#ifdef USE_TLIBS2_CAM
-	#include "tlibs2/libs/cam.h"
-#else
-	#include "Camera.h"
-#endif
+#include "tlibs2/libs/cam.h"
 
 #include "src/core/InstrumentSpace.h"
 #include "src/gui/InstrumentStatus.h"
@@ -101,11 +96,7 @@ class PathsRenderer : public QOpenGLWidget
 { Q_OBJECT
 public:
 	// camera type
-#ifdef USE_TLIBS2_CAM
 	using t_cam = tl2::Camera<t_mat_gl, t_vec_gl, t_vec3_gl, t_real_gl>;
-#else
-	using t_cam = Camera<t_mat_gl, t_vec_gl, t_vec3_gl, t_real_gl>;
-#endif
 
 	// 3d object and texture types
 	using t_objs = std::unordered_map<std::string, PathsObj>;

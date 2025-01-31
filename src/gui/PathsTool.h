@@ -52,7 +52,7 @@
 #include "InstrumentStatus.h"
 #include "common/Resources.h"
 #include "settings_variables.h"
-#include "renderer/PathsRenderer.h"
+#include "PathsRenderer.h"
 
 #include "dialogs/ConfigSpace.h"
 #include "dialogs/XtalConfigSpace.h"

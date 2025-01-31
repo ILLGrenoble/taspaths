@@ -318,9 +318,7 @@ add_executable(taspaths
 	src/gui/main.cpp
 	src/gui/PathsTool.cpp src/gui/PathsTool.h
 	src/gui/settings_variables.cpp src/gui/settings_variables.h
-
-	src/gui/renderer/PathsRenderer.cpp src/gui/renderer/PathsRenderer.h
-	src/gui/renderer/Camera.h
+	src/gui/PathsRenderer.cpp src/gui/PathsRenderer.h
 
 	src/gui/dock/TASProperties.cpp src/gui/dock/TASProperties.h
 	src/gui/dock/XtalProperties.cpp src/gui/dock/XtalProperties.h
@@ -353,7 +351,7 @@ add_executable(taspaths
 
 	tlibs2/libs/qt/recent.cpp tlibs2/libs/qt/recent.h
 	tlibs2/libs/qt/gl.cpp tlibs2/libs/qt/gl.h
-	tlibs2/libs/maths.h #tlibs2/libs/cam.h
+	tlibs2/libs/maths.h tlibs2/libs/cam.h
 
 	#externals/qcustomplot/qcustomplot.cpp externals/qcustomplot/qcustomplot.h
 )
