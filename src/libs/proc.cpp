@@ -34,8 +34,15 @@
 #include "proc.h"
 
 #if !defined(__MINGW32__) && !defined(__MINGW64__)
-	#include <boost/process.hpp>
-	namespace proc = boost::process;
+  #if __has_include(<boost/process/v1.hpp>)
+		// new versions of boost
+		#include <boost/process/v1.hpp>
+		namespace proc = boost::process::v1;
+  #else
+		// old version of boost
+		#include <boost/process.hpp>
+		namespace proc = boost::process;
+	#endif
 	namespace this_proc = boost::this_process;
 #endif
 
