@@ -15,7 +15,7 @@
  *
  * ----------------------------------------------------------------------------
  * tlibs
- * Copyright (C) 2017-2025  Tobias WEBER (Institut Laue-Langevin (ILL),
+ * Copyright (C) 2017-2026  Tobias WEBER (Institut Laue-Langevin (ILL),
  *                          Grenoble, France).
  * Copyright (C) 2015-2017  Tobias WEBER (Technische Universitaet Muenchen
  *                          (TUM), Garching, Germany).
@@ -138,7 +138,7 @@ using qgl_funcs = _GL_FUNC(_GL_MAJ_VER, _GL_MIN_VER, _GL_SUFFIX);
 
 
 // GL error codes: https://www.khronos.org/opengl/wiki/OpenGL_Error
-#define LOGGLERR(pGl) { while(true) {	\
+#define LOGGLERR(pGl) { while(pGl) {	\
 		auto err = pGl->glGetError();	\
 		if(err == GL_NO_ERROR) break;	\
 		std::cerr << "GL error in " << __func__ \
@@ -197,45 +197,43 @@ enum class GlRenderObjType
 };
 
 
-#ifndef GlPlotObjType
-	#define GlPlotObjType GlRenderObjType
-#endif
-
-
 struct GlRenderObj
 {
-	GlPlotObjType m_type = GlPlotObjType::TRIANGLES;
+	GlRenderObjType m_type = GlRenderObjType::TRIANGLES;
 
 	std::shared_ptr<QOpenGLVertexArrayObject> m_vertex_array{};
 	std::shared_ptr<QOpenGLBuffer> m_vertex_buffer{};
 	std::shared_ptr<QOpenGLBuffer> m_normals_buffer{};
 	std::shared_ptr<QOpenGLBuffer> m_uv_buffer{};
 	std::shared_ptr<QOpenGLBuffer> m_colour_buffer{};
+	std::shared_ptr<QOpenGLTexture> m_texture{};
 
 	std::vector<t_vec3_gl> m_vertices{}, m_triangles{}, m_uvs{};
 
 	t_vec_gl m_colour = tl2::create<t_vec_gl>({ 0., 0., 1., 1. });	// rgba
-};
 
-
-struct GlPlotObj : public GlRenderObj
-{
 	// does not define a geometry itself, but just links to another object
 	std::optional<std::size_t> linkedObj{};
 
+	// object transformation matrix
 	t_mat_gl m_mat = tl2::unit<t_mat_gl>();
 
-	bool m_invariant = false;   // invariant to A, B matrices
-	bool m_visible = true;      // object shown?
-	bool m_highlighted = false; // object highlighted?
-	bool m_valid = true;        // object deleted?
-	bool m_intersect = true;    // object can be intersected by picker
-	bool m_cull_back = true;    // cull back or front faces
-	bool m_force_cull = false;  // cull enabled (otherwise use global setting)
-	int m_lighting = 1;         // lighting model
-	int m_priority = 1;         // object rendering priority
+	// additional transformation matrices applied after camera/projection trafo
+	t_mat_gl m_mat_after_cam  = tl2::unit<t_mat_gl>();
+	t_mat_gl m_mat_after_proj = tl2::unit<t_mat_gl>();
 
-	t_vec3_gl m_labelPos = tl2::create<t_vec3_gl>({ 0., 0., 0. });
+	bool m_invariant      = false;   // invariant to A, B matrices
+	bool m_cam_invariant  = false;   // invariant to camera translations
+	bool m_visible        = true;    // object shown?
+	bool m_highlighted    = false;   // object highlighted?
+	bool m_valid          = true;    // object deleted?
+	bool m_intersect      = true;    // object can be intersected by picker
+	bool m_cull_back      = true;    // cull back or front faces
+	bool m_force_cull     = false;   // cull enabled (otherwise use global setting)
+	int m_lighting        = 1;       // lighting model (1: phong, 2: flat, 3: none)
+	int m_priority        = 1;       // object rendering priority
+
+	t_vec3_gl m_label_pos = tl2::create<t_vec3_gl>({ 0., 0., 0. });
 	std::string m_label{};
 	std::string m_datastr{};
 

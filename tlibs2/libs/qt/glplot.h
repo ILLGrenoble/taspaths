@@ -1,7 +1,7 @@
 /**
  * tlibs2 -- GL plotter
  * @author Tobias Weber <tweber@ill.fr>
- * @date 2017-2021
+ * @date 2017 - 2021
  * @license GPLv3, see 'LICENSE' file
  *
  * @note this file is based on code from my following projects:
@@ -15,7 +15,7 @@
  *
  * ----------------------------------------------------------------------------
  * tlibs
- * Copyright (C) 2017-2025  Tobias WEBER (Institut Laue-Langevin (ILL),
+ * Copyright (C) 2017-2026  Tobias WEBER (Institut Laue-Langevin (ILL),
  *                          Grenoble, France).
  * Copyright (C) 2015-2017  Tobias WEBER (Technische Universitaet Muenchen
  *                          (TUM), Garching, Germany).
@@ -48,6 +48,7 @@
 #include <memory>
 #include <chrono>
 #include <tuple>
+#include <array>
 #include <atomic>
 
 #include "gl.h"
@@ -67,6 +68,9 @@ class GlPlot;
 class GlPlotRenderer : public QObject
 { Q_OBJECT
 public:
+	static constexpr bool m_isthreaded = false;
+	static constexpr bool m_usetimer = false;
+
 	using t_cam = tl2::Camera<t_mat_gl, t_vec_gl, t_vec3_gl, t_real_gl>;
 
 
@@ -84,28 +88,33 @@ protected:
 		m_strGlVendor{}, m_strGlRenderer{};
 
 	std::shared_ptr<QOpenGLShaderProgram> m_pShaders{};
+	QFont m_font{};
 
-	GLint m_attrVertex = -1;
-	GLint m_attrVertexNorm = -1;
-	GLint m_attrVertexCol = -1;
+	// vertices
+	GLint m_attrVertex = -1, m_attrVertexNorm = -1;
+	GLint m_attrVertexCol = -1, m_attrTexCoords = -1;
+
+	// texture
+	GLint m_uniTextureIndex = -1, m_uniTextureActive = -1;
+
+	// lighting
+	GLint m_uniLightPos = -1, m_uniNumActiveLights = -1, m_uniLighting = -1;
 	GLint m_uniConstCol = -1;
-	GLint m_uniLightPos = -1;
-	GLint m_uniNumActiveLights = -1;
-	GLint m_uniLighting = -1;
-	GLint m_uniMatrixProj = -1;
-	GLint m_uniMatrixCam = -1;
-	GLint m_uniMatrixCamInv = -1;
-	GLint m_uniMatrixObj = -1;
-	GLint m_uniMatrixA = -1;
-	GLint m_uniMatrixB = -1;
-	GLint m_uniIsRealSpace = -1;
-	GLint m_uniCoordSys = -1;
+
+	// matrices
+	GLint m_uniMatrixProj = -1, m_uniMatrixObjAfterProj = -1;
+	GLint m_uniMatrixCam = -1, m_uniMatrixCamInv = -1;
+	GLint m_uniMatrixObj = -1, m_uniMatrixObjCam = -1;
+	GLint m_uniMatrixA = -1, m_uniMatrixB = -1;
+
+	// flags
+	GLint m_uniIsRealSpace = -1, m_uniCoordSys = -1;
+	GLint m_uniCamInvar = -1;
 
 	t_mat_gl m_matA = tl2::unit<t_mat_gl>();
 	t_mat_gl m_matB = tl2::unit<t_mat_gl>();
 	t_real_gl m_CoordMax = 2.5;       // extent of coordinate axes
 
-	std::atomic<bool> m_platform_supported = true;
 	std::atomic<bool> m_initialised = false;
 	std::atomic<bool> m_viewport_needs_update = false;
 	std::atomic<bool> m_picker_enabled = true;
@@ -116,13 +125,17 @@ protected:
 	std::atomic<bool> m_blend = false;
 	std::atomic<bool> m_is_real_space = true;
 	std::atomic<int> m_coordsys = 0;  // 0: orthogonal, 1: using crystal matrix
+	std::atomic<bool> m_showLabels = true;
+
 	t_real_gl m_pickerSphereRadius = 1;
-	bool m_showLabels = true;
+	std::array<std::string, 3> m_axisLabels{};
+	std::array<t_real_gl, 6> m_coordCubeRanges{};
+	std::array<t_real_gl, 3> m_coordCubeTicks{};
 
 	std::vector<t_vec3_gl> m_lights{};
-	std::vector<GlPlotObj> m_objs{};
+	std::vector<GlRenderObj> m_objs{};
 	std::optional<std::size_t> m_coordCrossLab{}, m_coordCrossXtal{};
-	std::optional<std::size_t> m_coordCubeLab{};
+	std::vector<std::size_t> m_coordCubeLab{};
 
 	QPointF m_posMouse{};
 	QPointF m_posMouseRotationStart{}, m_posMouseRotationEnd{};
@@ -134,9 +147,9 @@ protected:
 
 
 protected:
-	qgl_funcs* GetGlFunctions()
+	inline qgl_funcs* GetGlFunctions()
 	{
-		return get_gl_functions((QOpenGLWidget*)m_pPlot);
+		return get_gl_functions(reinterpret_cast<QOpenGLWidget*>(m_pPlot));
 	}
 
 	void UpdateCam();
@@ -151,7 +164,13 @@ protected:
 	void tick(const std::chrono::milliseconds& ms);
 
 	std::size_t AddCoordinateCross(t_real_gl min, t_real_gl max);
-	std::size_t AddCoordinateCube(t_real_gl min, t_real_gl max);
+	std::vector<std::size_t> AddCoordinateCube(t_real_gl min, t_real_gl max);
+
+	// calculate a possible tick spacing
+	std::pair<t_real_gl, t_real_gl> CalcTickMarks(t_real_gl min, t_real_gl max, t_real_gl delta);
+
+	// transform coordinate component into a [0, 1] range
+	t_real_gl TickTrafo(t_real_gl min, t_real_gl max, t_real_gl val);
 
 	void CollectGarbage();
 
@@ -163,10 +182,10 @@ public:
 	GlPlotRenderer(const GlPlotRenderer&) = delete;
 	const GlPlotRenderer& operator=(const GlPlotRenderer&) = delete;
 
-	static constexpr bool m_isthreaded = false;
-	static constexpr bool m_usetimer = false;
+	void SetFont(const QString& font);
 
-	QPointF GlToScreenCoords(const t_vec_gl& vec, bool *pVisible = nullptr) const;
+	QPointF GlToScreenCoords(const t_vec_gl& vec,
+		const GlRenderObj *obj = nullptr, bool *pVisible = nullptr) const;
 
 	const t_cam& GetCamera() const
 	{
@@ -191,10 +210,11 @@ public:
 		m_pickerSphereRadius = rad;
 	}
 
-	GlPlotObj CreateTriangleObject(const std::vector<t_vec3_gl>& verts,
+	GlRenderObj CreateTriangleObject(const std::vector<t_vec3_gl>& verts,
 		const std::vector<t_vec3_gl>& triag_verts, const std::vector<t_vec3_gl>& norms,
-		const t_vec_gl& colour, bool bUseVertsAsNorm=false);
-	GlPlotObj CreateLineObject(const std::vector<t_vec3_gl>& verts, const t_vec_gl& colour);
+		const t_vec_gl& colour, bool bUseVertsAsNorm = false,
+		const std::vector<t_vec3_gl>* uvs = nullptr);
+	GlRenderObj CreateLineObject(const std::vector<t_vec3_gl>& verts, const t_vec_gl& colour);
 
 	std::size_t GetNumObjects() const { return m_objs.size(); }
 	void RemoveObject(std::size_t obj);
@@ -207,6 +227,9 @@ public:
 	std::size_t AddCuboid(t_real_gl lx = 1, t_real_gl ly = 1, t_real_gl lz = 1,
 		t_real_gl x = 0, t_real_gl y = 0, t_real_gl z = 0,
 		t_real_gl r = 0, t_real_gl g = 0, t_real_gl b = 0, t_real_gl a = 1);
+	std::vector<std::size_t> AddCuboidFaces(t_real_gl lx = 1, t_real_gl ly = 1, t_real_gl lz = 1,
+		t_real_gl x = 0, t_real_gl y = 0, t_real_gl z = 0,
+		t_real_gl r = 0, t_real_gl g = 0, t_real_gl b = 0, t_real_gl a = 1, bool flip_uv = false);
 	std::size_t AddSphere(t_real_gl rad = 1,
 		t_real_gl x = 0, t_real_gl y = 0, t_real_gl z = 0,
 		t_real_gl r = 0, t_real_gl g = 0, t_real_gl b = 0, t_real_gl a = 1);
@@ -223,28 +246,54 @@ public:
 		t_real_gl x = 0, t_real_gl y = 0, t_real_gl z = 1, t_real_gl size = 10,
 		t_real_gl r = 0, t_real_gl g = 0, t_real_gl b = 0, t_real_gl a = 1);
 	std::size_t AddPatch(
-		std::function<std::pair<t_real_gl, bool>(t_real_gl, t_real_gl, std::size_t, std::size_t)> fkt,
+		std::function<std::pair<t_real_gl /*z*/, bool /*valid*/>(
+			t_real_gl, t_real_gl, std::size_t, std::size_t)> fkt,
 		t_real_gl x = 0, t_real_gl y = 0, t_real_gl z = 0,
 		t_real_gl w = 10, t_real_gl h = 10, std::size_t pts_x = 16, std::size_t pts_y = 16,
 		t_real_gl r = 0, t_real_gl g = 0, t_real_gl b = 0, t_real_gl a = 1);
+	std::size_t AddLine(
+		std::function<std::pair<t_real_gl /*z*/, bool /*valid*/>(t_real_gl, std::size_t)> fkt,
+		t_real_gl x = 0, t_real_gl y = 0, t_real_gl z = 0,
+		t_real_gl w = 10, std::size_t pts_x = 16,
+		t_real_gl r = 0, t_real_gl g = 0, t_real_gl b = 0, t_real_gl a = 1,
+		t_real_gl pt_y = 0, bool flip_xy = false);
 
 	std::size_t AddTriangleObject(const std::vector<t_vec3_gl>& triag_verts,
 		const std::vector<t_vec3_gl>& triag_norms,
 		t_real_gl r = 0, t_real_gl g = 0, t_real_gl b = 0, t_real_gl a = 1);
+	std::size_t AddLineObject(const std::vector<t_vec3_gl>& verts,
+		t_real_gl r = 0, t_real_gl g = 0, t_real_gl b = 0, t_real_gl a = 1);
 
 	void SetObjectMatrix(std::size_t idx, const t_mat_gl& mat);
+	void SetObjectMatrixAfterCam(std::size_t idx, const t_mat_gl& mat);
+	void SetObjectMatrixAfterProj(std::size_t idx, const t_mat_gl& mat);
 	void SetObjectCol(std::size_t idx, t_real_gl r, t_real_gl g, t_real_gl b, t_real_gl a = 1);
-	void SetObjectLabel(std::size_t idx, const std::string& label);
+	void SetObjectLabel(std::size_t idx, const std::string& label, const t_vec3_gl *pos = nullptr);
 	void SetObjectDataString(std::size_t idx, const std::string& data);
 	void SetObjectVisible(std::size_t idx, bool visible);
 	void SetObjectIntersectable(std::size_t idx, bool intersect);
 	void SetObjectPriority(std::size_t idx, int prio);
 	void SetObjectInvariant(std::size_t idx, bool invariant);
+	void SetObjectCameraInvariant(std::size_t idx, bool invariant);
 	void SetObjectForceCull(std::size_t idx, bool cull);
 	void SetObjectCullBack(std::size_t idx, bool cull_back);
 	void SetObjectLighting(std::size_t idx, int lighting);
 	void SetObjectHighlight(std::size_t idx, bool highlight);
 	void SetObjectsHighlight(bool highlight);
+
+	GlRenderObj* GetObject(std::size_t idx)
+	{
+		if(idx >= GetNumObjects())
+			return nullptr;
+		return &m_objs[idx];
+	}
+
+	const GlRenderObj* GetObject(std::size_t idx) const
+	{
+		if(idx >= GetNumObjects())
+			return nullptr;
+		return &m_objs[idx];
+	}
 
 	const t_mat_gl& GetObjectMatrix(std::size_t idx) const;
 	const std::string& GetObjectLabel(std::size_t idx) const;
@@ -294,6 +343,13 @@ public:
 		m_showLabels = show;
 	}
 
+	void SetAxisLabels(const std::string& x, const std::string& y, const std::string& z)
+	{
+		m_axisLabels[0] = x;
+		m_axisLabels[1] = y;
+		m_axisLabels[2] = z;
+	}
+
 	std::optional<std::size_t> GetCoordCross(bool xtal = false) const
 	{
 		if(xtal)
@@ -301,15 +357,21 @@ public:
 		return m_coordCrossLab;
 	}
 
-	std::optional<std::size_t> GetCoordCube(bool xtal = false) const
+	std::vector<std::size_t> GetCoordCube(bool xtal = false) const
 	{
 		if(xtal)
-			return std::nullopt;
+			return std::vector<std::size_t>{};
 		return m_coordCubeLab;
 	}
 
 	void RequestViewportUpdate();
 	void UpdateViewport();
+
+	// create the coordinate tick textures
+	void UpdateCoordCubeTextures(
+		t_real_gl x_min = -1., t_real_gl x_max = 1., t_real_gl x_tick = -1.,
+		t_real_gl y_min = -1., t_real_gl y_max = 1., t_real_gl y_tick = -1.,
+		t_real_gl z_min = -1., t_real_gl z_max = 1., t_real_gl z_tick = -1.);
 
 
 public slots:
@@ -349,6 +411,10 @@ signals:
 class GlPlot : public QOpenGLWidget
 { Q_OBJECT
 public:
+	static constexpr bool m_isthreaded = GlPlotRenderer::m_isthreaded;
+
+
+public:
 	GlPlot(QWidget *pParent = nullptr);
 	virtual ~GlPlot();
 
@@ -360,7 +426,12 @@ public:
 		return m_renderer.get();
 	}
 
-	static constexpr bool m_isthreaded = GlPlotRenderer::m_isthreaded;
+	bool IsValid() const
+	{
+		if(!m_renderer /*|| !context()*/)
+			return false;
+		return true;
+	}
 
 
 protected:

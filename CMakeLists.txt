@@ -44,14 +44,15 @@ list(APPEND CMAKE_MODULE_PATH
 #endif()
 
 
-option(USE_QT6 "use qt 6" FALSE)
-option(USE_LAPACK "use lapack" FALSE)
-option(USE_OVD "use openvoronoi" FALSE)
-option(USE_CGAL "use cgal" TRUE)
-option(USE_OCV "use opencv" TRUE)
-option(USE_PY "use python scripting" TRUE)
+option(USE_QT6    "use qt 6"             TRUE)
+option(USE_LAPACK "use lapack"           FALSE)
+option(USE_OVD    "use openvoronoi"      FALSE)
+option(USE_CGAL   "use cgal"             TRUE)
+option(USE_OCV    "use opencv"           TRUE)
+option(USE_PY     "use python scripting" TRUE)
+
 option(BUILD_TEST_TOOLS "build test tools" FALSE)
-option(UNIT_TESTS "build unit tests" FALSE)
+option(UNIT_TESTS       "build unit tests" FALSE)
 
 
 if(NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
@@ -121,6 +122,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	#add_compile_options(-mmacosx-version-min=10.15)
 	add_compile_options(-mmacosx-version-min=11.0)
+
+	list(APPEND CMAKE_LIBRARY_PATH /opt/homebrew/lib/)
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR})
@@ -193,9 +196,15 @@ endif()
 
 
 if(USE_CGAL)
-	message("CGAL enabled.")
-	add_definitions(-DUSE_CGAL)
-	set(CGAL_LIBRARIES "-lgmp")
+	find_package(CGAL)
+	if(CGAL_FOUND)
+		message("CGAL enabled.")
+		add_definitions(-DUSE_CGAL)
+		include_directories(${CGAL_INCLUDE_DIRS}/..)
+	else()
+		message("CGAL disabled.")
+		set(CGAL_LIBRARIES "")
+	endif()
 endif()
 
 

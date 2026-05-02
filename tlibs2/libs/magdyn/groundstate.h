@@ -38,13 +38,7 @@
 #ifndef __TLIBS2_MAGDYN_GS_H__
 #define __TLIBS2_MAGDYN_GS_H__
 
-#include <vector>
-#include <unordered_set>
-#include <string>
-#include <iostream>
-#include <iomanip>
 
-#include "../maths.h"
 #include "../str.h"
 #include "../fit.h"
 
@@ -91,6 +85,7 @@ t_real MAGDYN_INST::CalcGroundStateEnergy() const
 {
 	t_real E = 0.;
 
+	// couplings
 	for(const ExchangeTerm& term : GetExchangeTerms())
 	{
 		// check if the site indices are valid
@@ -108,13 +103,24 @@ t_real MAGDYN_INST::CalcGroundStateEnergy() const
 		E += tl2::inner_noconj<t_vec>(Si, J * Sj).real();
 	}
 
+	// external field per site
+	for(t_size i = 0; i < GetMagneticSitesCount(); ++i)
+	{
+		t_cplx E_field = CalcFieldEnergy(i);
+		E += E_field.real();
+#ifdef __TLIBS2_MAGDYN_DEBUG_OUTPUT__
+		std::cout << "Field energy for site " << i << ": "
+			<< E_field << " meV." << std::endl;
+#endif
+	}
+
 	return E;
 }
 
 
 
 /**
- * minimise energy to found ground state
+ * minimise energy to find ground state
  */
 #if defined(__TLIBS2_USE_MINUIT__) && defined(__TLIBS2_MAGDYN_USE_MINUIT__)
 MAGDYN_TEMPL
@@ -122,26 +128,40 @@ bool MAGDYN_INST::CalcGroundState(const std::unordered_set<std::string>* fixed_p
 	bool verbose, const bool *stop_request)
 {
 	// function to minimise the state's energy
-	auto func = [this](const std::vector<tl2::t_real_min>& args)
+	auto func = [this](const std::vector<tl2::t_real_min>& args) -> t_real
 	{
-		// set new spin configuration
-		auto dyn = *this;
+		auto dyn = *this;  // work on copy of spin configuration to avoid race conditions
+		const t_size N = dyn.GetMagneticSitesCount();
 
-		for(t_size site_idx = 0; site_idx < dyn.GetMagneticSitesCount(); ++site_idx)
+		// invalid arguments vector?
+		if(args.size() < N*2)
+			return std::numeric_limits<t_real>::max();
+
+		for(t_size site_idx = 0; site_idx < N; ++site_idx)
 		{
-			MagneticSite& site = dyn.m_sites[site_idx];
-
+			// convert (u, v) to cartesian spin directions
 			t_real u = args[site_idx * 2 + 0];
 			t_real v = args[site_idx * 2 + 1];
+			if(std::isnan(u) || std::isnan(v) || std::isinf(u) || std::isinf(v))
+				return std::numeric_limits<t_real>::max();
 
 			const auto [ phi, theta ] = tl2::uv_to_sph<t_real>(u, v);
 			const auto [ x, y, z ] = tl2::sph_to_cart<t_real>(1., phi, theta);
 
+			MagneticSite& site = dyn.m_sites[site_idx];
 			site.spin_dir[0] = tl2::var_to_str(x, m_prec);
 			site.spin_dir[1] = tl2::var_to_str(y, m_prec);
 			site.spin_dir[2] = tl2::var_to_str(z, m_prec);
 
 			dyn.CalcMagneticSite(site);
+
+#ifdef __TLIBS2_MAGDYN_DEBUG_OUTPUT__
+			using namespace tl2_ops;
+			std::cout << site.name
+				<< ": u = " << u << ", v = " << v << ", "
+				<< "phi = " << phi << ", theta = " << theta << ", "
+				<< "S = " << site.spin_dir_calc << std::endl;
+#endif
 		}
 
 		// ground state energy with the new configuration
@@ -163,6 +183,7 @@ bool MAGDYN_INST::CalcGroundState(const std::unordered_set<std::string>* fixed_p
 
 	for(const MagneticSite& site : GetMagneticSites())
 	{
+		// convert cartesian to (u, v) spin directions
 		const t_vec_real& S = site.spin_dir_calc;
 		const auto [ rho, phi, theta ] =  tl2::cart_to_sph<t_real>(S[0], S[1], S[2]);
 		const auto [ u, v ] = tl2::sph_to_uv<t_real>(phi, theta);
@@ -191,8 +212,8 @@ bool MAGDYN_INST::CalcGroundState(const std::unordered_set<std::string>* fixed_p
 		upper_lims.push_back(1. + m_eps);
 		upper_lims.push_back(1. + m_eps);
 
-		errs.push_back(0.1);
-		errs.push_back(0.1);
+		errs.push_back(0.25);
+		errs.push_back(0.25);
 	}
 
 	if(tl2::minimise_dynargs<t_real>(num_args, func,
@@ -202,8 +223,7 @@ bool MAGDYN_INST::CalcGroundState(const std::unordered_set<std::string>* fixed_p
 		// set the spins to the newly-found ground state
 		for(t_size site_idx = 0; site_idx < GetMagneticSitesCount(); ++site_idx)
 		{
-			MagneticSite& site = m_sites[site_idx];
-
+			// convert (u, v) to cartesian spin directions
 			t_real u = vals[site_idx * 2 + 0];
 			t_real v = vals[site_idx * 2 + 1];
 			tl2::set_eps_round<t_real>(u, m_eps);
@@ -215,6 +235,7 @@ bool MAGDYN_INST::CalcGroundState(const std::unordered_set<std::string>* fixed_p
 			tl2::set_eps_round<t_real>(y, m_eps);
 			tl2::set_eps_round<t_real>(z, m_eps);
 
+			MagneticSite& site = m_sites[site_idx];
 			site.spin_dir[0] = tl2::var_to_str(x, m_prec);
 			site.spin_dir[1] = tl2::var_to_str(y, m_prec);
 			site.spin_dir[2] = tl2::var_to_str(z, m_prec);
@@ -224,10 +245,8 @@ bool MAGDYN_INST::CalcGroundState(const std::unordered_set<std::string>* fixed_p
 #ifdef __TLIBS2_MAGDYN_DEBUG_OUTPUT__
 			using namespace tl2_ops;
 			std::cout << site.name
-				<< ": u = " << u << ", "
-				<< "v = " << v << ", "
-				<< "phi = " << phi << ", "
-				<< "theta = " << theta << ", "
+				<< ": u = " << u << ", v = " << v << ", "
+				<< "phi = " << phi << ", theta = " << theta << ", "
 				<< "S = " << site.spin_dir_calc << std::endl;
 #endif
 		}
@@ -236,7 +255,7 @@ bool MAGDYN_INST::CalcGroundState(const std::unordered_set<std::string>* fixed_p
 	}
 	else
 	{
-		CERR_OPT << "Magdyn error: Ground state minimisation did not converge."
+		TL2_CERR_OPT << "Magdyn error: Ground state minimisation did not converge."
 			<< std::endl;
 
 		return false;

@@ -43,6 +43,8 @@
 #include <vector>
 #include <limits>
 
+#include <boost/math/special_functions/binomial.hpp>
+
 #include "decls.h"
 
 
@@ -224,7 +226,7 @@ requires is_mat<t_mat> && is_vec<t_vec>
 	T tSum = T{0};
 	const std::size_t N = vecVals.size();
 
-	for(std::size_t i=0; i<N; ++i)
+	for(std::size_t i = 0; i < N; ++i)
 	{
 		T tprob = T{1};
 
@@ -282,7 +284,7 @@ T chi2(const t_func& func, std::size_t N,
 	for(std::size_t i=0; i<N; ++i)
 	{
 		T td = T(y[i]) - func(T(x[i]));
-		T tdy = dy ? T(dy[i]) : T(0.1*td);	// 10% error if none given
+		T tdy = dy ? T(dy[i]) : T(0.1*td);  // 10% error if none given
 
 		if(std::abs(tdy) < std::numeric_limits<t_dat>::min())
 			tdy = std::numeric_limits<t_dat>::min();
@@ -387,6 +389,44 @@ T chi2_nd(const t_func& func,
 	}
 
 	return tchi2;
+}
+// ----------------------------------------------------------------------------
+
+
+// ----------------------------------------------------------------------------
+// combinatorics functions
+// ----------------------------------------------------------------------------
+/**
+ * Stirling's formula for log(n!)
+ * @see https://en.wikipedia.org/wiki/Stirling%27s_approximation
+ */
+template<class t_real = double>
+t_real log_nfac(t_real n)
+{
+	const t_real twopi = t_real(2) * pi<t_real>;
+	return n*std::log(n) - n + std::log(twopi*t_real(n)) / t_real(2);
+}
+
+
+/**
+ * combinatorics
+ * @see https://de.wikipedia.org/wiki/Abz%C3%A4hlende_Kombinatorik
+ */
+template<class t_val = unsigned int, class t_real = double>
+t_val combinatorics(t_val n, t_val k, bool ordered, bool repetition)
+{
+	if(!repetition && k > n)
+		return t_val{0};
+
+	if(ordered && repetition)        // variation: Boltzon case
+		return std::pow(n, k);
+	else if(ordered && !repetition)  // variation
+		return t_val(boost::math::factorial<t_real>(n) / boost::math::factorial<t_real>(n - k));
+	else if(!ordered && repetition)  // combination: Boson case
+		return t_val(boost::math::binomial_coefficient<t_real>(n + k - 1, k));
+	else if(!ordered && !repetition) // combination: Fermion case
+		return t_val(boost::math::binomial_coefficient<t_real>(n, k));
+	return t_val{0};
 }
 // ----------------------------------------------------------------------------
 

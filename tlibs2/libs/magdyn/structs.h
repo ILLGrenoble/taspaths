@@ -38,11 +38,10 @@
 #ifndef __TLIBS2_MAGDYN_STRUCTS_H__
 #define __TLIBS2_MAGDYN_STRUCTS_H__
 
-#include <vector>
-#include <array>
-#include <string>
 
 #include "../maths.h"
+
+#include "magdyn.h"
 
 
 namespace tl2_mag {
@@ -87,7 +86,7 @@ struct t_MagneticSite
 
 	t_vec_real spin_dir_calc{};  // spin vector
 	t_vec trafo_z_calc{};        // trafo z vector (3rd column in trafo matrix)
-	t_vec trafo_plane_calc{};    // trafo orthogonal plane (1st and 2nd coumns)
+	t_vec trafo_plane_calc{};    // trafo orthogonal plane (1st and 2nd columns)
 	t_vec trafo_plane_conj_calc{};
 
 	t_vec ge_trafo_z_calc{};     // g_e * trafo z vector
@@ -151,6 +150,7 @@ requires tl2::is_vec<t_vec_real>
 struct t_ExternalField
 {
 	bool align_spins{};          // align spins along external field
+	bool keep_signs{};           // keep the senses of the spins
 
 	t_vec_real dir{};            // field direction
 	t_real mag{};                // field magnitude
@@ -178,7 +178,18 @@ struct t_EnergyAndWeight
 
 	t_mat S_perp{};              // projected dynamical structure factor for neutron scattering
 	t_cplx S_perp_sum{};
-	t_real weight{};
+	t_real weight_perp{};
+#ifdef MAGDYN_COMPAT
+	t_real weight{};             // synonym for weight_perp
+#endif
+
+	t_mat S_pol{};               // full dynamical structure factor
+	t_cplx S_pol_sum{};
+	t_real weight_pol_full{};
+
+	t_mat S_pol_perp{};          // projected dynamical structure factor for neutron scattering
+	t_cplx S_pol_perp_sum{};
+	t_real weight_pol_perp{};
 
 	t_size degeneracy{1};        // degeneracy counter
 };

@@ -38,11 +38,7 @@
 #ifndef __TLIBS2_MAGDYN_PRECALC_H__
 #define __TLIBS2_MAGDYN_PRECALC_H__
 
-#include <string>
-#include <iostream>
-#include <iomanip>
 
-#include "../maths.h"
 #include "../units.h"
 
 #include "magdyn.h"
@@ -56,11 +52,11 @@
  */
 MAGDYN_TEMPL void MAGDYN_INST::CalcExternalField()
 {
-	bool use_field =
+	bool use_field_rot =
 		(!tl2::equals_0<t_real>(m_field.mag, m_eps) || m_field.align_spins)
 		&& m_field.dir.size() == 3;
 
-	if(use_field)
+	if(use_field_rot)
 	{
 		// rotate field to [001] direction
 		m_rot_field = tl2::convert<t_mat>(
@@ -68,6 +64,14 @@ MAGDYN_TEMPL void MAGDYN_INST::CalcExternalField()
 				tl2::rotation<t_mat_real, t_vec_real>(
 					-m_field.dir, m_zdir, &m_rotaxis, m_eps)));
 
+		// rotate -field to [001] direction
+		if(m_field.keep_signs)
+		{
+			m_rot_negfield = tl2::convert<t_mat>(
+				tl2::trans<t_mat_real>(
+					tl2::rotation<t_mat_real, t_vec_real>(
+						m_field.dir, m_zdir, &m_rotaxis, m_eps)));
+		}
 #ifdef __TLIBS2_MAGDYN_DEBUG_OUTPUT__
 		std::cout << "Field rotation from:\n";
 		tl2::niceprint(std::cout, -m_field.dir, 1e-4, 4);
@@ -111,12 +115,11 @@ MAGDYN_TEMPL void MAGDYN_INST::CalcMagneticSite(MagneticSite& site)
 		}
 		else
 		{
-			CERR_OPT << "Magdyn error: Parsing spin magnitude \""
+			TL2_CERR_OPT << "Magdyn error: Parsing spin magnitude \""
 				<< site.spin_mag << "\""
 				<< " for site \"" << site.name << "\""
 				<< "." << std::endl;
 		}
-
 
 		for(std::uint8_t idx = 0; idx < 3; ++idx)
 		{
@@ -129,7 +132,7 @@ MAGDYN_TEMPL void MAGDYN_INST::CalcMagneticSite(MagneticSite& site)
 				}
 				else
 				{
-					CERR_OPT << "Magdyn error: Parsing position \""
+					TL2_CERR_OPT << "Magdyn error: Parsing position \""
 						<< site.pos[idx] << "\""
 						<< " for site \"" << site.name << "\""
 						<< " and component " << int(idx)
@@ -146,10 +149,10 @@ MAGDYN_TEMPL void MAGDYN_INST::CalcMagneticSite(MagneticSite& site)
 				}
 				else
 				{
-					CERR_OPT << "Magdyn error: Parsing spin direction \""
+					TL2_CERR_OPT << "Magdyn error: Parsing spin direction \""
 						<< site.spin_dir[idx] << "\""
 						<< " for site \"" << site.name << "\""
-						<< " and component " << idx
+						<< " and component " << int(idx)
 						<< "." << std::endl;
 				}
 			}
@@ -167,10 +170,10 @@ MAGDYN_TEMPL void MAGDYN_INST::CalcMagneticSite(MagneticSite& site)
 				{
 					has_explicit_trafo = false;
 
-					CERR_OPT << "Magdyn error: Parsing spin orthogonal plane \""
+					TL2_CERR_OPT << "Magdyn error: Parsing spin orthogonal plane \""
 						<< site.spin_ortho[idx] << "\""
 						<< " for site \"" << site.name << "\""
-						<< " and component " << idx
+						<< " and component " << int(idx)
 						<< "." << std::endl;
 				}
 			}
@@ -183,8 +186,16 @@ MAGDYN_TEMPL void MAGDYN_INST::CalcMagneticSite(MagneticSite& site)
 		// spin rotation of equation (9) from (Toth 2015)
 		if(m_field.align_spins)
 		{
-			std::tie(site.trafo_plane_calc, site.trafo_z_calc) =
-				rot_to_trafo(m_rot_field);
+			if(m_field.keep_signs && tl2::inner(site.spin_dir_calc, m_field.dir) > 0.)
+			{
+				std::tie(site.trafo_plane_calc, site.trafo_z_calc) =
+					rot_to_trafo(m_rot_negfield);
+			}
+			else
+			{
+				std::tie(site.trafo_plane_calc, site.trafo_z_calc) =
+					rot_to_trafo(m_rot_field);
+			}
 		}
 		else
 		{
@@ -212,7 +223,8 @@ MAGDYN_TEMPL void MAGDYN_INST::CalcMagneticSite(MagneticSite& site)
 #endif
 		}
 
-		site.trafo_plane_conj_calc = tl2::conj(site.trafo_plane_calc);
+		if(!has_explicit_trafo)
+			site.trafo_plane_conj_calc = tl2::conj(site.trafo_plane_calc);
 
 		// multiply g factor
 		site.ge_trafo_z_calc = site.g_e * site.trafo_z_calc;
@@ -222,7 +234,7 @@ MAGDYN_TEMPL void MAGDYN_INST::CalcMagneticSite(MagneticSite& site)
 	}
 	catch(const std::exception& ex)
 	{
-		CERR_OPT << "Magdyn error: Calculating site \"" << site.name << "\"."
+		TL2_CERR_OPT << "Magdyn error: Calculating site \"" << site.name << "\"."
 			<< " Reason: " << ex.what()
 			<< std::endl;
 	}
@@ -268,14 +280,14 @@ MAGDYN_TEMPL void MAGDYN_INST::CalcExchangeTerm(MAGDYN_TYPE::ExchangeTerm& term)
 
 		if(term.site1_calc >= GetMagneticSitesCount())
 		{
-			CERR_OPT << "Magdyn error: Unknown site 1 name \"" << term.site1 << "\"."
+			TL2_CERR_OPT << "Magdyn error: Unknown site 1 name \"" << term.site1 << "\"."
 				<< " in coupling \"" << term.name << "\"."
 				<< std::endl;
 			return;
 		}
 		if(term.site2_calc >= GetMagneticSitesCount())
 		{
-			CERR_OPT << "Magdyn error: Unknown site 2 name \"" << term.site2 << "\"."
+			TL2_CERR_OPT << "Magdyn error: Unknown site 2 name \"" << term.site2 << "\"."
 				<< " in coupling \"" << term.name << "\"."
 				<< std::endl;
 			return;
@@ -292,7 +304,7 @@ MAGDYN_TEMPL void MAGDYN_INST::CalcExchangeTerm(MAGDYN_TYPE::ExchangeTerm& term)
 		}
 		else
 		{
-			CERR_OPT << "Magdyn error: Parsing J term \""
+			TL2_CERR_OPT << "Magdyn error: Parsing J term \""
 				<< term.J << "\"." << std::endl;
 		}
 
@@ -307,7 +319,7 @@ MAGDYN_TEMPL void MAGDYN_INST::CalcExchangeTerm(MAGDYN_TYPE::ExchangeTerm& term)
 				}
 				else
 				{
-					CERR_OPT << "Magdyn error: Parsing distance term \""
+					TL2_CERR_OPT << "Magdyn error: Parsing distance term \""
 						<< term.dist[i]
 						<< "\" (index " << int(i) << ")"
 						<< "." << std::endl;
@@ -323,7 +335,7 @@ MAGDYN_TEMPL void MAGDYN_INST::CalcExchangeTerm(MAGDYN_TYPE::ExchangeTerm& term)
 				}
 				else
 				{
-					CERR_OPT << "Magdyn error: Parsing DMI term \""
+					TL2_CERR_OPT << "Magdyn error: Parsing DMI term \""
 						<< term.dmi[i]
 						<< "\" (index " << int(i) << ")"
 						<< "." << std::endl;
@@ -342,7 +354,7 @@ MAGDYN_TEMPL void MAGDYN_INST::CalcExchangeTerm(MAGDYN_TYPE::ExchangeTerm& term)
 				}
 				else
 				{
-					CERR_OPT << "Magdyn error: Parsing general term \""
+					TL2_CERR_OPT << "Magdyn error: Parsing general term \""
 						<< term.Jgen[i][j]
 						<< "\" (indices " << int(i) << ", "
 						<< int(j) << ")" << "." << std::endl;
@@ -362,7 +374,7 @@ MAGDYN_TEMPL void MAGDYN_INST::CalcExchangeTerm(MAGDYN_TYPE::ExchangeTerm& term)
 	}
 	catch(const std::exception& ex)
 	{
-		CERR_OPT << "Magdyn error: Calculating coupling \""
+		TL2_CERR_OPT << "Magdyn error: Calculating coupling \""
 			<< term.name << "\"."
 			<< " Reason: " << ex.what() << "."
 			<< std::endl;
@@ -406,8 +418,8 @@ std::tuple<t_vec, t_vec> MAGDYN_INST::rot_to_trafo(const t_mat& R)
 MAGDYN_TEMPL
 std::tuple<t_vec, t_vec> MAGDYN_INST::spin_to_trafo(const t_vec_real& spin_dir)
 {
-	const t_mat_real _rot = tl2::rotation<t_mat_real, t_vec_real>(
-		spin_dir, m_zdir, &m_rotaxis, m_eps);
+	const t_mat_real _rot = tl2::trans(tl2::rotation<t_mat_real, t_vec_real>(
+		spin_dir, m_zdir, &m_rotaxis, m_eps));
 
 	const t_mat rot = tl2::convert<t_mat, t_mat_real>(_rot);
 	return rot_to_trafo(rot);

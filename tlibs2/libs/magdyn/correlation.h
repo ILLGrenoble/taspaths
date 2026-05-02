@@ -39,12 +39,8 @@
 #ifndef __TLIBS2_MAGDYN_CORREL_H__
 #define __TLIBS2_MAGDYN_CORREL_H__
 
-#include <vector>
-#include <iostream>
-#include <iomanip>
 
 #include "../algos.h"
-#include "../maths.h"
 #include "../phys.h"
 
 #include "magdyn.h"
@@ -67,7 +63,7 @@ bool MAGDYN_INST::CalcCorrelationsFromHamiltonian(MAGDYN_TYPE::SofQE& S) const
 	if(N == 0)
 		return false;
 
-	SortByEnergies(S);
+	SortByEnergies(S);  // in descending order
 
 	// create a matrix of eigenvectors
 	std::vector<t_vec> evecs;
@@ -83,7 +79,7 @@ bool MAGDYN_INST::CalcCorrelationsFromHamiltonian(MAGDYN_TYPE::SofQE& S) const
 		t_mat check_comm = S.evec_mat * tl2::herm(S.evec_mat);
 		if(!tl2::equals(/*S.comm*/ tl2::unit<t_mat>(2*N), check_comm, m_eps))
 		{
-			CERR_OPT << "Magdyn error: Wrong commutator at Q = "
+			TL2_CERR_OPT << "Magdyn error: Wrong commutator at Q = "
 				<< S.Q_rlu << ": " << check_comm
 				<< "." << std::endl;
 		}
@@ -91,32 +87,46 @@ bool MAGDYN_INST::CalcCorrelationsFromHamiltonian(MAGDYN_TYPE::SofQE& S) const
 
 	// equation (32) from (Toth 2015)
 	const t_mat energy_mat = tl2::herm(S.evec_mat) * S.H_comm * S.evec_mat;  // energies
-	t_mat E_sqrt = S.comm * energy_mat;          // abs. energies
+
+#ifdef __TLIBS2_MAGDYN_DEBUG_OUTPUT__
+	std::cout << "E_mat =\n";
+	tl2::niceprint(std::cout, energy_mat, 1e-4, 4);
+#endif
+
+	// check that the energy matrix is diagonal
+	if(m_perform_checks && !tl2::is_diag(energy_mat, m_eps))
+	{
+		TL2_CERR_OPT << "Magdyn error: Energy matrix is not diagonal at Q = "
+			<< S.Q_rlu << ": " << energy_mat
+			<< "." << std::endl;
+	}
+
+	t_mat E_sqrt = S.comm * energy_mat;        // abs. energies
 	for(t_size i = 0; i < E_sqrt.size1(); ++i)
 		E_sqrt(i, i) = std::sqrt(E_sqrt(i, i));  // sqrt. of abs. energies
 
-	// re-create energies, to be consistent with the weights
 	if(energy_mat.size1() != S.E_and_S.size())
 	{
-		CERR_OPT << "Magdyn warning: Expected " << S.E_and_S.size() << " energies at Q = "
+		TL2_CERR_OPT << "Magdyn warning: Expected " << S.E_and_S.size() << " energies at Q = "
 			<< S.Q_rlu << ", but got " << energy_mat.size1() << " energies"
 			<< "." << std::endl;
 
 		S.E_and_S.resize(energy_mat.size1());
 	}
 
+	// re-create energies, to be consistent with the weights
 	for(t_size i = 0; i < energy_mat.size1(); ++i)
 	{
 		if(m_perform_checks && !tl2::equals_0(energy_mat(i, i).imag(), m_eps))
 		{
-			CERR_OPT << "Magdyn warning: Remaining imaginary energy component at Q = "
+			TL2_CERR_OPT << "Magdyn warning: Remaining imaginary energy component at Q = "
 				<< S.Q_rlu << " and E = " << energy_mat(i, i)
 				<< "." << std::endl;
 		}
 
 		if(m_perform_checks && !tl2::equals(energy_mat(i, i).real(), S.E_and_S[i].E, m_eps))
 		{
-			CERR_OPT << "Magdyn warning: Mismatching energy at Q = "
+			TL2_CERR_OPT << "Magdyn warning: Mismatching energy at Q = "
 				<< S.Q_rlu << " and E = " << energy_mat(i, i).real()
 				<< ", expected E = " << S.E_and_S[i].E
 				<< "." << std::endl;
@@ -127,26 +137,28 @@ bool MAGDYN_INST::CalcCorrelationsFromHamiltonian(MAGDYN_TYPE::SofQE& S) const
 		S.E_and_S[i].S_perp = tl2::zero<t_mat>(3, 3);
 	}
 
-	const auto [chol_inv, inv_ok] = tl2::inv(S.H_chol);
+	const auto [H_chol_inv, inv_ok] = tl2::inv(S.H_chol);
 	if(!inv_ok)
 	{
-		CERR_OPT << "Magdyn error: Cholesky inversion failed"
+		TL2_CERR_OPT << "Magdyn error: Cholesky inversion failed"
 			<< " at Q = " << S.Q_rlu << "." << std::endl;
 		return false;
 	}
 
 	// equation (34) from (Toth 2015)
-	const t_mat trafo = chol_inv * S.evec_mat * E_sqrt;
-	const t_mat trafo_herm = tl2::herm(trafo);
+	const t_mat boson_ops = H_chol_inv * S.evec_mat * E_sqrt;
+	const t_mat boson_ops_herm = tl2::herm(boson_ops);
 
 #ifdef __TLIBS2_MAGDYN_DEBUG_OUTPUT__
-	t_mat D_mat = trafo_herm * S.H_comm * trafo;
+	t_mat D_mat = boson_ops_herm * S.H_comm * boson_ops;
 	std::cout << "D =\n";
 	tl2::niceprint(std::cout, D_mat, 1e-4, 4);
 	std::cout << "E_sqrt =\n";
 	tl2::niceprint(std::cout, E_sqrt, 1e-4, 4);
 	std::cout << "L_energy =\n";
 	tl2::niceprint(std::cout, energy_mat, 1e-4, 4);
+	std::cout << "boson_ops =\n";
+	tl2::niceprint(std::cout, boson_ops, 1e-4, 4);
 #endif
 
 	// building the spin correlation functions of equation (47) from (Toth 2015)
@@ -157,42 +169,46 @@ bool MAGDYN_INST::CalcCorrelationsFromHamiltonian(MAGDYN_TYPE::SofQE& S) const
 		t_mat M = tl2::create<t_mat>(2*N, 2*N);
 
 		for(t_size i = 0; i < N; ++i)
-		for(t_size j = 0; j < N; ++j)
 		{
-			// get the sites
+			// get the outer site
 			const MagneticSite& s_i = GetMagneticSite(i);
-			const MagneticSite& s_j = GetMagneticSite(j);
 
 			// get the pre-calculated u vectors
 			const t_vec& u_i = s_i.ge_trafo_plane_calc;
-			const t_vec& u_j = s_j.ge_trafo_plane_calc;
 			const t_vec& uc_i = s_i.ge_trafo_plane_conj_calc;
-			const t_vec& uc_j = s_j.ge_trafo_plane_conj_calc;
 
-			// pre-factors of equation (44) from (Toth 2015)
-			const t_real S_mag = std::sqrt(s_i.spin_mag_calc * s_j.spin_mag_calc);
-			const t_cplx phase = std::exp(-m_phase_sign * s_imag * s_twopi *
-				tl2::inner<t_vec_real>(s_j.pos_calc - s_i.pos_calc, S.Q_rlu));
+			for(t_size j = 0; j < N; ++j)
+			{
+				// get the inner site
+				const MagneticSite& s_j = GetMagneticSite(j);
 
-			// matrix elements of equation (44) from (Toth 2015)
-			M(    i,     j) = phase * S_mag * u_i[x_idx]  * uc_j[y_idx];
-			M(    i, N + j) = phase * S_mag * u_i[x_idx]  * u_j[y_idx];
-			M(N + i,     j) = phase * S_mag * uc_i[x_idx] * uc_j[y_idx];
-			M(N + i, N + j) = phase * S_mag * uc_i[x_idx] * u_j[y_idx];
-		} // end of site iteration
+				// get the pre-calculated u vectors
+				const t_vec& u_j = s_j.ge_trafo_plane_calc;
+				const t_vec& uc_j = s_j.ge_trafo_plane_conj_calc;
 
-		const t_mat M_trafo = trafo_herm * M * trafo;
+				// pre-factors of equation (44) from (Toth 2015)
+				const t_real S_mag = std::sqrt(s_i.spin_mag_calc * s_j.spin_mag_calc);
+				const t_cplx phase = std::exp(-m_phase_sign * s_imag * s_twopi *
+					tl2::inner<t_vec_real>(s_j.pos_calc - s_i.pos_calc, S.Q_rlu));
+
+				// matrix elements of equation (44) from (Toth 2015)
+				M(    i,     j) = phase * S_mag * u_i[x_idx]  * uc_j[y_idx];  // b_i+ b_j terms
+				M(    i, N + j) = phase * S_mag * u_i[x_idx]  * u_j[y_idx];   // b_i+ b_j+ terms
+				M(N + i,     j) = phase * S_mag * uc_i[x_idx] * uc_j[y_idx];  // b_i b_j terms
+				M(N + i, N + j) = phase * S_mag * uc_i[x_idx] * u_j[y_idx];   // b_i b_j+ terms
+			}  // end of inner site iteration
+		}  // end of outer site iteration
+
+		// multiply with boson operators
+		const t_mat M_xy = boson_ops_herm * M * boson_ops;
 
 #ifdef __TLIBS2_MAGDYN_DEBUG_OUTPUT__
-		std::cout << "M_trafo for x=" << int(x_idx) << ", y=" << int(y_idx) << ":\n";
-		tl2::niceprint(std::cout, M_trafo, 1e-4, 4);
+		std::cout << "M_{" << int(x_idx) << ", " << int(y_idx) << "}:\n";
+		tl2::niceprint(std::cout, M_xy, 1e-4, 4);
 #endif
 
 		for(t_size i = 0; i < S.E_and_S.size(); ++i)
-		{
-			S.E_and_S[i].S(x_idx, y_idx) +=
-				M_trafo(i, i) / t_real(M.size1());
-		}
+			S.E_and_S[i].S(x_idx, y_idx) += M_xy(i, i) / t_real(M.size1());
 	} // end of coordinate iteration
 
 	return true;
@@ -234,13 +250,23 @@ void MAGDYN_INST::CalcIntensities(MAGDYN_TYPE::SofQE& S) const
 		t_mat proj_neutron = tl2::ortho_projector<t_mat, t_vec>(S.Q_rlu, false);
 		E_and_S.S_perp = proj_neutron * E_and_S.S * proj_neutron;
 
-		CalcPolarisation(S.Q_rlu, E_and_S);
-
 		// weights
 		E_and_S.S_sum       = tl2::trace<t_mat>(E_and_S.S);
 		E_and_S.S_perp_sum  = tl2::trace<t_mat>(E_and_S.S_perp);
 		E_and_S.weight_full = std::abs(E_and_S.S_sum.real());
-		E_and_S.weight      = std::abs(E_and_S.S_perp_sum.real());
+		E_and_S.weight_perp = std::abs(E_and_S.S_perp_sum.real());
+#ifdef MAGDYN_COMPAT
+		E_and_S.weight      = E_and_S.weight_perp;
+#endif
+
+		if(m_calc_pol)
+		{
+			CalcPolarisation(S.Q_rlu, E_and_S);
+			E_and_S.S_pol_sum       = tl2::trace<t_mat>(E_and_S.S_pol);
+			E_and_S.S_pol_perp_sum  = tl2::trace<t_mat>(E_and_S.S_pol_perp);
+			E_and_S.weight_pol_full = std::abs(E_and_S.S_pol_sum.real());
+			E_and_S.weight_pol_perp = std::abs(E_and_S.S_pol_perp_sum.real());
+		}
 	}
 }
 // --------------------------------------------------------------------

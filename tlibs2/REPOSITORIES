@@ -1,7 +1,14 @@
 Overview of former and current tlibs repositories
 -------------------------------------------------
 
-- From 2019 till now:
+- From 2025 till now:
+	https://github.com/ILLGrenoble/magpie/tlibs2
+
+- From 2023 till 2025:
+	https://github.com/ILLGrenoble/takin/tree/master/tlibs
+	https://github.com/ILLGrenoble/takin/tree/master/tlibs2
+
+- From 2019 till 2023:
 	https://code.ill.fr/scientific-software/takin/tlibs
 	https://code.ill.fr/scientific-software/takin/tlibs2
 	Development repositories for tlibs 1/2.

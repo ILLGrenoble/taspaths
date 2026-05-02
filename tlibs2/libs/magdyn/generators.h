@@ -28,13 +28,6 @@
 #ifndef __TLIBS2_MAGDYN_GEN_H__
 #define __TLIBS2_MAGDYN_GEN_H__
 
-#include <vector>
-#include <string>
-#include <iostream>
-#include <iomanip>
-
-#include "../maths.h"
-#include "../expr.h"
 
 #include "magdyn.h"
 
@@ -58,7 +51,8 @@ void MAGDYN_INST::SymmetriseMagneticSites(const std::vector<t_mat_real>& symops)
 	{
 		// get symmetry-equivalent positions
 		const auto positions = tl2::apply_ops_hom<t_vec_real, t_mat_real, t_real>(
-			site.pos_calc, symops, m_eps);
+			site.pos_calc, symops, m_eps, true /*keep in uc*/, false /*ignore occupied*/,
+			false /*return homogeneous*/, false /*pseudovector*/, m_uc_min, m_uc_max);
 
 		for(t_size idx = 0; idx < positions.size(); ++idx)
 		{
@@ -67,7 +61,7 @@ void MAGDYN_INST::SymmetriseMagneticSites(const std::vector<t_mat_real>& symops)
 			newsite.pos[0] = tl2::var_to_str(newsite.pos_calc[0], m_prec);
 			newsite.pos[1] = tl2::var_to_str(newsite.pos_calc[1], m_prec);
 			newsite.pos[2] = tl2::var_to_str(newsite.pos_calc[2], m_prec);
-			newsite.name += "_" + tl2::var_to_str(idx + 1, m_prec);
+			newsite.name += "_sym" + tl2::var_to_str(idx + 1, m_prec);
 
 			newsites.emplace_back(std::move(newsite));
 		}
@@ -112,11 +106,13 @@ void MAGDYN_INST::SymmetriseExchangeTerms(const std::vector<t_mat_real>& symops)
 		auto sites1_sc = tl2::apply_ops_hom<t_vec_real, t_mat_real, t_real>(
 			sites_uc[term.site1_calc], symops, m_eps,
 			false /*keep in uc*/, true /*ignore occupied*/,
-			true /*return homogeneous*/);
+			true /*return homogeneous*/, false /*pseudovector*/,
+			m_uc_min, m_uc_max);
 		auto sites2_sc = tl2::apply_ops_hom<t_vec_real, t_mat_real, t_real>(
 			sites_uc[term.site2_calc] + dist_sc, symops, m_eps,
 			false /*keep in uc*/, true /*ignore occupied*/,
-			true /*return homogeneous*/);
+			true /*return homogeneous*/, false /*pseudovector*/,
+			m_uc_min, m_uc_max);
 
 		// generate new dmi vectors
 		t_vec_real dmi = tl2::zero<t_vec_real>(4);
@@ -132,7 +128,7 @@ void MAGDYN_INST::SymmetriseExchangeTerms(const std::vector<t_mat_real>& symops)
 			}
 			else
 			{
-				CERR_OPT << "Magdyn error: Parsing DMI component "
+				TL2_CERR_OPT << "Magdyn error: Parsing DMI component "
 					<< int(dmi_idx) << " of term \"" << term.name
 					<< "\"." << std::endl;
 			}
@@ -141,7 +137,8 @@ void MAGDYN_INST::SymmetriseExchangeTerms(const std::vector<t_mat_real>& symops)
 		const auto newdmis = tl2::apply_ops_hom<t_vec_real, t_mat_real, t_real>(
 			dmi, symops, m_eps,
 			false /*keep in uc*/, true /*ignore occupied*/,
-			false /*return homogeneous*/, true /*pseudovector*/);
+			false /*return homogeneous*/, true /*pseudovector*/,
+			m_uc_min, m_uc_max);
 
 		// generate new general J matrices
 		t_real Jgen_arr[3][3]{};
@@ -159,7 +156,7 @@ void MAGDYN_INST::SymmetriseExchangeTerms(const std::vector<t_mat_real>& symops)
 				}
 				else
 				{
-					CERR_OPT << "Magdyn error: Parsing general J component ("
+					TL2_CERR_OPT << "Magdyn error: Parsing general J component ("
 						<< int(J_idx1) << ", " << int(J_idx2)
 						<< ") of term \"" << term.name << "\"."
 						<< std::endl;
@@ -180,13 +177,13 @@ void MAGDYN_INST::SymmetriseExchangeTerms(const std::vector<t_mat_real>& symops)
 		{
 			// get position of the site in the supercell
 			const auto [sc1_ok, site1_sc_idx, sc1] = tl2::get_supercell(
-				sites1_sc[op_idx], sites_uc, 3, m_eps);
+				sites1_sc[op_idx], sites_uc, 3, m_uc_min, m_uc_max, m_eps);
 			const auto [sc2_ok, site2_sc_idx, sc2] = tl2::get_supercell(
-				sites2_sc[op_idx], sites_uc, 3, m_eps);
+				sites2_sc[op_idx], sites_uc, 3, m_uc_min, m_uc_max, m_eps);
 
 			if(!sc1_ok || !sc2_ok)
 			{
-				CERR_OPT << "Magdyn error: Could not find supercell"
+				TL2_CERR_OPT << "Magdyn error: Could not find supercell"
 					<< " for position generated from symop "
 					<< op_idx << "." << std::endl;
 			}
@@ -208,7 +205,7 @@ void MAGDYN_INST::SymmetriseExchangeTerms(const std::vector<t_mat_real>& symops)
 					newterm.Jgen[idx1][idx2] = tl2::var_to_str(
 						newJgens[op_idx](idx1, idx2), m_prec);
 			}
-			newterm.name += "_" + tl2::var_to_str(op_idx + 1, m_prec);
+			newterm.name += "_op" + tl2::var_to_str(op_idx + 1, m_prec);
 
 			newterms.emplace_back(std::move(newterm));
 		}
@@ -230,9 +227,6 @@ void MAGDYN_INST::GeneratePossibleExchangeTerms(
 	t_real dist_max, t_size _sc_max,
 	std::optional<t_size> couplings_max)
 {
-	if(GetMagneticSitesCount() == 0)
-		return;
-
 	// helper struct for finding possible couplings
 	struct PossibleCoupling
 	{
@@ -253,12 +247,14 @@ void MAGDYN_INST::GeneratePossibleExchangeTerms(
 		t_size idx2_uc{};
 
 		// distance between the two magnetic sites
-		t_real dist{};
+		t_real length{};
 	};
 
 	CalcExternalField();
 	CalcMagneticSites();
 	CalcExchangeTerms();
+
+	const t_size num_sites = GetMagneticSitesCount();
 
 	ExchangeTerms newterms;
 	std::vector<PossibleCoupling> couplings;
@@ -272,9 +268,13 @@ void MAGDYN_INST::GeneratePossibleExchangeTerms(
 		// super cell vector
 		const t_vec_real sc_vec = tl2::create<t_vec_real>({ sc_h, sc_k, sc_l });
 
-		for(t_size idx1 = 0; idx1 < GetMagneticSitesCount() - 1; ++idx1)
-		for(t_size idx2 = idx1 + 1; idx2 < GetMagneticSitesCount(); ++idx2)
+		for(t_size idx1 = 0; idx1 < num_sites; ++idx1)
+		for(t_size idx2 = 0 /*idx1*/; idx2 < num_sites; ++idx2)
 		{
+			// no self-coupling
+			if(idx1 == idx2 && tl2::equals_0<t_vec_real>(sc_vec, m_eps))
+				continue;
+
 			PossibleCoupling coupling;
 
 			coupling.idx1_uc = idx1;
@@ -290,9 +290,9 @@ void MAGDYN_INST::GeneratePossibleExchangeTerms(
 			coupling.pos1_uc_lab = m_xtalA * coupling.pos1_uc;
 			coupling.pos2_sc_lab = m_xtalA * coupling.pos2_sc;
 
-			coupling.dist = tl2::norm<t_vec_real>(
+			coupling.length = tl2::norm<t_vec_real>(
 				coupling.pos2_sc_lab - coupling.pos1_uc_lab);
-			if(coupling.dist <= dist_max && coupling.dist > m_eps)
+			if(coupling.length <= dist_max && coupling.length > m_eps)
 				couplings.emplace_back(std::move(coupling));
 		}
 	}
@@ -301,15 +301,25 @@ void MAGDYN_INST::GeneratePossibleExchangeTerms(
 	std::stable_sort(couplings.begin(), couplings.end(),
 		[](const PossibleCoupling& coupling1, const PossibleCoupling& coupling2) -> bool
 	{
-		return coupling1.dist < coupling2.dist;
+		return coupling1.length < coupling2.length;
 	});
 
-	// add couplings to list
-	t_size coupling_idx = 0;
+	// add couplings to list, grouping them by length
+	t_size length_idx = 0, coupling_sub_idx = 0, coupling_idx = 0;
+	t_real cur_length = couplings.size() ? couplings[0].length : 0.;
+
 	for(const PossibleCoupling& coupling : couplings)
 	{
 		if(couplings_max && coupling_idx >= *couplings_max)
 			break;
+
+		// next length group?
+		if(!tl2::equals<t_real>(coupling.length, cur_length, m_eps))
+		{
+			++length_idx;
+			coupling_sub_idx = 0;
+			cur_length = coupling.length;
+		}
 
 		ExchangeTerm newterm{};
 		newterm.site1_calc = coupling.idx1_uc;
@@ -320,11 +330,13 @@ void MAGDYN_INST::GeneratePossibleExchangeTerms(
 		newterm.dist[0] = tl2::var_to_str(newterm.dist_calc[0], m_prec);
 		newterm.dist[1] = tl2::var_to_str(newterm.dist_calc[1], m_prec);
 		newterm.dist[2] = tl2::var_to_str(newterm.dist_calc[2], m_prec);
-		newterm.length_calc = coupling.dist;
+		newterm.length_calc = coupling.length;
 		newterm.J = "0";
-		newterm.name += "coupling_" + tl2::var_to_str(coupling_idx + 1, m_prec);
+		newterm.name += "coupling_dist" + tl2::var_to_str(length_idx + 1, m_prec)
+			+ "_" + tl2::var_to_str(coupling_sub_idx + 1, m_prec);
 		newterms.emplace_back(std::move(newterm));
 
+		++coupling_sub_idx;
 		++coupling_idx;
 	}
 
@@ -332,6 +344,23 @@ void MAGDYN_INST::GeneratePossibleExchangeTerms(
 	RemoveDuplicateExchangeTerms();
 	//CalcSymmetryIndices(symops);
 	CalcExchangeTerms();
+}
+
+
+
+/**
+ * sort couplings by their lengths
+ */
+MAGDYN_TEMPL
+void MAGDYN_INST::SortExchangeTerms()
+{
+	ExchangeTerms& couplings = GetExchangeTerms();
+
+	std::stable_sort(couplings.begin(), couplings.end(),
+		[](const ExchangeTerm& coupling1, const ExchangeTerm& coupling2) -> bool
+	{
+		return coupling1.length_calc < coupling2.length_calc;
+	});
 }
 
 
@@ -493,9 +522,15 @@ void MAGDYN_INST::RemoveDuplicateMagneticSites()
 	for(auto iter2 = std::next(iter1, 1); iter2 != m_sites.end();)
 	{
 		if(tl2::equals<t_vec_real>(iter1->pos_calc, iter2->pos_calc, m_eps))
+		{
 			iter2 = m_sites.erase(iter2);
+			if(iter1 == iter2)
+				std::advance(iter2, 1);
+		}
 		else
+		{
 			std::advance(iter2, 1);
+		}
 	}
 }
 
@@ -519,9 +554,15 @@ void MAGDYN_INST::RemoveDuplicateExchangeTerms()
 		bool inv_sc = tl2::equals<t_vec_real>(iter1->dist_calc, -iter2->dist_calc, m_eps);
 
 		if((same_uc && same_sc) || (inv_uc && inv_sc))
+		{
 			iter2 = m_exchange_terms.erase(iter2);
+			if(iter1 == iter2)
+				std::advance(iter2, 1);
+		}
 		else
+		{
 			std::advance(iter2, 1);
+		}
 	}
 }
 
@@ -537,7 +578,10 @@ bool MAGDYN_INST::IsSymmetryEquivalent(
 {
 	// get symmetry-equivalent positions
 	const auto positions = tl2::apply_ops_hom<t_vec_real, t_mat_real, t_real>(
-		site1.pos_calc, symops, m_eps);
+		site1.pos_calc, symops, m_eps,
+		true /*keep in uc*/, false /*ignore occupied*/,
+		false /*return homogeneous*/, false /*pseudovector*/,
+		m_uc_min, m_uc_max);
 
 	for(const auto& pos : positions)
 	{
@@ -559,10 +603,11 @@ bool MAGDYN_INST::IsSymmetryEquivalent(
 	const MAGDYN_TYPE::ExchangeTerm& term1, const MAGDYN_TYPE::ExchangeTerm& term2,
 	const std::vector<t_mat_real>& symops) const
 {
-	// check if site indices are within bounds
-	const t_size N = GetMagneticSitesCount();
-	if(term1.site1_calc >= N || term1.site2_calc >= N ||
-		term2.site1_calc >= N || term2.site2_calc >= N)
+	// check if the site indices are valid
+	if(!CheckMagneticSite(term1.site1_calc) || !CheckMagneticSite(term1.site2_calc))
+		return false;
+	// check if the site indices are valid
+	if(!CheckMagneticSite(term2.site1_calc) || !CheckMagneticSite(term2.site2_calc))
 		return false;
 
 	// create unit cell site vectors
@@ -580,20 +625,37 @@ bool MAGDYN_INST::IsSymmetryEquivalent(
 		sites_uc[term1.site2_calc] + dist_sc, symops, m_eps,
 		false /*keep in uc*/, true /*ignore occupied*/,
 		true /*return homogeneous*/);
+	
+#ifdef __TLIBS2_MAGDYN_DEBUG_OUTPUT__
+	using namespace tl2_ops;
+	std::cout << "term1:     " << term1.site1_calc << ", " << term1.site2_calc
+		<< ", dist: " << term1.dist_calc << ", " << term1.name << std::endl;
+	std::cout << "term2:     " << term2.site1_calc << ", " << term2.site2_calc
+		<< ", dist: " << term2.dist_calc << ", " << term2.name << std::endl;
+#endif
 
-	for(t_size idx = 0; idx < std::min(sites1_sc.size(), sites2_sc.size()); ++idx)
+	for(t_size op_idx = 0; op_idx < std::min(sites1_sc.size(), sites2_sc.size()); ++op_idx)
 	{
 		// get position of the site in the supercell
 		const auto [sc1_ok, site1_sc_idx, sc1] = tl2::get_supercell(
-			sites1_sc[idx], sites_uc, 3, m_eps);
+			sites1_sc[op_idx], sites_uc, 3, m_uc_min, m_uc_max, m_eps);
 		const auto [sc2_ok, site2_sc_idx, sc2] = tl2::get_supercell(
-			sites2_sc[idx], sites_uc, 3, m_eps);
+			sites2_sc[op_idx], sites_uc, 3, m_uc_min, m_uc_max, m_eps);
+
 		if(!sc1_ok || !sc2_ok)
 			continue;
+
+#ifdef __TLIBS2_MAGDYN_DEBUG_OUTPUT__
+		std::cout << "term1_op" << op_idx << ": " << site1_sc_idx << ", " << site2_sc_idx
+			<< ", dist: " << to_3vec<t_vec_real>(sc2 - sc1) << std::endl;
+#endif
 
 		// symmetry-equivalent coupling found?
 		if(tl2::equals<t_vec_real>(to_3vec<t_vec_real>(sc2 - sc1), term2.dist_calc, m_eps)
 			&& site1_sc_idx == term2.site1_calc && site2_sc_idx == term2.site2_calc)
+			return true;
+		if(tl2::equals<t_vec_real>(to_3vec<t_vec_real>(sc1 - sc2), term2.dist_calc, m_eps)
+			&& site1_sc_idx == term2.site2_calc && site2_sc_idx == term2.site1_calc)
 			return true;
 	}
 

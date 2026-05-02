@@ -28,18 +28,15 @@
 #ifndef __TLIBS2_MAGDYN_CFG_FILE_H__
 #define __TLIBS2_MAGDYN_CFG_FILE_H__
 
-#include <unordered_set>
-#include <string>
-#include <iostream>
+
 #include <fstream>
-#include <iomanip>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 
 #include "../algos.h"
-#include "../maths.h"
 #include "../str.h"
+#include "../file.h"
 
 #include "magdyn.h"
 
@@ -56,6 +53,14 @@ bool MAGDYN_INST::Load(const std::string& filename)
 {
 	try
 	{
+		if(!tl2::file_exists(filename))
+		{
+			TL2_CERR_OPT << "Magdyn error: File \""
+				<< filename << "\" does not exist."
+				<< std::endl;
+			return false;
+		}
+
 		// properties tree
 		boost::property_tree::ptree node;
 
@@ -68,7 +73,7 @@ bool MAGDYN_INST::Load(const std::string& filename)
 	}
 	catch(const std::exception& ex)
 	{
-		CERR_OPT << "Magdyn error: Could not load \""
+		TL2_CERR_OPT << "Magdyn error: Could not load \""
 			<< filename << "\"."
 			<< " Reason: " << ex.what()
 			<< std::endl;
@@ -247,7 +252,7 @@ bool MAGDYN_INST::Load(const boost::property_tree::ptree& node)
 				}
 				else
 				{
-					CERR_OPT << "Magdyn error: Site 1 name \"" << *name1 << "\" "
+					TL2_CERR_OPT << "Magdyn error: Site 1 name \"" << *name1 << "\" "
 						<< "was not found in coupling \"" << exchange_term.name
 						<< "\"." << std::endl;
 				}
@@ -266,7 +271,7 @@ bool MAGDYN_INST::Load(const boost::property_tree::ptree& node)
 				}
 				else
 				{
-					CERR_OPT << "Magdyn error: Site 2 name \"" << *name2 << "\" "
+					TL2_CERR_OPT << "Magdyn error: Site 2 name \"" << *name2 << "\" "
 						<< "was not found in coupling \"" << exchange_term.name
 						<< "\"." << std::endl;
 				}
@@ -317,6 +322,7 @@ bool MAGDYN_INST::Load(const boost::property_tree::ptree& node)
 
 		thefield.mag = 0.;
 		thefield.align_spins = false;
+		thefield.keep_signs = false;
 
 		thefield.dir = tl2::create<t_vec_real>(
 		{
@@ -327,9 +333,10 @@ bool MAGDYN_INST::Load(const boost::property_tree::ptree& node)
 
 		if(auto optVal = field->get_optional<t_real>("magnitude"))
 			thefield.mag = *optVal;
-
 		if(auto optVal = field->get_optional<bool>("align_spins"))
 			thefield.align_spins = *optVal;
+		if(auto optVal = field->get_optional<bool>("keep_signs"))
+			thefield.keep_signs = *optVal;
 
 		SetExternalField(thefield);
 	}
@@ -402,7 +409,7 @@ bool MAGDYN_INST::Save(boost::property_tree::ptree& node) const
 	// write signature
 	node.put<std::string>("meta.info", "magdyn_tool");
 	node.put<std::string>("meta.date", tl2::epoch_to_str<t_real>(tl2::epoch<t_real>()));
-	node.put<std::string>("meta.doi_tlibs", "https://doi.org/10.5281/zenodo.5717779");
+	node.put<std::string>("meta.doi", "https://doi.org/10.5281/zenodo.16180814");
 
 	// external field
 	if(m_field.dir.size() == 3)
@@ -413,6 +420,7 @@ bool MAGDYN_INST::Save(boost::property_tree::ptree& node) const
 	}
 	node.put<t_real>("field.magnitude", m_field.mag);
 	node.put<bool>("field.align_spins", m_field.align_spins);
+	node.put<bool>("field.keep_signs", m_field.keep_signs);
 
 	// ordering vector
 	if(m_ordering.size() == 3)

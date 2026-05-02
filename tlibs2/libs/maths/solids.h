@@ -50,8 +50,36 @@
 
 namespace tl2 {
 // ----------------------------------------------------------------------------
-// 3-dim solids
+// helper functions
 // ----------------------------------------------------------------------------
+
+/**
+ * split a solid by the individual faces
+ */
+template<class t_vec, template<class...> class t_cont = std::vector,
+	class t_tup = std::tuple<t_cont<t_vec>, t_cont<t_cont<std::size_t>>, t_cont<t_vec>, t_cont<t_cont<t_vec>>>>
+t_cont<t_tup> split_solid(const t_tup& solid)
+requires is_vec<t_vec>
+{
+	const std::size_t num_faces = std::get<1>(solid).size();
+
+	t_cont<t_tup> all_solids;
+	all_solids.reserve(num_faces);
+
+	for(std::size_t idx = 0; idx < num_faces; ++idx)
+	{
+		t_tup tup = std::make_tuple(
+			std::get<0>(solid),  // vertices, TODO: filter out the unused ones
+			decltype(std::get<1>(solid)){{ std::get<1>(solid)[idx] }},
+			decltype(std::get<2>(solid)){{ std::get<2>(solid)[idx] }},
+			decltype(std::get<3>(solid)){{ std::get<3>(solid)[idx] }});
+
+		all_solids.emplace_back(std::move(tup));
+	}
+
+	return all_solids;
+}
+
 
 /**
  * create the faces of a sphere
@@ -73,7 +101,6 @@ requires is_vec<t_vec>
 	vertices_new.reserve(vertices.size());
 	normals_new.reserve(vertices.size());
 
-
 	// vertices
 	for(t_vec vec : vertices)
 	{
@@ -81,7 +108,6 @@ requires is_vec<t_vec>
 		vec *= rad;
 		vertices_new.emplace_back(std::move(vec));
 	}
-
 
 	// face normals
 	auto itervert = vertices.begin();
@@ -106,7 +132,13 @@ requires is_vec<t_vec>
 
 	return std::make_tuple(vertices_new, normals_new, uvs);
 }
+// ----------------------------------------------------------------------------
 
+
+
+// ----------------------------------------------------------------------------
+// 3-dim solids
+// ----------------------------------------------------------------------------
 
 /**
  * create a plane
@@ -122,26 +154,26 @@ requires is_vec<t_vec>
 	t_mat rot = rotation<t_mat, t_vec>(norm_old, norm, &rot_vec);
 
 	t_cont<t_vec> vertices =
-	{
+	{{
 		create<t_vec>({ -lx, -ly, 0. }),	// vertex 0
 		create<t_vec>({ -lx, +ly, 0. }),	// vertex 1
 		create<t_vec>({ +lx, +ly, 0. }),	// vertex 2
 		create<t_vec>({ +lx, -ly, 0. }),	// vertex 3
-	};
+	}};
 
 	// rotate according to given normal
 	for(t_vec& vec : vertices)
-		vec = rot * vec;
+		vec = tl2::prod_mv<t_mat, t_vec>(rot, vec);
 
 	t_cont<t_cont<std::size_t>> faces = { { 0, 1, 2, 3 } };
 	t_cont<t_vec> normals = { norm };
 
 	t_cont<t_cont<t_vec>> uvs =
 	{{
-		create<t_vec>({0, 0}),
-		create<t_vec>({0, 1}),
-		create<t_vec>({1, 1}),
-		create<t_vec>({1, 0}),
+		create<t_vec>({ 0, 0 }),
+		create<t_vec>({ 0, 1 }),
+		create<t_vec>({ 1, 1 }),
+		create<t_vec>({ 1, 0 }),
 	}};
 
 	return std::make_tuple(vertices, faces, normals, uvs);
@@ -231,6 +263,53 @@ requires is_vec<t_vec>
 	}
 
 	return std::make_tuple(vertices, faces, normals, uvs);
+}
+
+
+/**
+ * create a line, z = f(x)
+ * @returns vertices
+ */
+template<class t_func, class t_mat, class t_vec,
+	template<class...> class t_cont = std::vector,
+	class t_real = typename t_vec::value_type>
+t_cont<t_vec> create_line(const t_func& func,
+	t_real width = 1., std::size_t num_points_x = 16,
+	t_real y = 0., bool flip_xy = false)
+requires is_vec<t_vec>
+{
+	t_cont<t_vec> vertices;
+	vertices.reserve(num_points_x);
+
+	//t_real y = -height*0.5 + height *
+	//	static_cast<t_real>(j)/static_cast<t_real>(num_points_y - 1);
+	for(std::size_t i = 0; i < num_points_x - 1; ++i)
+	{
+		// create vertices
+		t_real x1 = -width*0.5 + width *
+			static_cast<t_real>(i)/static_cast<t_real>(num_points_x - 1);
+		t_real x2 = -width*0.5 + width *
+			static_cast<t_real>(i + 1)/static_cast<t_real>(num_points_x - 1);
+
+		auto [z1, valid1] = func(x1, i);
+		auto [z2, valid2] = func(x2, i + 1);
+
+		if(!valid1 || !valid2)
+			continue;
+
+		if(flip_xy)
+		{
+			vertices.emplace_back(tl2::create<t_vec>({ y, x1, z1 }));
+			vertices.emplace_back(tl2::create<t_vec>({ y, x2, z2 }));
+		}
+		else
+		{
+			vertices.emplace_back(tl2::create<t_vec>({ x1, y, z1 }));
+			vertices.emplace_back(tl2::create<t_vec>({ x2, y, z2 }));
+		}
+	}
+
+	return vertices;
 }
 
 
@@ -523,7 +602,7 @@ requires is_vec<t_vec>
 template<class t_vec, template<class...> class t_cont = std::vector>
 std::tuple<t_cont<t_vec>, t_cont<t_cont<std::size_t>>, t_cont<t_vec>, t_cont<t_cont<t_vec>>>
 create_cuboid(typename t_vec::value_type lx = 1, typename t_vec::value_type ly = 1,
-	typename t_vec::value_type lz = 1)
+	typename t_vec::value_type lz = 1, bool flip_uv = false /* for mapping texture to the inside of the cube */)
 requires is_vec<t_vec>
 {
 	t_cont<t_vec> vertices =
@@ -559,49 +638,53 @@ requires is_vec<t_vec>
 		create<t_vec>({ +1, 0, 0 }),	// +x face
 	};
 
+	using t_real = typename t_vec::value_type;
+	t_real min = flip_uv ? 1. : 0.;
+	t_real max = flip_uv ? 0. : 1.;
+
 	t_cont<t_cont<t_vec>> uvs =
 	{
 		// -z face
 		{
-			create<t_vec>({0, 0}),
-			create<t_vec>({1, 0}),
-			create<t_vec>({1, 1}),
-			create<t_vec>({0, 1})
+			create<t_vec>({ min, 1 }),
+			create<t_vec>({ max, 1 }),
+			create<t_vec>({ max, 0 }),
+			create<t_vec>({ min, 0 }),
 		},
 		// +z face
 		{
-			create<t_vec>({0, 1}),
-			create<t_vec>({1, 1}),
-			create<t_vec>({1, 0}),
-			create<t_vec>({0, 0})
+			create<t_vec>({ max, 0 }),
+			create<t_vec>({ min, 0 }),
+			create<t_vec>({ min, 1 }),
+			create<t_vec>({ max, 1 }),
 		},
 		// -y face
 		{
-			create<t_vec>({0, 1}),
-			create<t_vec>({1, 1}),
-			create<t_vec>({1, 0}),
-			create<t_vec>({0, 0}),
+			create<t_vec>({ min, 1 }),
+			create<t_vec>({ max, 1 }),
+			create<t_vec>({ max, 0 }),
+			create<t_vec>({ min, 0 }),
 		},
 		// +y face
 		{
-			create<t_vec>({1, 0}),
-			create<t_vec>({0, 0}),
-			create<t_vec>({0, 1}),
-			create<t_vec>({1, 1})
+			create<t_vec>({ max, 0 }),
+			create<t_vec>({ min, 0 }),
+			create<t_vec>({ min, 1 }),
+			create<t_vec>({ max, 1 }),
 		},
 		// -x face
 		{
-			create<t_vec>({1, 1}),
-			create<t_vec>({1, 0}),
-			create<t_vec>({0, 0}),
-			create<t_vec>({0, 1})
+			create<t_vec>({ max, 1 }),
+			create<t_vec>({ max, 0 }),
+			create<t_vec>({ min, 0 }),
+			create<t_vec>({ min, 1 }),
 		},
 		// +x face
 		{
-			create<t_vec>({0, 0}),
-			create<t_vec>({0, 1}),
-			create<t_vec>({1, 1}),
-			create<t_vec>({1, 0})
+			create<t_vec>({ min, 0 }),
+			create<t_vec>({ min, 1 }),
+			create<t_vec>({ max, 1 }),
+			create<t_vec>({ max, 0 }),
 		},
 	};
 
@@ -871,6 +954,11 @@ requires is_vec<t_vec>
 	return std::make_tuple(vertices, faces, normals, uvs);
 }
 
+
+
+// ----------------------------------------------------------------------------
+// bounding volumes
+// ----------------------------------------------------------------------------
 
 /**
  * calculates the bounding sphere of a collection of vertices

@@ -38,13 +38,12 @@
 #ifndef __TLIBS2_MAGDYN_DISP_H__
 #define __TLIBS2_MAGDYN_DISP_H__
 
+
 #include <numeric>
-#include <vector>
 #include <thread>
 
 #include <boost/asio.hpp>
 
-#include "../maths.h"
 #include "magdyn.h"
 
 
@@ -85,9 +84,23 @@ MAGDYN_TYPE::SofQE MAGDYN_INST::UniteEnergies(const MAGDYN_TYPE::SofQE& S) const
 			iter->S_perp      += curState.S_perp;
 			iter->S_sum       += curState.S_sum;
 			iter->S_perp_sum  += curState.S_perp_sum;
-			iter->weight      += curState.weight;
+			iter->weight_perp += curState.weight_perp;
 			iter->weight_full += curState.weight_full;
-			iter->degeneracy  += curState.degeneracy;
+
+			if(m_calc_pol)
+			{
+				iter->S_pol           += curState.S_pol;
+				iter->S_pol_perp      += curState.S_pol_perp;
+				iter->S_pol_sum       += curState.S_pol_sum;
+				iter->S_pol_perp_sum  += curState.S_pol_perp_sum;
+				iter->weight_pol_perp += curState.weight_pol_perp;
+				iter->weight_pol_full += curState.weight_pol_full;
+			}
+
+			iter->degeneracy += curState.degeneracy;
+#ifdef MAGDYN_COMPAT
+			iter->weight = iter->weight_perp;
+#endif
 		}
 	}
 
@@ -194,12 +207,14 @@ MAGDYN_INST::CalcEnergies(t_real h, t_real k, t_real l, bool only_energies) cons
 
 /**
  * generates the dispersion plot along the given Q path
+ * if a result_fkt is given, directly send the result to this callback and don't return it
  */
 MAGDYN_TEMPL
 MAGDYN_TYPE::SofQEs
 MAGDYN_INST::CalcDispersion(t_real h_start, t_real k_start, t_real l_start,
-	t_real h_end, t_real k_end, t_real l_end, t_size num_Qs,
-	t_size num_threads, std::function<bool(int, int)> *progress_fkt) const
+	t_real h_end, t_real k_end, t_real l_end, t_size num_Qs, t_size num_threads,
+	bool calc_weights, std::function<bool(int, int)> *progress_fkt,
+	std::function<void(const MAGDYN_TYPE::SofQE*)> *result_fkt) const
 {
 	// determine number of threads
 	if(num_threads == 0)
@@ -220,18 +235,21 @@ MAGDYN_INST::CalcDispersion(t_real h_start, t_real k_start, t_real l_start,
 		if(progress_fkt && !(*progress_fkt)(0, num_Qs))
 			break;
 
-		auto task = [this, i, num_Qs,
+		auto task = [this, i, num_Qs, calc_weights,
 			h_start, k_start, l_start,
 			h_end, k_end, l_end]() -> SofQE
 		{
 			// get Q
-			const t_real h = std::lerp(h_start, h_end, t_real(i) / t_real(num_Qs - 1));
-			const t_real k = std::lerp(k_start, k_end, t_real(i) / t_real(num_Qs - 1));
-			const t_real l = std::lerp(l_start, l_end, t_real(i) / t_real(num_Qs - 1));
+			const t_real h = num_Qs == 1 ? h_start :
+				std::lerp(h_start, h_end, t_real(i) / t_real(num_Qs - 1));
+			const t_real k = num_Qs == 1 ? k_start :
+				std::lerp(k_start, k_end, t_real(i) / t_real(num_Qs - 1));
+			const t_real l = num_Qs == 1 ? l_start :
+				std::lerp(l_start, l_end, t_real(i) / t_real(num_Qs - 1));
 			const t_vec_real Q = tl2::create<t_vec_real>({ h, k, l });
 
 			// get E and S(Q, E) for this Q
-			return CalcEnergies(Q, false);
+			return CalcEnergies(Q, !calc_weights);
 		};
 
 		t_taskptr taskptr = std::make_shared<t_task>(task);
@@ -239,9 +257,12 @@ MAGDYN_INST::CalcDispersion(t_real h_start, t_real k_start, t_real l_start,
 		boost::asio::post(pool, [taskptr]() { (*taskptr)(); });
 	}
 
+	bool return_results = (result_fkt == nullptr);
+
 	// collect results
 	SofQEs results;
-	results.reserve(tasks.size());
+	if(return_results)
+		results.reserve(tasks.size());
 
 	t_size Qs_finished = 0;
 	for(auto& task : tasks)
@@ -250,7 +271,80 @@ MAGDYN_INST::CalcDispersion(t_real h_start, t_real k_start, t_real l_start,
 			break;
 
 		const SofQE& result = task->get_future().get();
-		results.push_back(result);
+		if(result_fkt)
+			(*result_fkt)(&result);
+
+		if(return_results)
+			results.emplace_back(std::move(result));
+		++Qs_finished;
+	}
+
+	return results;
+}
+
+
+
+/**
+ * generates the dispersion for the given Q points
+ * if a result_fkt is given, directly send the result to this callback and don't return it
+ */
+MAGDYN_TEMPL
+MAGDYN_TYPE::SofQEs
+MAGDYN_INST::CalcDispersion(const std::vector<t_vec_real>& Qs,
+	t_size num_threads, bool calc_weights,
+	std::function<bool(int, int)> *progress_fkt,
+	std::function<void(const MAGDYN_TYPE::SofQE*)> *result_fkt) const
+{
+	const t_size num_Qs = Qs.size();
+
+	// determine number of threads
+	if(num_threads == 0)
+		num_threads = std::max<t_size>(1, std::thread::hardware_concurrency() / 2);
+
+	// thread pool and tasks
+	using t_pool = boost::asio::thread_pool;
+	using t_task = std::packaged_task<SofQE()>;
+	using t_taskptr = std::shared_ptr<t_task>;
+
+	t_pool pool{num_threads};
+	std::vector<t_taskptr> tasks;
+	tasks.reserve(num_Qs);
+
+	// calculate dispersion
+	for(const t_vec_real& Q : Qs)
+	{
+		if(progress_fkt && !(*progress_fkt)(0, num_Qs))
+			break;
+
+		auto task = [this, calc_weights, /*&*/Q]() -> SofQE
+		{
+			return CalcEnergies(Q, !calc_weights);
+		};
+
+		t_taskptr taskptr = std::make_shared<t_task>(task);
+		tasks.push_back(taskptr);
+		boost::asio::post(pool, [taskptr]() { (*taskptr)(); });
+	}
+
+	bool return_results = (result_fkt == nullptr);
+
+	// collect results
+	SofQEs results;
+	if(return_results)
+		results.reserve(tasks.size());
+
+	t_size Qs_finished = 0;
+	for(auto& task : tasks)
+	{
+		if(progress_fkt && !(*progress_fkt)(Qs_finished + 1, num_Qs))
+			break;
+
+		const SofQE& result = task->get_future().get();
+		if(result_fkt)
+			(*result_fkt)(&result);
+
+		if(return_results)
+			results.emplace_back(std::move(result));
 		++Qs_finished;
 	}
 
@@ -261,14 +355,16 @@ MAGDYN_INST::CalcDispersion(t_real h_start, t_real k_start, t_real l_start,
 
 /**
  * generates the dispersion plot along the given 2d Q surface
+ * if a result_fkt is given, directly send the result to this callback and don't return it
  */
 MAGDYN_TEMPL
 MAGDYN_TYPE::SofQEs
 MAGDYN_INST::CalcDispersion(t_real h_start, t_real k_start, t_real l_start,
 	t_real h_end1, t_real k_end1, t_real l_end1,
 	t_real h_end2, t_real k_end2, t_real l_end2,
-	t_size num_Qs_sqrt, t_size num_threads,
-	std::function<bool(int, int)> *progress_fkt) const
+	t_size num_Qs_sqrt, t_size num_threads, bool calc_weights,
+	std::function<bool(int, int)> *progress_fkt,
+	std::function<void(const MAGDYN_TYPE::SofQE*)> *result_fkt) const
 {
 	// determine number of threads
 	if(num_threads == 0)
@@ -290,25 +386,25 @@ MAGDYN_INST::CalcDispersion(t_real h_start, t_real k_start, t_real l_start,
 		if(progress_fkt && !(*progress_fkt)(0, num_Qs_sqrt * num_Qs_sqrt))
 			break;
 
-		auto task = [this, i, j, num_Qs_sqrt,
+		auto task = [this, i, j, num_Qs_sqrt, calc_weights,
 			h_start, k_start, l_start,
 			h_end1, k_end1, l_end1,
 			h_end2, k_end2, l_end2]() -> SofQE
 		{
 			// get Q
-			const t_real h =
+			const t_real h = num_Qs_sqrt == 1 ? h_start :
 				std::lerp(h_start, h_end1, t_real(i) / t_real(num_Qs_sqrt - 1)) +
 				std::lerp(h_start, h_end2, t_real(j) / t_real(num_Qs_sqrt - 1)) - h_start;
-			const t_real k =
+			const t_real k = num_Qs_sqrt == 1 ? k_start :
 				std::lerp(k_start, k_end1, t_real(i) / t_real(num_Qs_sqrt - 1)) +
 				std::lerp(k_start, k_end2, t_real(j) / t_real(num_Qs_sqrt - 1)) - k_start;
-			const t_real l =
+			const t_real l = num_Qs_sqrt == 1 ? l_start :
 				std::lerp(l_start, l_end1, t_real(i) / t_real(num_Qs_sqrt - 1)) +
 				std::lerp(l_start, l_end2, t_real(j) / t_real(num_Qs_sqrt - 1)) - l_start;
 			const t_vec_real Q = tl2::create<t_vec_real>({ h, k, l });
 
 			// get E and S(Q, E) for this Q
-			return CalcEnergies(Q, false);
+			return CalcEnergies(Q, !calc_weights);
 		};
 
 		t_taskptr taskptr = std::make_shared<t_task>(task);
@@ -316,9 +412,12 @@ MAGDYN_INST::CalcDispersion(t_real h_start, t_real k_start, t_real l_start,
 		boost::asio::post(pool, [taskptr]() { (*taskptr)(); });
 	}
 
+	bool return_results = (result_fkt == nullptr);
+
 	// collect results
 	SofQEs results;
-	results.reserve(tasks.size());
+	if(return_results)
+		results.reserve(tasks.size());
 
 	t_size Qs_finished = 0;
 	for(auto& task : tasks)
@@ -327,7 +426,11 @@ MAGDYN_INST::CalcDispersion(t_real h_start, t_real k_start, t_real l_start,
 			break;
 
 		const SofQE& result = task->get_future().get();
-		results.push_back(result);
+		if(result_fkt)
+			(*result_fkt)(&result);
+
+		if(return_results)
+			results.emplace_back(std::move(result));
 		++Qs_finished;
 	}
 

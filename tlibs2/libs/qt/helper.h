@@ -48,7 +48,10 @@ static inline void set_locales()
 	std::ios_base::sync_with_stdio(false);
 
 	::setlocale(LC_ALL, "C");
-	std::locale::global(std::locale("C"));
+
+	const std::locale& C_loc = std::locale::classic();
+	std::locale::global(C_loc);
+
 	QLocale::setDefault(QLocale::C);
 }
 

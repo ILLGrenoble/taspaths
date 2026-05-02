@@ -6,7 +6,7 @@
 #
 # ----------------------------------------------------------------------------
 # tlibs
-# Copyright (C) 2017-2021  Tobias WEBER (Institut Laue-Langevin (ILL),
+# Copyright (C) 2017-2026  Tobias WEBER (Institut Laue-Langevin (ILL),
 #                          Grenoble, France).
 # Copyright (C) 2015-2017  Tobias WEBER (Technische Universitaet Muenchen
 #                          (TUM), Garching, Germany).
@@ -27,10 +27,10 @@
 # ----------------------------------------------------------------------------
 #
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(mcalc)
 
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/../../setup/cmake")
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/../../../setup/cmake")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_VERBOSE_MAKEFILE ON)
@@ -39,6 +39,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 find_package(FLEX 2 REQUIRED)
 find_package(BISON 3 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS program_options)
+find_package(GFortran)
 find_package(Lapacke REQUIRED)
 
 add_compile_options(-Wall -Wextra)
@@ -49,9 +50,8 @@ add_definitions(-DUSE_LAPACK)
 
 
 include_directories(
-	"${PROJECT_SOURCE_DIR}"
-	"${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/libs"
-	"${PROJECT_SOURCE_DIR}/.."
+	"${PROJECT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/src"
+	"${PROJECT_SOURCE_DIR}/../../" "${PROJECT_SOURCE_DIR}/../../libs"
 	"${FLEX_INCLUDE_DIRS}" "${Boost_INCLUDE_DIRS}" "${Boost_INCLUDE_DIRS}/.."
 	"${CMAKE_CURRENT_BINARY_DIR}"
 	"${Lapacke_INCLUDE_DIRS}"
@@ -101,5 +101,5 @@ add_library(mcalc_rt SHARED
 
 set(TARGET mcalc_rt PROPTERTY CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-target_link_libraries(mcalc_rt ${Lapacke_LIBRARIES})
+target_link_libraries(mcalc_rt ${Lapacke_LIBRARIES} ${Lapack_LIBRARIES} ${BLAS_LIBRARIES} ${GFortran_LIBRARIES})
 

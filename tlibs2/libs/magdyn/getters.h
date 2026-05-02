@@ -28,15 +28,8 @@
 #ifndef __TLIBS2_MAGDYN_GETTERS_H__
 #define __TLIBS2_MAGDYN_GETTERS_H__
 
-#include <vector>
-#include <tuple>
-#include <string>
-#include <iostream>
-#include <iomanip>
 
-#include "../maths.h"
-#include "../expr.h"
-
+#include "magdyn.h"
 
 
 // --------------------------------------------------------------------
@@ -117,6 +110,7 @@ MAGDYN_TEMPL void MAGDYN_INST::ClearExternalField()
 	m_field.dir.clear();
 	m_field.mag = 0.;
 	m_field.align_spins = false;
+	m_field.keep_signs = false;
 }
 // --------------------------------------------------------------------
 
@@ -215,9 +209,9 @@ MAGDYN_TEMPL const t_mat_real& MAGDYN_INST::GetCrystalBTrafo() const
 }
 
 
-MAGDYN_TEMPL const t_mat_real& MAGDYN_INST::GetCrystalUBTrafo() const
+MAGDYN_TEMPL const t_mat_real& MAGDYN_INST::GetCrystalUBTrafo(bool inv) const
 {
-	return m_xtalUB;
+	return inv ? m_xtalUBinv : m_xtalUB;
 }
 
 
@@ -260,6 +254,13 @@ MAGDYN_TEMPL bool MAGDYN_INST::IsIncommensurate() const
 MAGDYN_TEMPL bool MAGDYN_INST::GetSilent() const
 {
 	return m_silent;
+}
+
+
+
+MAGDYN_TEMPL bool MAGDYN_INST::GetPerformChecks() const
+{
+	return m_perform_checks;
 }
 
 
@@ -323,7 +324,7 @@ MAGDYN_TEMPL t_size MAGDYN_INST::GetMagneticSiteIndex(const std::string& name) c
 	}
 	else
 	{
-		CERR_OPT << "Magdyn error: "
+		TL2_CERR_OPT << "Magdyn error: "
 			<< "Invalid site name \"" << name << "\"."
 			<< std::endl;
 	}
@@ -357,7 +358,7 @@ MAGDYN_TEMPL t_size MAGDYN_INST::GetExchangeTermIndex(const std::string& name) c
 	}
 	else
 	{
-		CERR_OPT << "Magdyn error: Invalid coupling name \"" << name << "\"."
+		TL2_CERR_OPT << "Magdyn error: Invalid coupling name \"" << name << "\"."
 			<< std::endl;
 	}
 
@@ -443,6 +444,13 @@ MAGDYN_TEMPL void MAGDYN_INST::SetPrecision(int prec)
 }
 
 
+MAGDYN_TEMPL void MAGDYN_INST::SetUnitCellExtents(t_real uc_min, t_real uc_max)
+{
+	m_uc_min = uc_min;
+	m_uc_max = uc_max;
+}
+
+
 MAGDYN_TEMPL void MAGDYN_INST::SetTemperature(t_real T)
 {
 	m_temperature = T;
@@ -513,7 +521,7 @@ MAGDYN_TEMPL void MAGDYN_INST::SetMagneticFormFactor(const std::string& ffact)
 	{
 		m_magffact_formula = "";
 
-		CERR_OPT << "Magdyn error: Magnetic form facor formula: \""
+		TL2_CERR_OPT << "Magdyn error: Magnetic form facor formula: \""
 			<< ffact << "\" could not be parsed."
 			<< std::endl;
 	}
@@ -580,6 +588,13 @@ MAGDYN_TEMPL void MAGDYN_INST::SetCalcHamiltonian(bool H, bool Hp, bool Hm)
 	m_calc_H  = H;
 	m_calc_Hp = Hp;
 	m_calc_Hm = Hm;
+}
+
+
+
+MAGDYN_TEMPL void MAGDYN_INST::SetCalcPolarisation(bool b)
+{
+	m_calc_pol  = b;
 }
 
 
@@ -653,7 +668,7 @@ void MAGDYN_INST::SetCrystalLattice(t_real a, t_real b, t_real c,
 	{
 		m_xtalA = m_xtalB = tl2::unit<t_mat_real>(3);
 
-		CERR_OPT << "Magdyn error: Could not calculate crystal matrices."
+		TL2_CERR_OPT << "Magdyn error: Could not calculate crystal matrices."
 			<< std::endl;
 	}
 }
@@ -684,7 +699,7 @@ void MAGDYN_INST::SetScatteringPlane(t_real ah, t_real ak, t_real al,
 
 		if(!inv_ok)
 		{
-			CERR_OPT << "Magdyn error: UB matrix is not invertible."
+			TL2_CERR_OPT << "Magdyn error: UB matrix is not invertible."
 				<< std::endl;
 		}
 	}
@@ -692,10 +707,23 @@ void MAGDYN_INST::SetScatteringPlane(t_real ah, t_real ak, t_real al,
 	{
 		m_xtalUB = m_xtalUBinv = tl2::unit<t_mat_real>(3);
 
-		CERR_OPT << "Magdyn error: Could not calculate scattering plane matrices."
+		TL2_CERR_OPT << "Magdyn error: Could not calculate scattering plane matrices."
 			<< std::endl;
 	}
 }
+
+
+
+/**
+ * restrict energies to given range,
+ * deactivate by setting Emax smaller than Emin
+ */
+/*MAGDYN_TEMPL
+void MAGDYN_INST::SetFilterEnergies(t_real Emin, t_real Emax)
+{
+	m_E_minmax[0] = Emin;
+	m_E_minmax[1] = Emax;
+}*/
 // --------------------------------------------------------------------
 
 
@@ -718,96 +746,5 @@ tl2::ExprParser<t_cplx> MAGDYN_INST::GetExprParser() const
 }
 // --------------------------------------------------------------------
 
-
-
-// --------------------------------------------------------------------
-// sanity checks
-// --------------------------------------------------------------------
-/**
- * check if the site index is valid
- */
-MAGDYN_TEMPL
-bool MAGDYN_INST::CheckMagneticSite(t_size idx, bool print_error) const
-{
-	// always perform this check as the GUI deliberately sets invalid
-	// indices when adding a new coupling to the table
-
-	//if(!m_perform_checks)
-	//	return true;
-
-	if(idx >= m_sites.size())
-	{
-		if(print_error)
-		{
-			CERR_OPT << "Magdyn error: Site index " << idx
-				<< " is out of bounds."
-				<< std::endl;
-		}
-
-		return false;
-	}
-
-	return true;
-}
-
-
-
-/**
- * check if the term index is valid
- */
-MAGDYN_TEMPL
-bool MAGDYN_INST::CheckExchangeTerm(t_size idx, bool print_error) const
-{
-	if(!m_perform_checks)
-		return true;
-
-	if(idx >= m_exchange_terms.size())
-	{
-		if(print_error)
-		{
-			CERR_OPT << "Magdyn error: Coupling index " << idx
-				<< " is out of bounds."
-				<< std::endl;
-		}
-
-		return false;
-	}
-
-	return true;
-}
-
-
-
-/**
- * check if imaginary weights remain
- */
-MAGDYN_TEMPL
-bool MAGDYN_INST::CheckImagWeights(const MAGDYN_TYPE::SofQE& S) const
-{
-	if(!m_perform_checks)
-		return true;
-
-	using namespace tl2_ops;
-	bool ok = true;
-
-	for(const EnergyAndWeight& EandS : S.E_and_S)
-	{
-		// imaginary parts should be gone after UniteEnergies()
-		if(!tl2::equals_0(EandS.S_perp_sum.imag(), m_eps) ||
-			!tl2::equals_0(EandS.S_sum.imag(), m_eps))
-		{
-			ok = false;
-
-			CERR_OPT << "Magdyn warning: Remaining imaginary S(Q, E) component at Q = "
-				<< S.Q_rlu << " and E = " << EandS.E
-				<< ": imag(S) = " << EandS.S_sum.imag()
-				<< ", imag(S_perp) = " << EandS.S_perp_sum.imag()
-				<< "." << std::endl;
-		}
-	}
-
-	return ok;
-}
-// --------------------------------------------------------------------
 
 #endif

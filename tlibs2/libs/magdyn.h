@@ -39,6 +39,7 @@
 #ifndef __TLIBS2_MAGDYN_H__
 #define __TLIBS2_MAGDYN_H__
 
+
 #ifndef USE_LAPACK
 	#define USE_LAPACK 1
 #endif
@@ -54,6 +55,7 @@
 #include "magdyn/structs.h"
 #include "magdyn/helpers.h"
 #include "magdyn/getters.h"
+#include "magdyn/checks.h"
 #include "magdyn/generators.h"
 #include "magdyn/file.h"
 #include "magdyn/configuration.h"
@@ -64,6 +66,7 @@
 #include "magdyn/polarisation.h"
 #include "magdyn/dispersion.h"
 #include "magdyn/topology.h"
+#include "magdyn/diff.h"
 
 
 #endif

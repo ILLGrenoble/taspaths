@@ -203,8 +203,8 @@ void unit(t_mat& mat, std::size_t rows_begin, std::size_t cols_begin,
 	std::size_t rows_end, std::size_t cols_end)
 requires is_basic_mat<t_mat>
 {
-	for(std::size_t i=rows_begin; i < rows_end; ++i)
-		for(std::size_t j=cols_begin; j < cols_end; ++j)
+	for(std::size_t i = rows_begin; i < rows_end; ++i)
+		for(std::size_t j = cols_begin; j < cols_end; ++j)
 			mat(i, j) = (i==j ? 1 : 0);
 }
 
@@ -1036,10 +1036,10 @@ requires is_mat<t_mat>
 	t_mat mat = unit<t_mat>(iRows, iCols);
 
 	auto iterCol = lst.begin();
-	for(std::size_t iCol=0; iCol<iCols; ++iCol)
+	for(std::size_t iCol = 0; iCol < iCols; ++iCol)
 	{
 		auto iterRow = iterCol->begin();
-		for(std::size_t iRow=0; iRow<iRows; ++iRow)
+		for(std::size_t iRow = 0; iRow < iRows; ++iRow)
 		{
 			mat(iRow, iCol) = *iterRow;
 			std::advance(iterRow, 1);
@@ -1366,7 +1366,7 @@ requires is_basic_vec<t_vec1> && is_basic_vec<t_vec2>
  */
 template<class t_mat>
 t_mat prod(const t_mat& mat1, const t_mat& mat2, bool assert_sizes/*=true*/)
-requires tl2::is_basic_mat<t_mat> && tl2::is_dyn_mat<t_mat>
+requires tl2::is_basic_mat<t_mat>
 {
 	// if not asserting sizes, the inner size will use the minimum of the two matrix sizes
 	if(assert_sizes)
@@ -1377,13 +1377,14 @@ requires tl2::is_basic_mat<t_mat> && tl2::is_dyn_mat<t_mat>
 			static_assert(t_mat::size2() == t_mat::size1());
 	}
 
-
-	t_mat matRet(mat1.size1(), mat2.size2());
+	t_mat matRet;
+	if constexpr(tl2::is_dyn_mat<t_mat>)
+		matRet = t_mat(mat1.size1(), mat2.size2());
 	const std::size_t innersize = std::min(mat1.size2(), mat2.size1());
 
-	for(std::size_t row=0; row<matRet.size1(); ++row)
+	for(std::size_t row = 0; row < matRet.size1(); ++row)
 	{
-		for(std::size_t col=0; col<matRet.size2(); ++col)
+		for(std::size_t col = 0; col < matRet.size2(); ++col)
 		{
 			matRet(row, col) = 0;
 			for(std::size_t i = 0; i < innersize; ++i)
@@ -1392,6 +1393,61 @@ requires tl2::is_basic_mat<t_mat> && tl2::is_dyn_mat<t_mat>
 	}
 
 	return matRet;
+}
+
+
+/**
+ * matrix-vector product: c_i = a_ij b_j
+*/
+template<class t_mat, class t_vec, bool hom/* = true*/>
+t_vec prod_mv(const t_mat& mat, const t_vec& vec)
+requires tl2::is_basic_mat<t_mat> && tl2::is_basic_vec<t_vec>
+{
+	if constexpr(hom)
+	{
+		if constexpr(tl2::is_dyn_mat<t_mat>)
+			assert((mat.size2() == vec.size() || mat.size2() == vec.size() + 1));
+		else
+			static_assert(t_mat::size2() == t_vec::size() || t_mat::size2() == t_vec::size() + 1);
+	}
+	else
+	{
+		if constexpr(tl2::is_dyn_mat<t_mat>)
+			assert((mat.size2() == vec.size()));
+		else
+			static_assert(t_mat::size2() == t_vec::size());
+	}
+	
+	t_vec vecRet;
+	if constexpr(tl2::is_dyn_vec<t_vec>)
+		vecRet = t_vec(mat.size1());
+
+	// matrix-vector product
+	const std::size_t mat_rows = static_cast<std::size_t>(mat.size1());
+	const std::size_t mat_cols = static_cast<std::size_t>(mat.size2());
+	const std::size_t vec_rows = static_cast<std::size_t>(vec.size());
+	for(std::size_t row = 0; row < std::min(mat_rows, vec_rows); ++row)
+	{
+		vecRet[row] = typename t_vec::value_type{};
+		for(std::size_t col = 0; col < std::min(mat_cols, vec_rows); ++col)
+		{
+			auto elem = mat(row, col) * vec[col];
+			vecRet[row] = vecRet[row] + elem;
+		}
+	}
+
+	// add translational component (treat homogeneous vector component as 1)
+	if(hom && mat_cols == vec_rows + 1)
+	{
+		std::size_t col = vec.size();
+		for(std::size_t row = 0; row < std::min(mat_rows, vec_rows); ++row)
+		{
+			auto elem = mat(row, col);
+			vecRet[row] = vecRet[row] + elem;
+		}
+	}
+
+	return vecRet;
 }
 
 
@@ -1408,7 +1464,6 @@ requires tl2::is_basic_mat<t_mat>
 			assert(mat1.size1() == mat2.size1() && mat1.size2() == mat2.size2());
 	}
 
-
 	t_mat matRet = zero<t_mat>(mat1.size1(), mat1.size2());
 
 	for(std::size_t row=0; row<matRet.size1(); ++row)
@@ -1423,11 +1478,11 @@ requires tl2::is_basic_mat<t_mat>
  * 2-norm
  */
 template<class t_vec, class t_real = typename t_vec::value_type>
-t_real norm(const t_vec& vec)
+t_real norm(const t_vec& vec, bool do_sqrt = true)
 requires is_basic_vec<t_vec>
 {
 	t_real d = static_cast<t_real>(tl2::inner<t_vec>(vec, vec));
-	return std::sqrt(d);
+	return do_sqrt ? std::sqrt(d) : d;
 }
 
 
@@ -1435,13 +1490,13 @@ requires is_basic_vec<t_vec>
  * n-norm
  */
 template<class t_vec, class t_real = typename t_vec::value_type>
-typename t_vec::value_type norm(const t_vec& vec, t_real n)
+typename t_vec::value_type norm(const t_vec& vec, t_real n, bool do_rt = true)
 requires is_basic_vec<t_vec>
 {
 	t_real d = t_real{0};
 	for(std::size_t i = 0; i < vec.size(); ++i)
 		d += std::pow(std::abs(vec[i]), n);
-	return std::pow(d, t_real(1)/n);
+	return do_rt ? std::pow(d, t_real(1)/n) : d;
 }
 
 

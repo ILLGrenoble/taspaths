@@ -35,83 +35,12 @@
 #include <float.h>
 #include <stdlib.h>
 
-// ----------------------------------------------------------------------------
-// linked list
-// ----------------------------------------------------------------------------
-
-struct tl2_list* tl2_lst_create(void *elem)
-{
-	struct tl2_list* lst = (struct tl2_list*)calloc(1, sizeof(struct tl2_list));
-	lst->elem = elem;
-	lst->next = 0;
-
-	return lst;
-}
-
-
-struct tl2_list* tl2_lst_append(struct tl2_list *lst, void *elem)
-{
-	while(lst->next)
-		lst = lst->next;
-
-	lst->next = (struct tl2_list*)calloc(1, sizeof(struct tl2_list));
-	lst->next->elem = elem;
-	lst->next->next = 0;
-
-	return lst->next;
-}
-
-
-void tl2_lst_remove(struct tl2_list *lst, void *elem)
-{
-	struct tl2_list *lst_prev = 0;
-
-	while(lst)
-	{
-		if(lst->elem == elem)
-			break;
-		lst_prev = lst;
-		lst = lst->next;
-	}
-
-	if(lst)
-	{
-		// remove element
-		if(lst->elem)
-		{
-			free(lst->elem);
-			lst->elem = 0;
-		}
-
-		// unlink lst
-		if(lst_prev)
-		{
-			lst_prev->next = lst->next;
-			free(lst);
-		}
-	}
-}
-
-
-void tl2_lst_free(struct tl2_list *lst)
-{
-	if(lst && lst->next)
-		tl2_lst_free(lst->next);
-	if(lst->elem)
-		free(lst->elem);
-	if(lst)
-		free(lst);
-}
-// ----------------------------------------------------------------------------
-
 
 
 // ----------------------------------------------------------------------------
-// linalg functions
+// helper functions
 // ----------------------------------------------------------------------------
-
 static double g_eps = DBL_EPSILON;
-
 
 /**
  * set float epsilon
@@ -141,15 +70,21 @@ int tl2_flt_equals(double x, double y, double eps)
 		diff = -diff;
 	return diff <= eps;
 }
+// ----------------------------------------------------------------------------
 
+
+
+// ----------------------------------------------------------------------------
+// linalg functions
+// ----------------------------------------------------------------------------
 
 /**
  * set matrix elements to zero
  */
 void tl2_mat_zero(double* M, int I, int J)
 {
-	for(int i=0; i<I; ++i)
-		for(int j=0; j<J; ++j)
+	for(int i = 0; i < I; ++i)
+		for(int j = 0; j < J; ++j)
 			M[i*J + j] = 0.;
 }
 
@@ -159,7 +94,7 @@ void tl2_mat_zero(double* M, int I, int J)
  */
 void tl2_vec_zero(double* vec, int N)
 {
-	for(int i=0; i<N; ++i)
+	for(int i = 0; i < N; ++i)
 		vec[i] = 0.;
 }
 
@@ -169,7 +104,7 @@ void tl2_vec_zero(double* vec, int N)
  */
 void tl2_vec_cpy(double* dst, const double* src, int N)
 {
-	for(int i=0; i<N; ++i)
+	for(int i = 0; i < N; ++i)
 		dst[i] = src[i];
 }
 
@@ -179,8 +114,8 @@ void tl2_vec_cpy(double* dst, const double* src, int N)
  */
 void tl2_mat_cpy(double* DST, const double* SRC, int I, int J)
 {
-	for(int i=0; i<I; ++i)
-		for(int j=0; j<J; ++j)
+	for(int i = 0; i < I; ++i)
+		for(int j = 0; j < J; ++j)
 			DST[i*J + j] = SRC[i*J + j];
 }
 
@@ -191,13 +126,13 @@ void tl2_mat_cpy(double* DST, const double* SRC, int I, int J)
 void tl2_submat(const double* M, int N, double* M_new, int iremove, int jremove)
 {
 	int row_new = 0;
-	for(int row=0; row<N; ++row)
+	for(int row = 0; row < N; ++row)
 	{
 		if(row == iremove)
 			continue;
 
 		int col_new = 0;
-		for(int col=0; col<N; ++col)
+		for(int col = 0; col < N; ++col)
 		{
 			if(col == jremove)
 				continue;
@@ -228,10 +163,10 @@ double tl2_determinant(const double* M, int N)
 	// get row with maximum number of zeros
 	int row = 0;
 	int maxNumZeros = 0;
-	for(int curRow=0; curRow<N; ++curRow)
+	for(int curRow = 0; curRow < N; ++curRow)
 	{
 		int numZeros = 0;
-		for(int curCol=0; curCol<N; ++curCol)
+		for(int curCol = 0; curCol < N; ++curCol)
 		{
 			if(tl2_flt_equals(M[curRow*N + curCol], 0, g_eps))
 				++numZeros;
@@ -249,7 +184,7 @@ double tl2_determinant(const double* M, int N)
 	double fullDet = 0.;
 
 	double *submat = (double*)calloc((N-1)*(N-1), sizeof(double));
-	for(int col=0; col<N; ++col)
+	for(int col = 0; col < N; ++col)
 	{
 		const double elem = M[row*N + col];
 		if(tl2_flt_equals(elem, 0, g_eps))
@@ -278,9 +213,9 @@ int tl2_inverse(const double* M, double* I, int N)
 		return 0;
 
 	double *submat = (double*)calloc((N-1)*(N-1), sizeof(double));
-	for(int i=0; i<N; ++i)
+	for(int i = 0; i < N; ++i)
 	{
-		for(int j=0; j<N; ++j)
+		for(int j = 0; j < N; ++j)
 		{
 			tl2_submat(M, N, submat, i, j);
 			const double sgn = ((i+j) % 2) == 0 ? 1. : -1.;
@@ -298,13 +233,13 @@ int tl2_inverse(const double* M, double* I, int N)
  */
 void tl2_matmat_mul(const double* M1, const double* M2, double *RES, int I, int J, int K)
 {
-	for(int i=0; i<I; ++i)
+	for(int i = 0; i < I; ++i)
 	{
-		for(int j=0; j<J; ++j)
+		for(int j = 0; j < J; ++j)
 		{
 			RES[i*J + j] = 0.;
 
-			for(int k=0; k<K; ++k)
+			for(int k = 0; k < K; ++k)
 				RES[i*J + j] += M1[i*K + k]*M2[k*J + j];
 		}
 	}
@@ -316,10 +251,10 @@ void tl2_matmat_mul(const double* M1, const double* M2, double *RES, int I, int 
  */
 void tl2_matvec_mul(const double* M, const double* v, double *res, int I, int J)
 {
-	for(int i=0; i<I; ++i)
+	for(int i = 0; i < I; ++i)
 	{
 		res[i] = 0.;
-		for(int j=0; j<J; ++j)
+		for(int j = 0; j < J; ++j)
 		{
 			res[i] += M[i*J + j]*v[j];
 		}
@@ -332,7 +267,7 @@ void tl2_matvec_mul(const double* M, const double* v, double *res, int I, int J)
  */
 void tl2_transpose(const double* M, double* T, int rows, int cols)
 {
-	for(int ctr=0; ctr<rows*cols; ++ctr)
+	for(int ctr = 0; ctr < rows*cols; ++ctr)
 	{
 		int i = ctr/cols;
 		int j = ctr%cols;
@@ -347,7 +282,7 @@ void tl2_transpose(const double* M, double* T, int rows, int cols)
 double tl2_inner(const double* v0, const double* v1, int N)
 {
 	double res = 0.;
-	for(int i=0; i<N; ++i)
+	for(int i = 0; i < N; ++i)
 		res += v0[i]*v1[i];
 	return res;
 }
@@ -358,8 +293,8 @@ double tl2_inner(const double* v0, const double* v1, int N)
  */
 void tl2_outer(const double* v0, const double* v1, double *M, int N)
 {
-	for(int i=0; i<N; ++i)
-		for(int j=0; j<N; ++j)
+	for(int i = 0; i < N; ++i)
+		for(int j = 0; j < N; ++j)
 			M[i*N + j] = v0[i] * v1[j];
 }
 
@@ -390,7 +325,7 @@ double tl2_vec_len(const double* vec, int N)
  */
 void tl2_vec_add(const double* v0, const double* v1, double *res, int N)
 {
-	for(int i=0; i<N; ++i)
+	for(int i = 0; i < N; ++i)
 		res[i] = v0[i] + v1[i];
 }
 
@@ -400,7 +335,7 @@ void tl2_vec_add(const double* v0, const double* v1, double *res, int N)
  */
 void tl2_vec_sub(const double* v0, const double* v1, double *res, int N)
 {
-	for(int i=0; i<N; ++i)
+	for(int i = 0; i < N; ++i)
 		res[i] = v0[i] - v1[i];
 }
 
@@ -410,7 +345,7 @@ void tl2_vec_sub(const double* v0, const double* v1, double *res, int N)
  */
 void tl2_vec_neg(const double* vec, double *res, int N)
 {
-	for(int i=0; i<N; ++i)
+	for(int i = 0; i < N; ++i)
 		res[i] = -vec[i];
 }
 
@@ -420,7 +355,7 @@ void tl2_vec_neg(const double* vec, double *res, int N)
  */
 void tl2_vec_mul(const double* vec, double s, double *res, int N)
 {
-	for(int i=0; i<N; ++i)
+	for(int i = 0; i < N; ++i)
 		res[i] = vec[i] * s;
 }
 
@@ -439,8 +374,8 @@ void tl2_vec_div(const double* vec, double s, double *res, int N)
  */
 void tl2_mat_add(const double* M0, const double* M1, double *RES, int I, int J)
 {
-	for(int i=0; i<I; ++i)
-		for(int j=0; j<J; ++j)
+	for(int i = 0; i < I; ++i)
+		for(int j = 0; j < J; ++j)
 			RES[i*J + j] = M0[i*J + j] + M1[i*J + j];
 }
 
@@ -450,8 +385,8 @@ void tl2_mat_add(const double* M0, const double* M1, double *RES, int I, int J)
  */
 void tl2_mat_sub(const double* M0, const double* M1, double *RES, int I, int J)
 {
-	for(int i=0; i<I; ++i)
-		for(int j=0; j<J; ++j)
+	for(int i = 0; i < I; ++i)
+		for(int j = 0; j < J; ++j)
 			RES[i*J + j] = M0[i*J + j] - M1[i*J + j];
 }
 
@@ -461,8 +396,8 @@ void tl2_mat_sub(const double* M0, const double* M1, double *RES, int I, int J)
  */
 void tl2_mat_neg(const double* M, double *RES, int I, int J)
 {
-	for(int i=0; i<I; ++i)
-		for(int j=0; j<J; ++j)
+	for(int i = 0; i < I; ++i)
+		for(int j = 0; j < J; ++j)
 			RES[i*J + j] = - M[i*J + j];
 }
 
@@ -472,8 +407,8 @@ void tl2_mat_neg(const double* M, double *RES, int I, int J)
  */
 void tl2_mat_mul(const double* M, double s, double *RES, int I, int J)
 {
-	for(int i=0; i<I; ++i)
-		for(int j=0; j<J; ++j)
+	for(int i = 0; i < I; ++i)
+		for(int j = 0; j < J; ++j)
 			RES[i*J + j] = M[i*J + j] * s;
 }
 
@@ -631,5 +566,23 @@ void tl2_reso(const struct tl2_list* veclist, const struct tl2_list* problist,
 	free(T);
 	free(Qdir);
 	free(Qmean);
+}
+// ----------------------------------------------------------------------------
+
+
+
+// ----------------------------------------------------------------------------
+// gaussian
+// ----------------------------------------------------------------------------
+double gauss_model(double x, double x0, double sigma)
+{
+	double norm = 1./(sqrt(2.*M_PI) * sigma);
+	return norm * exp(-0.5 * ((x-x0)/sigma)*((x-x0)/sigma));
+}
+
+
+double gauss_model_amp(double x, double x0, double sigma)
+{
+	return exp(-0.5 * ((x-x0)/sigma)*((x-x0)/sigma));
 }
 // ----------------------------------------------------------------------------

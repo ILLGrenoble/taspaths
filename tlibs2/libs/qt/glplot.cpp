@@ -1,13 +1,13 @@
 /**
  * tlibs2 -- GL plotter
  * @author Tobias Weber <tweber@ill.fr>
- * @date 2017-2021
+ * @date 2017 - 2021
  * @license GPLv3, see 'LICENSE' file
  *
  * @note this file is based on code from my following projects:
- *         - "geo" (https://github.com/t-weber/geo),
- *         - "mathlibs" (https://github.com/t-weber/mathlibs),
- *         - "magtools" (https://github.com/t-weber/magtools).
+ *   - "geo" (https://github.com/t-weber/geo),
+ *   - "mathlibs" (https://github.com/t-weber/mathlibs),
+ *   - "magtools" (https://github.com/t-weber/magtools).
  *
  * References:
  *   - http://doc.qt.io/qt-5/qopenglwidget.html#details
@@ -15,7 +15,7 @@
  *
  * ----------------------------------------------------------------------------
  * tlibs
- * Copyright (C) 2017-2025  Tobias WEBER (Institut Laue-Langevin (ILL),
+ * Copyright (C) 2017-2026  Tobias WEBER (Institut Laue-Langevin (ILL),
  *                          Grenoble, France).
  * Copyright (C) 2015-2017  Tobias WEBER (Technische Universitaet Muenchen
  *                          (TUM), Garching, Germany).
@@ -37,6 +37,7 @@
  */
 
 #include "glplot.h"
+#include "../voronoi.h"
 
 #include <QtGui/QPainter>
 #include <QtGui/QGuiApplication>
@@ -64,6 +65,9 @@ GlPlotRenderer::GlPlotRenderer(GlPlot *pPlot) : m_pPlot{pPlot}
 		m_timer.start(std::chrono::milliseconds(1000 / 60));
 	}
 
+	m_font.setStyleStrategy(QFont::StyleStrategy(
+		QFont::PreferAntialias | QFont::PreferQuality));
+
 	UpdateCam();
 }
 
@@ -76,11 +80,17 @@ GlPlotRenderer::~GlPlotRenderer()
 	// get context
 	if constexpr(m_isthreaded)
 	{
-		m_pPlot->context()->moveToThread(qGuiApp->thread());
+		if(m_pPlot)
+			m_pPlot->context()->moveToThread(qGuiApp->thread());
 	}
 
-	m_pPlot->makeCurrent();
-	BOOST_SCOPE_EXIT(m_pPlot) { m_pPlot->doneCurrent(); } BOOST_SCOPE_EXIT_END
+	if(m_pPlot)
+		m_pPlot->makeCurrent();
+	BOOST_SCOPE_EXIT(m_pPlot)
+	{
+		if(m_pPlot)
+			m_pPlot->doneCurrent();
+	} BOOST_SCOPE_EXIT_END
 
 	// delete gl objects within current gl context
 	m_pShaders.reset();
@@ -98,28 +108,49 @@ void GlPlotRenderer::startedThread() { }
 void GlPlotRenderer::stoppedThread() { }
 
 
-QPointF GlPlotRenderer::GlToScreenCoords(const t_vec_gl& vec4, bool *pVisible) const
+void GlPlotRenderer::SetFont(const QString& fontname)
 {
-	t_vec_gl pt = m_cam.ToScreenCoords(vec4, pVisible);
+	if(fontname == "")
+		return;
+
+	QFont font;
+	if(font.fromString(fontname))
+	{
+		m_font = std::move(font);
+		//std::cout << "Set font: " << fontname.toStdString() << std::endl;
+	}
+}
+
+
+QPointF GlPlotRenderer::GlToScreenCoords(const t_vec_gl& vec4,
+	const GlRenderObj *obj, bool *visible) const
+{
+	t_vec_gl pt;
+	if(obj && obj->m_cam_invariant)
+		pt = m_cam.ToScreenCoordsInvar(vec4, obj->m_mat_after_cam, obj->m_mat_after_proj, visible);
+	else
+		pt = m_cam.ToScreenCoords(vec4, visible);
+
 	return QPointF(pt[0], pt[1]);
 }
 
 
-GlPlotObj GlPlotRenderer::CreateTriangleObject(const std::vector<t_vec3_gl>& verts,
+GlRenderObj GlPlotRenderer::CreateTriangleObject(const std::vector<t_vec3_gl>& verts,
 	const std::vector<t_vec3_gl>& triagverts, const std::vector<t_vec3_gl>& norms,
-	const t_vec_gl& colour, bool bUseVertsAsNorm)
+	const t_vec_gl& colour, bool bUseVertsAsNorm, const std::vector<t_vec3_gl>* uvs)
 {
-	GlPlotObj obj;
-	create_triangle_object(m_pPlot, obj, verts, triagverts, norms, {}, colour,
-		bUseVertsAsNorm, m_attrVertex, m_attrVertexNorm, m_attrVertexCol, -1);
+	GlRenderObj obj;
+	create_triangle_object(m_pPlot, obj, verts, triagverts, norms,
+	  uvs ? *uvs : std::vector<t_vec3_gl>{}, colour, bUseVertsAsNorm,
+		m_attrVertex, m_attrVertexNorm, m_attrVertexCol, m_attrTexCoords);
 	return obj;
 }
 
 
-GlPlotObj GlPlotRenderer::CreateLineObject(
+GlRenderObj GlPlotRenderer::CreateLineObject(
 	const std::vector<t_vec3_gl>& verts, const t_vec_gl& colour)
 {
-	GlPlotObj obj;
+	GlRenderObj obj;
 	create_line_object(m_pPlot, obj, verts, colour, m_attrVertex, m_attrVertexCol);
 	return obj;
 }
@@ -127,102 +158,116 @@ GlPlotObj GlPlotRenderer::CreateLineObject(
 
 void GlPlotRenderer::SetObjectMatrix(std::size_t idx, const t_mat_gl& mat)
 {
-	if(idx >= m_objs.size())
-		return;
-	m_objs[idx].m_mat = mat;
+	if(GlRenderObj *obj = GetObject(idx); obj)
+		obj->m_mat = mat;
+}
+
+
+void GlPlotRenderer::SetObjectMatrixAfterCam(std::size_t idx, const t_mat_gl& mat)
+{
+	if(GlRenderObj *obj = GetObject(idx); obj)
+		obj->m_mat_after_cam = mat;
+}
+
+
+
+void GlPlotRenderer::SetObjectMatrixAfterProj(std::size_t idx, const t_mat_gl& mat)
+{
+	if(GlRenderObj *obj = GetObject(idx); obj)
+		obj->m_mat_after_proj = mat;
 }
 
 
 const t_mat_gl& GlPlotRenderer::GetObjectMatrix(std::size_t idx) const
 {
-	static t_mat_gl invalid_matrix{};
+	if(const GlRenderObj *obj = GetObject(idx); obj)
+		return obj->m_mat;
 
-	if(idx >= m_objs.size())
-		return invalid_matrix;
-	return m_objs[idx].m_mat;
+	std::cerr << "GL error: Requested invalid matrix for object "
+		<< idx << "." << std::endl;
+	static const t_mat_gl invalid_mat;
+	return invalid_mat;
 }
 
 
 void GlPlotRenderer::SetObjectCol(std::size_t idx,
 	t_real_gl r, t_real_gl g, t_real_gl b, t_real_gl a)
 {
-	if(idx >= m_objs.size())
-		return;
-	m_objs[idx].m_colour = tl2::create<t_vec_gl>({ r, g, b, a });
+	if(GlRenderObj *obj = GetObject(idx); obj)
+		obj->m_colour = tl2::create<t_vec_gl>({ r, g, b, a });
 }
 
 
-void GlPlotRenderer::SetObjectLabel(std::size_t idx, const std::string& label)
+void GlPlotRenderer::SetObjectLabel(std::size_t idx, const std::string& label,
+	const t_vec3_gl *pos)
 {
-	if(idx >= m_objs.size())
-		return;
-	m_objs[idx].m_label = label;
+	if(GlRenderObj *obj = GetObject(idx); obj)
+	{
+		obj->m_label = label;
+		if(pos)
+			obj->m_label_pos = *pos;
+	}
 }
 
 const std::string& GlPlotRenderer::GetObjectLabel(std::size_t idx) const
 {
-	static const std::string empty{};
-	if(idx >= m_objs.size())
-		return empty;
+	if(const GlRenderObj *obj = GetObject(idx); obj)
+		return obj->m_label;
 
-	return m_objs[idx].m_label;
+	static const std::string invalid_label;
+	return invalid_label;
 }
 
 
 void GlPlotRenderer::SetObjectDataString(std::size_t idx, const std::string& data)
 {
-	if(idx >= m_objs.size())
-		return;
-	m_objs[idx].m_datastr = data;
+	if(GlRenderObj *obj = GetObject(idx); obj)
+		obj->m_datastr = data;
 }
 
 const std::string& GlPlotRenderer::GetObjectDataString(std::size_t idx) const
 {
-	static const std::string empty{};
-	if(idx >= m_objs.size())
-		return empty;
+	if(const GlRenderObj *obj = GetObject(idx); obj)
+		return obj->m_datastr;
 
-	return m_objs[idx].m_datastr;
+	static const std::string invalid_str;
+	return invalid_str;
 }
 
 
 void GlPlotRenderer::SetObjectVisible(std::size_t idx, bool visible)
 {
-	if(idx >= m_objs.size())
-		return;
-	m_objs[idx].m_visible = visible;
+	if(GlRenderObj *obj = GetObject(idx); obj)
+		obj->m_visible = visible;
 }
 
 
 void GlPlotRenderer::SetObjectIntersectable(std::size_t idx, bool intersect)
 {
-	if(idx >= m_objs.size())
-		return;
-	m_objs[idx].m_intersect = intersect;
+	if(GlRenderObj *obj = GetObject(idx); obj)
+		obj->m_intersect = intersect;
 }
 
 
 bool GlPlotRenderer::GetObjectVisible(std::size_t idx) const
 {
-	if(idx >= m_objs.size())
-		return false;
-	return m_objs[idx].m_visible;
+	if(const GlRenderObj *obj = GetObject(idx); obj)
+		return obj->m_visible;
+	return false;
 }
 
 
 void GlPlotRenderer::SetObjectLighting(std::size_t idx, int lighting)
 {
-	if(idx >= m_objs.size())
-		return;
-	m_objs[idx].m_lighting = lighting;
+	if(GlRenderObj *obj = GetObject(idx); obj)
+		obj->m_lighting = lighting;
 }
 
 
 void GlPlotRenderer::SetObjectHighlight(std::size_t idx, bool highlight)
 {
-	if(idx >= m_objs.size())
-		return;
-	m_objs[idx].m_highlighted = highlight;
+	if(GlRenderObj *obj = GetObject(idx); obj)
+		obj->m_highlighted = highlight;
 }
 
 
@@ -238,54 +283,61 @@ void GlPlotRenderer::SetObjectsHighlight(bool highlight)
 
 void GlPlotRenderer::SetObjectPriority(std::size_t idx, int prio)
 {
-	if(idx >= m_objs.size())
-		return;
-	m_objs[idx].m_priority = prio;
+	if(GlRenderObj *obj = GetObject(idx); obj)
+		obj->m_priority = prio;
 }
 
 
 bool GlPlotRenderer::GetObjectHighlight(std::size_t idx) const
 {
-	if(idx >= m_objs.size())
-		return false;
-	return m_objs[idx].m_highlighted;
+	if(const GlRenderObj *obj = GetObject(idx); obj)
+		return obj->m_highlighted;
+	return false;
 }
 
 
 void GlPlotRenderer::SetObjectInvariant(std::size_t idx, bool invariant)
 {
-	if(idx >= m_objs.size())
-		return;
-	m_objs[idx].m_invariant = invariant;
+	if(GlRenderObj *obj = GetObject(idx); obj)
+		obj->m_invariant = invariant;
+}
+
+
+void GlPlotRenderer::SetObjectCameraInvariant(std::size_t idx, bool invariant)
+{
+	if(GlRenderObj *obj = GetObject(idx); obj)
+		obj->m_cam_invariant = invariant;
 }
 
 
 void GlPlotRenderer::SetObjectForceCull(std::size_t idx, bool cull)
 {
-	if(idx >= m_objs.size())
-		return;
-	m_objs[idx].m_force_cull = cull;
+	if(GlRenderObj *obj = GetObject(idx); obj)
+		obj->m_force_cull = cull;
 }
 
 
 void GlPlotRenderer::SetObjectCullBack(std::size_t idx, bool cull_back)
 {
-	if(idx >= m_objs.size())
-		return;
-	m_objs[idx].m_cull_back = cull_back;
+	if(GlRenderObj *obj = GetObject(idx); obj)
+		obj->m_cull_back = cull_back;
 }
 
 
 void GlPlotRenderer::RemoveObject(std::size_t idx)
 {
-	m_objs[idx].m_valid = false;
+	GlRenderObj *obj = GetObject(idx);
+	if(!obj)
+		return;
 
-	m_objs[idx].m_vertex_buffer.reset();
-	m_objs[idx].m_normals_buffer.reset();
-	m_objs[idx].m_colour_buffer.reset();
+	obj->m_valid = false;
 
-	m_objs[idx].m_vertices.clear();
-	m_objs[idx].m_triangles.clear();
+	obj->m_vertex_buffer.reset();
+	obj->m_normals_buffer.reset();
+	obj->m_colour_buffer.reset();
+
+	obj->m_vertices.clear();
+	obj->m_triangles.clear();
 
 	CollectGarbage();
 }
@@ -300,7 +352,16 @@ void GlPlotRenderer::RemoveObjects()
 			continue;
 		if(m_coordCrossXtal && obj == *m_coordCrossXtal)
 			continue;
-		if(m_coordCubeLab && obj == *m_coordCubeLab)
+		bool found = false;
+		for(std::size_t i = 0; i < m_coordCubeLab.size(); ++i)
+		{
+			if(obj == m_coordCubeLab[i])
+			{
+				found = true;
+				break;
+			}
+		}
+		if(found)
 			continue;
 
 		RemoveObject(obj);
@@ -315,6 +376,8 @@ void GlPlotRenderer::RemoveObjects()
  */
 void GlPlotRenderer::CollectGarbage()
 {
+	QMutexLocker _locker{&m_mutexObj};
+
 	// remove all invalid objects at the end of the list
 	for(std::ptrdiff_t idx = m_objs.size() - 1; idx >= 0; --idx)
 	{
@@ -330,7 +393,7 @@ std::size_t GlPlotRenderer::AddLinkedObject(std::size_t linkTo,
 	t_real_gl x, t_real_gl y, t_real_gl z,
 	t_real_gl r, t_real_gl g, t_real_gl b, t_real_gl a)
 {
-	GlPlotObj obj;
+	GlRenderObj obj;
 	obj.linkedObj = linkTo;
 	obj.m_mat = tl2::hom_translation<t_mat_gl>(x, y, z);
 	obj.m_colour = tl2::create<t_vec_gl>({r, g, b, a});
@@ -355,13 +418,49 @@ std::size_t GlPlotRenderer::AddCuboid(
 	QMutexLocker _locker{&m_mutexObj};
 
 	auto obj = CreateTriangleObject(std::get<0>(solid),
-		triagverts, norms, tl2::create<t_vec_gl>({ r, g, b, a }), false);
+		triagverts, norms, tl2::create<t_vec_gl>({ r, g, b, a }),
+		false, &uvs);
 	obj.m_mat = tl2::hom_translation<t_mat_gl>(x, y, z);
 	obj.m_boundingSpherePos = std::move(boundingSpherePos);
 	obj.m_boundingSphereRad = boundingSphereRad;
 	m_objs.emplace_back(std::move(obj));
 
 	return m_objs.size() - 1;		// object handle
+}
+
+
+std::vector<std::size_t> GlPlotRenderer::AddCuboidFaces(
+	t_real_gl lx, t_real_gl ly, t_real_gl lz,
+	t_real_gl x, t_real_gl y, t_real_gl z,
+	t_real_gl r, t_real_gl g, t_real_gl b, t_real_gl a,
+	bool flip_uv)
+{
+	auto org_solid = tl2::create_cuboid<t_vec3_gl>(lx, ly, lz, flip_uv);
+	auto solids = split_solid<t_vec3_gl>(org_solid);
+
+	std::vector<std::size_t> obj_handles;
+	obj_handles.reserve(solids.size());
+
+	for(const auto& solid : solids)
+	{
+		auto [triagverts, norms, uvs] = tl2::create_triangles<t_vec3_gl>(solid);
+		auto [boundingSpherePos, boundingSphereRad] =
+			tl2::bounding_sphere<t_vec3_gl>(triagverts);
+
+		QMutexLocker _locker{&m_mutexObj};
+
+		auto obj = CreateTriangleObject(std::get<0>(solid),
+			triagverts, norms, tl2::create<t_vec_gl>({ r, g, b, a }),
+			false, &uvs);
+		obj.m_mat = tl2::hom_translation<t_mat_gl>(x, y, z);
+		obj.m_boundingSpherePos = std::move(boundingSpherePos);
+		obj.m_boundingSphereRad = boundingSphereRad;
+		m_objs.emplace_back(std::move(obj));
+
+		obj_handles.push_back(m_objs.size() - 1);
+	}
+
+	return obj_handles;
 }
 
 
@@ -381,7 +480,8 @@ std::size_t GlPlotRenderer::AddSphere(
 	QMutexLocker _locker{&m_mutexObj};
 
 	auto obj = CreateTriangleObject(std::get<0>(solid),
-		triagverts, norms, tl2::create<t_vec_gl>({ r, g, b, a }), true);
+		triagverts, norms, tl2::create<t_vec_gl>({ r, g, b, a }),
+		true, &uvs);
 	obj.m_mat = tl2::hom_translation<t_mat_gl>(x, y, z);
 	obj.m_boundingSpherePos = std::move(boundingSpherePos);
 	obj.m_boundingSphereRad = boundingSphereRad;
@@ -404,7 +504,8 @@ std::size_t GlPlotRenderer::AddCylinder(t_real_gl rad, t_real_gl h,
 	QMutexLocker _locker{&m_mutexObj};
 
 	auto obj = CreateTriangleObject(std::get<0>(solid),
-		triagverts, norms, tl2::create<t_vec_gl>({ r, g, b, a }), false);
+		triagverts, norms, tl2::create<t_vec_gl>({ r, g, b, a }),
+		false, &uvs);
 	obj.m_mat = tl2::hom_translation<t_mat_gl>(x, y, z);
 	obj.m_boundingSpherePos = std::move(boundingSpherePos);
 	obj.m_boundingSphereRad = boundingSphereRad;
@@ -426,7 +527,8 @@ std::size_t GlPlotRenderer::AddCone(t_real_gl rad, t_real_gl h,
 	QMutexLocker _locker{&m_mutexObj};
 
 	auto obj = CreateTriangleObject(std::get<0>(solid),
-		triagverts, norms, tl2::create<t_vec_gl>({ r, g, b, a }), false);
+		triagverts, norms, tl2::create<t_vec_gl>({ r, g, b, a }),
+		false, &uvs);
 	obj.m_mat = tl2::hom_translation<t_mat_gl>(x, y, z);
 	obj.m_boundingSpherePos = std::move(boundingSpherePos);
 	obj.m_boundingSphereRad = boundingSphereRad;
@@ -450,14 +552,15 @@ std::size_t GlPlotRenderer::AddArrow(t_real_gl rad, t_real_gl h,
 	QMutexLocker _locker{&m_mutexObj};
 
 	auto obj = CreateTriangleObject(std::get<0>(solid),
-		triagverts, norms, tl2::create<t_vec_gl>({ r,g,b,a }), false);
+		triagverts, norms, tl2::create<t_vec_gl>({ r,g,b,a }),
+		false, &uvs);
 	obj.m_mat = tl2::get_arrow_matrix<t_vec_gl, t_mat_gl, t_real_gl>(
-		tl2::create<t_vec_gl>({1,0,0}), 1.,
-		tl2::create<t_vec_gl>({x,y,z}),
-		tl2::create<t_vec_gl>({0,0,1}));
+		tl2::create<t_vec_gl>({1, 0, 0}), 1.,
+		tl2::create<t_vec_gl>({x, y, z}),
+		tl2::create<t_vec_gl>({0, 0, 1}));
 	obj.m_boundingSpherePos = std::move(boundingSpherePos);
 	obj.m_boundingSphereRad = boundingSphereRad;
-	obj.m_labelPos = tl2::create<t_vec3_gl>({0., 0., 0.75});
+	obj.m_label_pos = tl2::create<t_vec3_gl>({0., 0., 0.75});
 	m_objs.emplace_back(std::move(obj));
 
 	return m_objs.size() - 1;		// object handle
@@ -480,7 +583,8 @@ std::size_t GlPlotRenderer::AddPlane(
 	QMutexLocker _locker{&m_mutexObj};
 
 	auto obj = CreateTriangleObject(std::get<0>(solid),
-		triagverts, norms, tl2::create<t_vec_gl>({ r, g, b, a }), false);
+		triagverts, norms, tl2::create<t_vec_gl>({ r, g, b, a }),
+		false, &uvs);
 	obj.m_mat = tl2::hom_translation<t_mat_gl>(x, y, z);
 	obj.m_boundingSpherePos = std::move(boundingSpherePos);
 	obj.m_boundingSphereRad = boundingSphereRad;
@@ -492,15 +596,14 @@ std::size_t GlPlotRenderer::AddPlane(
 
 std::size_t GlPlotRenderer::AddPatch(
 	std::function<std::pair<t_real_gl, bool>(
-	t_real_gl, t_real_gl, std::size_t, std::size_t)> fkt,
+		t_real_gl, t_real_gl, std::size_t, std::size_t)> fkt,
 	t_real_gl x, t_real_gl y, t_real_gl z,
 	t_real_gl w, t_real_gl h, std::size_t pts_x, std::size_t pts_y,
 	t_real_gl r, t_real_gl g, t_real_gl b, t_real_gl a)
 {
 	using t_fkt = std::function<std::pair<t_real_gl, bool>(t_real_gl, t_real_gl, std::size_t, std::size_t)>;
 
-	auto solid = tl2::create_patch<t_fkt, t_mat_gl, t_vec3_gl>(
-		fkt, w, h, pts_x, pts_y);
+	auto solid = tl2::create_patch<t_fkt, t_mat_gl, t_vec3_gl>(fkt, w, h, pts_x, pts_y);
 	auto [verts, norms, uvs] = tl2::create_triangles<t_vec3_gl>(solid);
 	auto [boundingSpherePos, boundingSphereRad] =
 		tl2::bounding_sphere<t_vec3_gl>(verts);
@@ -508,7 +611,33 @@ std::size_t GlPlotRenderer::AddPatch(
 	QMutexLocker _locker{&m_mutexObj};
 
 	auto obj = CreateTriangleObject(std::get<0>(solid),
-		verts, norms, tl2::create<t_vec_gl>({ r, g, b, a }), false);
+		verts, norms, tl2::create<t_vec_gl>({ r, g, b, a }),
+		false, &uvs);
+	obj.m_mat = tl2::hom_translation<t_mat_gl>(x, y, z);
+	obj.m_boundingSpherePos = std::move(boundingSpherePos);
+	obj.m_boundingSphereRad = boundingSphereRad;
+	m_objs.emplace_back(std::move(obj));
+
+	return m_objs.size() - 1;		// object handle
+}
+
+
+std::size_t GlPlotRenderer::AddLine(
+	std::function<std::pair<t_real_gl, bool>(t_real_gl, std::size_t)> fkt,
+	t_real_gl x, t_real_gl y, t_real_gl z,
+	t_real_gl w, std::size_t pts_x,
+	t_real_gl r, t_real_gl g, t_real_gl b, t_real_gl a,
+	t_real_gl pt_y, bool flip_xy)
+{
+	using t_fkt = std::function<std::pair<t_real_gl, bool>(t_real_gl, std::size_t)>;
+
+	auto verts = tl2::create_line<t_fkt, t_mat_gl, t_vec3_gl>(fkt, w, pts_x, pt_y, flip_xy);
+	auto [boundingSpherePos, boundingSphereRad] =
+		tl2::bounding_sphere<t_vec3_gl>(verts);
+
+	QMutexLocker _locker{&m_mutexObj};
+
+	auto obj = CreateLineObject(verts, tl2::create<t_vec_gl>({ r, g, b, a }));
 	obj.m_mat = tl2::hom_translation<t_mat_gl>(x, y, z);
 	obj.m_boundingSpherePos = std::move(boundingSpherePos);
 	obj.m_boundingSphereRad = boundingSphereRad;
@@ -529,14 +658,28 @@ std::size_t GlPlotRenderer::AddTriangleObject(
 	QMutexLocker _locker{&m_mutexObj};
 
 	auto obj = CreateTriangleObject(triag_verts, triag_verts,
-		triag_norms, tl2::create<t_vec_gl>({ r, g, b, a }), false);
+		triag_norms, tl2::create<t_vec_gl>({ r, g, b, a }),
+		false, nullptr);
 	obj.m_mat = tl2::hom_translation<t_mat_gl, t_real_gl>(0., 0., 0.);
 	obj.m_boundingSpherePos = std::move(boundingSpherePos);
 	obj.m_boundingSphereRad = boundingSphereRad;
-	obj.m_labelPos = tl2::create<t_vec3_gl>({0., 0., 0.75});
+	obj.m_label_pos = tl2::create<t_vec3_gl>({0., 0., 0.75});
 	m_objs.emplace_back(std::move(obj));
 
 	return m_objs.size() - 1;		// object handle
+}
+
+
+std::size_t GlPlotRenderer::AddLineObject(
+	const std::vector<t_vec3_gl>& verts,
+	t_real_gl r, t_real_gl g, t_real_gl b, t_real_gl a)
+{
+	QMutexLocker _locker{&m_mutexObj};
+
+	auto obj = CreateLineObject(verts, tl2::create<t_vec_gl>({ r, g, b, a }));
+	m_objs.emplace_back(std::move(obj));
+
+	return m_objs.size() - 1;  // object handle
 }
 
 
@@ -560,19 +703,183 @@ std::size_t GlPlotRenderer::AddCoordinateCross(t_real_gl min, t_real_gl max)
 }
 
 
-std::size_t GlPlotRenderer::AddCoordinateCube(t_real_gl min, t_real_gl max)
+std::vector<std::size_t> GlPlotRenderer::AddCoordinateCube(t_real_gl min, t_real_gl max)
 {
 	t_real_gl w = max - min;
-	auto obj = AddCuboid(1., 1., 1.,  0., 0., 0.,  0.75, 0.75, 0.75, 1.);
+	auto objs = AddCuboidFaces(1., 1., 1.,  0., 0., 0.,  0.75, 0.75, 0.75, 1., true);
 
-	SetObjectMatrix(obj, hom_scaling<t_mat_gl>(w, w, w));
-	SetObjectIntersectable(obj, false);
-	SetObjectInvariant(obj, true);
-	SetObjectForceCull(obj, true);
-	SetObjectCullBack(obj, false);
-	SetObjectLighting(obj, 2);
+	for(auto obj : objs)
+	{
+		SetObjectMatrix(obj, hom_scaling<t_mat_gl>(w, w, w));
+		SetObjectIntersectable(obj, false);
+		SetObjectInvariant(obj, true);
+		SetObjectForceCull(obj, true);
+		SetObjectCullBack(obj, false);
+		SetObjectLighting(obj, 2);
+	}
 
-	return obj;  // object handle
+	return objs;  // object handles
+}
+
+
+/**
+ * calculate a possible tick spacing
+ */
+std::pair<t_real_gl, t_real_gl>
+GlPlotRenderer::CalcTickMarks(t_real_gl min, t_real_gl max, t_real_gl tick_delta)
+{
+	if(tick_delta <= 0.)  // calculate tick spacing if none given
+	{
+		t_real_gl range = max - min;
+		if(!tl2::equals_0(range))
+		{
+			int power = static_cast<int>(std::log10(std::abs(range)));
+			tick_delta = std::pow(10., power);
+		}
+		else
+		{
+			tick_delta = 1e-4;
+		}
+
+		// if there's too little ticks, decrease the delta
+		if(range / tick_delta < 3.)
+			tick_delta /= 5.;
+
+		// if there's too many ticks, increase the delta
+		if(range / tick_delta > 4.)
+			tick_delta *= 2.;
+	}
+
+	t_real_gl start = std::floor(min / tick_delta)*tick_delta;
+
+	return std::make_pair(tick_delta, start);
+};
+
+
+/**
+ * transform coordinate component into a [0, 1] range
+ *
+ *   min + (max - min)*lam = val
+ *   (max - min)*lam       = val - min
+ *               lam       = (val - min) / (max - min)
+ */
+t_real_gl GlPlotRenderer::TickTrafo(t_real_gl min, t_real_gl max, t_real_gl val)
+{
+	if(tl2::equals_0(max - min))
+		return 0.;
+	return (val - min) / (max - min);
+};
+
+
+/**
+ * create the coordinate tick textures
+ */
+void GlPlotRenderer::UpdateCoordCubeTextures(
+	t_real_gl x_min, t_real_gl x_max, t_real_gl x_tick,
+	t_real_gl y_min, t_real_gl y_max, t_real_gl y_tick,
+	t_real_gl z_min, t_real_gl z_max, t_real_gl z_tick)
+{
+	m_coordCubeRanges[0] = x_min;
+	m_coordCubeRanges[1] = x_max;
+	m_coordCubeRanges[2] = y_min;
+	m_coordCubeRanges[3] = y_max;
+	m_coordCubeRanges[4] = z_min;
+	m_coordCubeRanges[5] = z_max;
+	m_coordCubeTicks[0] = x_tick;
+	m_coordCubeTicks[1] = y_tick;
+	m_coordCubeTicks[2] = z_tick;
+
+	if(!m_pPlot || m_coordCubeLab.size() != 6)
+		return;
+
+	for(std::size_t idx : m_coordCubeLab)
+	{
+		GlRenderObj *obj = GetObject(idx);
+		if(!obj)
+			return;
+	}
+
+	int texture_width = 1024;
+	int texture_height = 1024;
+
+	auto draw_texture = [this, texture_width, texture_height](
+		GlRenderObj* obj,
+		t_real_gl x_min, t_real_gl x_max, t_real_gl x_tick,
+		t_real_gl y_min, t_real_gl y_max, t_real_gl y_tick,
+		bool pos_x = true, bool pos_y = true,
+		const std::string& label = "")
+	{
+		if(texture_width <= 0 || texture_height <= 0)
+			return;
+
+		QImage img{texture_width, texture_height, QImage::Format_RGB32};
+		img.fill(0xffffffff);
+
+		QPen pen{QColor{0x00, 0x00, 0x00}};
+		pen.setWidthF(4.);
+
+		QPainter painter{&img};
+		painter.setFont(m_font);
+		painter.setPen(pen);
+
+		if(x_min > x_max)
+			std::swap(x_min, x_max);
+		if(y_min > y_max)
+			std::swap(y_min, y_max);
+
+		t_real_gl x_start = 0., y_start = 0.;
+		std::tie(x_tick, x_start) = CalcTickMarks(x_min, x_max, x_tick);
+		std::tie(y_tick, y_start) = CalcTickMarks(y_min, y_max, y_tick);
+
+		// lines in y direction
+		for(t_real_gl x = x_start; x <= x_max; x += x_tick)
+		{
+			t_real_gl x_img = TickTrafo(x_min, x_max, x) * t_real_gl(texture_width);
+			t_real_gl y_img_min = 0.;
+			t_real_gl y_img_max = t_real_gl(texture_height);
+			if(!pos_x)
+				x_img = texture_width - x_img;
+			painter.drawLine(QLineF{QPointF{x_img, y_img_min}, QPointF{x_img, y_img_max}});
+		}
+
+		// lines in x direction
+		for(t_real_gl y = y_start; y <= y_max; y += y_tick)
+		{
+			t_real_gl y_img = TickTrafo(y_min, y_max, y) * t_real_gl(texture_height);
+			t_real_gl x_img_min = 0.;
+			t_real_gl x_img_max = t_real_gl(texture_width);
+			if(!pos_y)
+				y_img = texture_height - y_img;
+			painter.drawLine(QLineF{QPointF{x_img_min, y_img}, QPointF{x_img_max, y_img}});
+		}
+
+		if(label != "")
+			painter.drawText(512., 512., label.c_str());
+
+		m_pPlot->makeCurrent();
+		BOOST_SCOPE_EXIT(m_pPlot) { m_pPlot->doneCurrent(); } BOOST_SCOPE_EXIT_END
+		obj->m_texture = std::make_shared<QOpenGLTexture>(img);
+	};
+
+	constexpr const bool dbg = false;
+	draw_texture(GetObject(m_coordCubeLab[0]),
+		x_min, x_max, x_tick, y_min, y_max, y_tick,
+		true, false, dbg ? "-z" : ""); // -z
+	draw_texture(GetObject(m_coordCubeLab[1]),
+		x_min, x_max, x_tick, y_min, y_max, y_tick,
+		true, true, dbg ? "+z" : ""); // +z
+	draw_texture(GetObject(m_coordCubeLab[2]),
+		x_min, x_max, x_tick, z_min, z_max, z_tick,
+		false, false, dbg ? "-y" : ""); // -y
+	draw_texture(GetObject(m_coordCubeLab[3]),
+		x_min, x_max, x_tick, z_min, z_max, z_tick,
+		true, false, dbg ? "+y" : ""); // +y
+	draw_texture(GetObject(m_coordCubeLab[4]),
+		y_min, y_max, y_tick, z_min, z_max, z_tick,
+		true, false, dbg ? "-x" : ""); // -x
+	draw_texture(GetObject(m_coordCubeLab[5]),
+		y_min, y_max, y_tick, z_min, z_max, z_tick,
+		false, false, dbg ? "+x" : ""); // +x
 }
 
 
@@ -589,31 +896,45 @@ void GlPlotRenderer::initialiseGL()
 in vec4 fragpos;
 in vec4 fragnorm;
 in vec4 fragcol;
+in vec2 fragtexcoords;
 
 out vec4 outcol;
 // ----------------------------------------------------------------------------
 
 
 // ----------------------------------------------------------------------------
+// texture
+// ----------------------------------------------------------------------------
+uniform bool texture_active = false;
+uniform sampler2D texture_index;
+// ----------------------------------------------------------------------------
+
+
+// ----------------------------------------------------------------------------
 // lighting
 // ----------------------------------------------------------------------------
-uniform vec4 const_col = vec4(1, 1, 1, 1);
-uniform vec3 light_pos[] = vec3[]( vec3(5, 5, 5), vec3(0, 0, 0), vec3(0, 0, 0), vec3(0, 0, 0) );
+uniform vec4 const_col    = vec4(1, 1, 1, 1);
+uniform vec3 light_pos[]  = vec3[](
+	vec3(5, 5, 5),
+	vec3(0, 0, 0),
+	vec3(0, 0, 0),
+	vec3(0, 0, 0)
+);
 uniform int active_lights = 1;	// how many lights to use?
 
-float g_diffuse = 1.;
-float g_specular = 0.25;
+float g_diffuse   = 1.;
+float g_specular  = 0.25;
 float g_shininess = 1.;
-float g_ambient = 0.2;
+float g_ambient   = 0.2;
 // ----------------------------------------------------------------------------
 
 
 // ----------------------------------------------------------------------------
 // transformations
 // ----------------------------------------------------------------------------
-uniform mat4 cam = mat4(1.);
+uniform mat4 cam     = mat4(1.);
 uniform mat4 cam_inv = mat4(1.);
-uniform mat4 obj = mat4(1.);
+uniform mat4 obj     = mat4(1.);
 uniform int lighting = 1;
 // ----------------------------------------------------------------------------
 
@@ -644,7 +965,7 @@ vec3 get_campos()
 
 /**
  * phong lighting model
- * @see: https://en.wikipedia.org/wiki/Phong_reflection_model
+ * @see https://en.wikipedia.org/wiki/Phong_reflection_model
  */
 float phong_lighting(vec4 objVert, vec4 objNorm)
 {
@@ -716,13 +1037,18 @@ float flat_lighting(vec4 objNorm)
 
 void main()
 {
+	outcol = vec4(1, 1, 1, 1);
+
+	if(texture_active)
+		outcol = texture(texture_index, fragtexcoords);
+
 	float I = 1.;
 	if(lighting == 1)
 		I = phong_lighting(fragpos, fragnorm);
 	else if(lighting == 2)
 		I = flat_lighting(fragnorm);
 
-	outcol = fragcol;
+	outcol *= fragcol;
 	outcol.rgb *= I;
 	outcol *= const_col;
 })RAW";
@@ -739,10 +1065,12 @@ void main()
 in vec4 vertex;
 in vec4 normal;
 in vec4 vertex_col;
+in vec2 texture_coords;
 
 out vec4 fragcol;
 out vec4 fragpos;
 out vec4 fragnorm;
+out vec2 fragtexcoords;
 // ----------------------------------------------------------------------------
 
 
@@ -752,15 +1080,18 @@ const float pi = ${PI};
 // ----------------------------------------------------------------------------
 // transformations
 // ----------------------------------------------------------------------------
-uniform mat4 proj = mat4(1.);
-uniform mat4 cam = mat4(1.);
-uniform mat4 cam_inv = mat4(1.);
-uniform mat4 obj = mat4(1.);
-uniform mat4 trafoA = mat4(1.);
-uniform mat4 trafoB = mat4(1.);  // B = 2 pi / A
+uniform mat4 proj     = mat4(1.);  // projection matrix
+uniform mat4 cam      = mat4(1.);  // camera transformation matrix
+uniform mat4 cam_inv  = mat4(1.);  // inverse camera transformation matrix
+uniform mat4 obj      = mat4(1.);  // object transformation matrix
+uniform mat4 obj_cam  = mat4(1.);  // additional trafo when invariant to camera translation
+uniform mat4 obj_proj = mat4(1.);  // additional trafo when invariant to camera translation
+uniform mat4 trafoA   = mat4(1.);  // crystal matrix
+uniform mat4 trafoB   = mat4(1.);  // B = 2 pi / A
 
-uniform int is_real_space = 1;   // real or reciprocal space
-uniform int coordsys = 0;        // 0: crystal system, 1: lab system
+uniform int is_real_space = 1;     // real or reciprocal space
+uniform int coordsys      = 0;     // 0: crystal system, 1: lab system
+uniform int cam_invar     = 0;     // object is invariant to camera translation
 // ----------------------------------------------------------------------------
 
 
@@ -785,19 +1116,32 @@ void main()
 	// coordTrafo_inv is needed so not to distort the object
 	vec4 objPos = coordTrafo * obj * coordTrafo_inv * vertex;
 	vec4 objNorm = normalize(coordTrafo * obj * coordTrafo_inv * normal);
-	gl_Position = proj * cam * objPos;
+
+	if(cam_invar != 0)
+	{
+		mat4 cam_rot = cam;
+		cam_rot[3][0] = cam_rot[3][1] = cam_rot[3][2] = 0.;
+		cam_rot[0][3] = cam_rot[1][3] = cam_rot[2][3] = 0.;
+
+		gl_Position = obj_proj * proj * obj_cam * cam_rot * objPos;
+	}
+	else
+	{
+		gl_Position = /*obj_proj **/ proj * /*obj_cam **/ cam * objPos;
+	}
 
 	fragpos = objPos;
 	fragnorm = objNorm;
 	fragcol = vertex_col;
+	fragtexcoords = texture_coords;
 })RAW";
 // --------------------------------------------------------------------
 
 
 	// set glsl version and constants
 	const std::string strGlsl = std::to_string(_GLSL_MAJ_VER*100 + _GLSL_MIN_VER*10);
-	std::string strPi = std::to_string(tl2::pi<t_real_gl>);	// locale-dependent !
-	algo::replace_all(strPi, std::string(","), std::string("."));	// ensure decimal point
+	std::string strPi = std::to_string(tl2::pi<t_real_gl>);	      // locale-dependent !
+	algo::replace_all(strPi, std::string(","), std::string(".")); // ensure decimal point
 
 	for(std::string* strSrc : { &strFragShader, &strVertexShader })
 	{
@@ -810,6 +1154,7 @@ void main()
 	auto *pGl = GetGlFunctions();
 	if(!pGl)
 		return;
+	LOGGLERR(pGl);
 
 	m_strGlVer = (char*)pGl->glGetString(GL_VERSION);
 	m_strGlShaderVer = (char*)pGl->glGetString(GL_SHADING_LANGUAGE_VERSION);
@@ -837,14 +1182,12 @@ void main()
 		// compile & link shaders
 		m_pShaders = std::make_shared<QOpenGLShaderProgram>(this);
 
-		if(!m_pShaders->addShaderFromSourceCode(
-			QOpenGLShader::Fragment, strFragShader.c_str()))
+		if(!m_pShaders->addShaderFromSourceCode(QOpenGLShader::Fragment, strFragShader.c_str()))
 		{
 			shader_err("Cannot compile fragment shader.");
 			return;
 		}
-		if(!m_pShaders->addShaderFromSourceCode(
-			QOpenGLShader::Vertex, strVertexShader.c_str()))
+		if(!m_pShaders->addShaderFromSourceCode(QOpenGLShader::Vertex, strVertexShader.c_str()))
 		{
 			shader_err("Cannot compile vertex shader.");
 			return;
@@ -856,47 +1199,69 @@ void main()
 			return;
 		}
 
+		// uniforms
 		m_uniMatrixCam = m_pShaders->uniformLocation("cam");
 		m_uniMatrixCamInv = m_pShaders->uniformLocation("cam_inv");
 		m_uniMatrixProj = m_pShaders->uniformLocation("proj");
 		m_uniMatrixObj = m_pShaders->uniformLocation("obj");
+		m_uniMatrixObjCam = m_pShaders->uniformLocation("obj_cam");
+		m_uniMatrixObjAfterProj = m_pShaders->uniformLocation("obj_proj");
 		m_uniMatrixA = m_pShaders->uniformLocation("trafoA");
 		m_uniMatrixB = m_pShaders->uniformLocation("trafoB");
 		m_uniIsRealSpace = m_pShaders->uniformLocation("is_real_space");
 		m_uniCoordSys = m_pShaders->uniformLocation("coordsys");
+		m_uniCamInvar = m_pShaders->uniformLocation("cam_invar");
 		m_uniConstCol = m_pShaders->uniformLocation("const_col");
 		m_uniLightPos = m_pShaders->uniformLocation("light_pos");
 		m_uniNumActiveLights = m_pShaders->uniformLocation("active_lights");
 		m_uniLighting = m_pShaders->uniformLocation("lighting");
+		m_uniTextureActive = m_pShaders->uniformLocation("texture_active");
+		m_uniTextureIndex = m_pShaders->uniformLocation("texture_index");
+
+		// attributes
 		m_attrVertex = m_pShaders->attributeLocation("vertex");
 		m_attrVertexNorm = m_pShaders->attributeLocation("normal");
 		m_attrVertexCol = m_pShaders->attributeLocation("vertex_col");
+		m_attrTexCoords = m_pShaders->attributeLocation("texture_coords");
 	}
 	LOGGLERR(pGl);
 
 
-	// 3d objects
-	m_coordCrossLab = AddCoordinateCross(-m_CoordMax, m_CoordMax);
-	m_coordCrossXtal = AddCoordinateCross(-m_CoordMax, m_CoordMax);
-	m_coordCubeLab = AddCoordinateCube(-m_CoordMax, m_CoordMax);
-	SetObjectVisible(*m_coordCrossLab, true);
-	SetObjectVisible(*m_coordCrossXtal, false);
-	SetObjectVisible(*m_coordCubeLab, false);
+	// 3d coordinate system objects
+	if(!tl2::equals_0(m_CoordMax))
+	{
+		m_coordCrossLab = AddCoordinateCross(-m_CoordMax, m_CoordMax);
+		m_coordCrossXtal = AddCoordinateCross(-m_CoordMax, m_CoordMax);
+		m_coordCubeLab = AddCoordinateCube(-m_CoordMax, m_CoordMax);
+		SetObjectVisible(*m_coordCrossLab, true);
+		SetObjectVisible(*m_coordCrossXtal, false);
+		for(std::size_t i = 0; i <  m_coordCubeLab.size(); ++i)
+			SetObjectVisible(m_coordCubeLab[i], false);
+	}
+	else
+	{
+		std::cerr << "GL error: Invalid coordinate axis extents." << std::endl;
+	}
 
-	m_initialised = true;
-
+	// check if context is valid
+	auto *pContext = ((QOpenGLWidget*)m_pPlot)->context();
+	if(!pContext || !pContext->isValid())
+	{
+		std::cerr << "GL error: Invalid context." << std::endl;
+		return;
+	}
 
 	// check threading compatibility
 	if constexpr(m_isthreaded)
 	{
-		if(auto *pContext = ((QOpenGLWidget*)m_pPlot)->context();
-			pContext && !pContext->supportsThreadedOpenGL())
+		if(!pContext->supportsThreadedOpenGL())
 		{
-			m_platform_supported = false;
-			std::cerr << "Threaded GL is not supported on this platform."
-				<< std::endl;
+			std::cerr << "GL error: Threading is not supported on this platform." << std::endl;
+			return;
 		}
 	}
+
+	m_initialised = true;
 }
 
 
@@ -909,13 +1274,14 @@ void GlPlotRenderer::SetScreenDims(int w, int h)
 
 void GlPlotRenderer::UpdateViewport()
 {
-	if(!m_platform_supported || !m_initialised)
+	if(!m_initialised)
 		return;
 
 	const auto [w, h] = m_cam.GetScreenDimensions();
 	const auto [z_near, z_far] = m_cam.GetDepthRange();
 
-	if(auto *pContext = ((QOpenGLWidget*)m_pPlot)->context(); !pContext)
+	if(auto *pContext = ((QOpenGLWidget*)m_pPlot)->context();
+		!pContext || !pContext->isValid())
 		return;
 	auto *pGl = GetGlFunctions();
 	if(!pGl)
@@ -973,7 +1339,7 @@ void GlPlotRenderer::SetBTrafo(const t_mat_gl& matB, const t_mat_gl* matA, bool 
 		if(!ok)
 		{
 			m_matA = tl2::unit<t_mat_gl>();
-			std::cerr << "Error: Cannot invert B matrix." << std::endl;
+			std::cerr << "GL error: Cannot invert B matrix." << std::endl;
 		}
 		else
 		{
@@ -1026,6 +1392,9 @@ void GlPlotRenderer::UpdateCam()
  */
 void GlPlotRenderer::RequestPlotUpdate()
 {
+	if(!IsInitialised())
+		return;
+
 #if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
 	QMetaObject::invokeMethod((QOpenGLWidget*)m_pPlot,
 		static_cast<void (QOpenGLWidget::*)()>(&QOpenGLWidget::update),
@@ -1039,8 +1408,8 @@ void GlPlotRenderer::RequestPlotUpdate()
 
 void GlPlotRenderer::SetLight(std::size_t idx, const t_vec3_gl& pos)
 {
-	if(m_lights.size() < idx+1)
-		m_lights.resize(idx+1);
+	if(m_lights.size() < idx + 1)
+		m_lights.resize(idx + 1);
 
 	m_lights[idx] = pos;
 	m_lights_need_update = true;
@@ -1049,6 +1418,9 @@ void GlPlotRenderer::SetLight(std::size_t idx, const t_vec3_gl& pos)
 
 void GlPlotRenderer::UpdateLights()
 {
+	if(!IsInitialised())
+		return;
+
 	constexpr int MAX_LIGHTS = 4;	// max. number allowed in shader
 
 	int num_lights = std::min(MAX_LIGHTS, static_cast<int>(m_lights.size()));
@@ -1076,7 +1448,7 @@ void GlPlotRenderer::EnablePicker(bool b)
 
 void GlPlotRenderer::UpdatePicker()
 {
-	if(!m_initialised || !m_platform_supported || !m_picker_enabled)
+	if(!m_initialised || !m_picker_enabled)
 		return;
 
 	// picker ray
@@ -1106,7 +1478,7 @@ void GlPlotRenderer::UpdatePicker()
 			t_vec_gl newPosTrafo = m_cam.GetTransformation() * vecInters4;
 
 			// ... it is closer.
-			if(tl2::norm(newPosTrafo) < tl2::norm(oldPosTrafo))
+			if(tl2::norm(newPosTrafo, false) < tl2::norm(oldPosTrafo, false))
 				vecClosestSphereInters = vecInters4;
 		}
 	}
@@ -1120,7 +1492,7 @@ void GlPlotRenderer::UpdatePicker()
 	{
 		coordTrafo = &m_matA;
 		coordTrafoInv = m_matB / (t_real_gl(2)*tl2::pi<t_real_gl>);
-		coordTrafoInv(3,3) = 1;
+		coordTrafoInv(3, 3) = 1;
 	}
 
 
@@ -1136,11 +1508,11 @@ void GlPlotRenderer::UpdatePicker()
 	for(std::size_t curObj = 0; curObj < m_objs.size(); ++curObj)
 	{
 		const auto& obj = m_objs[curObj];
-		const GlPlotObj *linkedObj = &obj;
+		const GlRenderObj *linkedObj = &obj;
 		if(obj.linkedObj)
 			linkedObj = &m_objs[*obj.linkedObj];
 
-		if(linkedObj->m_type != GlPlotObjType::TRIANGLES ||
+		if(linkedObj->m_type != GlRenderObjType::TRIANGLES ||
 			!obj.m_visible || !obj.m_valid || !obj.m_intersect)
 			continue;
 
@@ -1153,7 +1525,7 @@ void GlPlotRenderer::UpdatePicker()
 		// intersection with bounding sphere?
 		auto boundingInters =
 			tl2::intersect_line_sphere<t_vec3_gl, std::vector>(org3, dir3,
-				matTrafo * linkedObj->m_boundingSpherePos,
+				tl2::prod_mv(matTrafo, linkedObj->m_boundingSpherePos),
 				scale*linkedObj->m_boundingSphereRad);
 		if(boundingInters.size() == 0)
 			continue;
@@ -1197,7 +1569,7 @@ void GlPlotRenderer::UpdatePicker()
 				t_vec_gl oldPosTrafo = m_cam.GetTransformation() * vecClosestInters;
 				t_vec_gl newPosTrafo = m_cam.GetTransformation() * vecInters4;
 
-				if(tl2::norm(newPosTrafo) < tl2::norm(oldPosTrafo))
+				if(tl2::norm(newPosTrafo, false) < tl2::norm(oldPosTrafo, false))
 				{	// ...it is closer
 					vecClosestInters = vecInters4;
 					objInters = curObj;
@@ -1288,8 +1660,7 @@ void GlPlotRenderer::tick()
 }
 
 
-void GlPlotRenderer::tick(
-	[[maybe_unused]] const std::chrono::milliseconds& ms)
+void GlPlotRenderer::tick([[maybe_unused]] const std::chrono::milliseconds& ms)
 {
 	// TODO
 	UpdateCam();
@@ -1328,6 +1699,10 @@ void GlPlotRenderer::DoPaintGL(qgl_funcs *pGl)
 	pGl->glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 	pGl->glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
 
+	/*t_real_gl lwrange[2];
+	pGl->glGetFloatv(GL_SMOOTH_LINE_WIDTH_RANGE, lwrange);
+	pGl->glLineWidth(lwrange[1]);*/
+
 	// clear
 	pGl->glClearColor(1., 1., 1., 1.);
 	pGl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1346,13 +1721,16 @@ void GlPlotRenderer::DoPaintGL(qgl_funcs *pGl)
 	if(m_Btrafo_needs_update)
 		UpdateBTrafo();
 
+
 	// set cam matrix
 	m_pShaders->setUniformValue(m_uniMatrixCam, m_cam.GetTransformation());
 	m_pShaders->setUniformValue(m_uniMatrixCamInv, m_cam.GetInverseTransformation());
+	//tl2::niceprint(std::cout, m_cam.GetTransformation());
 
 
 	auto colOverride = tl2::create<t_vec_gl>({ 1, 1, 1, 1 });
 	auto colHighlight = tl2::create<t_vec_gl>({ 1, 1, 1, 1 });
+
 
 	// get rendering order
 	std::vector<std::size_t> obj_order(m_objs.size());
@@ -1363,6 +1741,7 @@ void GlPlotRenderer::DoPaintGL(qgl_funcs *pGl)
 			return m_objs[idx1].m_priority >= m_objs[idx2].m_priority;
 		});
 
+
 	// render triangle geometry
 	for(std::size_t obj_idx : obj_order)
 	{
@@ -1371,7 +1750,7 @@ void GlPlotRenderer::DoPaintGL(qgl_funcs *pGl)
 		if(!obj.m_visible || !obj.m_valid)
 			continue;
 
-		const GlPlotObj *linkedObj = &obj;
+		const GlRenderObj *linkedObj = &obj;
 		if(obj.linkedObj)
 		{
 			// get linked object
@@ -1390,6 +1769,40 @@ void GlPlotRenderer::DoPaintGL(qgl_funcs *pGl)
 		}
 
 		m_pShaders->setUniformValue(m_uniLighting, obj.m_lighting);
+
+
+		// texture
+		BOOST_SCOPE_EXIT(/*this_,*/ pGl, &obj)
+		{
+			if(obj.m_texture)
+			{
+				pGl->glActiveTexture(GL_TEXTURE0);
+				pGl->glBindTexture(GL_TEXTURE_2D, 0);
+				//GLuint tex_num = 0;
+				//pGl->glDeleteTextures(1, &tex_num);
+				obj.m_texture->release();
+			}
+		} BOOST_SCOPE_EXIT_END
+
+		if(obj.m_texture)
+		{
+			m_pShaders->setUniformValue(m_uniTextureActive, true);
+			m_pShaders->setUniformValue(m_uniTextureIndex, 0);
+
+			pGl->glActiveTexture(GL_TEXTURE0);
+			obj.m_texture->bind();
+			LOGGLERR(pGl);
+
+			// see: https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glTexParameter.xhtml
+			pGl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			pGl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		}
+		else
+		{
+			m_pShaders->setUniformValue(m_uniTextureActive, false);
+			m_pShaders->setUniformValue(m_uniTextureIndex, 0);
+		}
+
 
 		// force object culling?
 		if(obj.m_force_cull)
@@ -1413,36 +1826,49 @@ void GlPlotRenderer::DoPaintGL(qgl_funcs *pGl)
 			pGl->glCullFace(GL_FRONT);
 
 		m_pShaders->setUniformValue(m_uniMatrixObj, obj.m_mat);
+		m_pShaders->setUniformValue(m_uniMatrixObjCam, obj.m_mat_after_cam);
+		m_pShaders->setUniformValue(m_uniMatrixObjAfterProj, obj.m_mat_after_proj);
 
 		// set to untransformed coordinate system if the object is invariant
 		m_pShaders->setUniformValue(m_uniCoordSys,
 			linkedObj->m_invariant ? 0 : m_coordsys.load());
+
+		// ignore camera translation
+		m_pShaders->setUniformValue(m_uniCamInvar, linkedObj->m_cam_invariant);
 
 
 		// main vertex array object
 		linkedObj->m_vertex_array->bind();
 
 		pGl->glEnableVertexAttribArray(m_attrVertex);
-		if(linkedObj->m_type == GlPlotObjType::TRIANGLES)
+		if(linkedObj->m_type == GlRenderObjType::TRIANGLES)
+		{
 			pGl->glEnableVertexAttribArray(m_attrVertexNorm);
+
+			if(linkedObj->m_uvs.size())
+				pGl->glEnableVertexAttribArray(m_attrTexCoords);
+			else
+				pGl->glDisableVertexAttribArray(m_attrTexCoords);
+		}
 		pGl->glEnableVertexAttribArray(m_attrVertexCol);
-		BOOST_SCOPE_EXIT(pGl, &m_attrVertex, &m_attrVertexNorm, &m_attrVertexCol)
+		BOOST_SCOPE_EXIT(pGl, &m_attrVertex, &m_attrVertexNorm, &m_attrVertexCol, &m_attrTexCoords)
 		{
 			pGl->glDisableVertexAttribArray(m_attrVertexCol);
 			pGl->glDisableVertexAttribArray(m_attrVertexNorm);
 			pGl->glDisableVertexAttribArray(m_attrVertex);
+			pGl->glDisableVertexAttribArray(m_attrTexCoords);
 		}
 		BOOST_SCOPE_EXIT_END
 		LOGGLERR(pGl);
 
 
 		// draw object
-		if(linkedObj->m_type == GlPlotObjType::TRIANGLES)
+		if(linkedObj->m_type == GlRenderObjType::TRIANGLES)
 			pGl->glDrawArrays(GL_TRIANGLES, 0, linkedObj->m_triangles.size());
-		else if(linkedObj->m_type == GlPlotObjType::LINES)
+		else if(linkedObj->m_type == GlRenderObjType::LINES)
 			pGl->glDrawArrays(GL_LINES, 0, linkedObj->m_vertices.size());
 		else
-			std::cerr << "Unknown plot object type." << std::endl;
+			std::cerr << "GL error: Unknown plot object type." << std::endl;
 
 
 		LOGGLERR(pGl);
@@ -1464,6 +1890,7 @@ void GlPlotRenderer::DoPaintNonGL(QPainter &painter)
 
 	QPen penLabel(Qt::black);
 	painter.setPen(penLabel);
+	painter.setFont(m_font);
 
 
 	// draw coordinate system in orthogonal lab system in 1/A
@@ -1471,7 +1898,8 @@ void GlPlotRenderer::DoPaintNonGL(QPainter &painter)
 	if(objCoordCross && GetObjectVisible(*objCoordCross))
 	{
 		// coordinate labels
-		painter.drawText(GlToScreenCoords(tl2::create<t_vec_gl>({0.,0.,0.,1.})), "0");
+		painter.drawText(GlToScreenCoords(tl2::create<t_vec_gl>({0., 0., 0., 1.})), "0");
+
 		for(t_real_gl f = -std::floor(m_CoordMax); f <= std::floor(m_CoordMax); f += 0.5)
 		{
 			if(tl2::equals<t_real_gl>(f, 0))
@@ -1480,21 +1908,157 @@ void GlPlotRenderer::DoPaintNonGL(QPainter &painter)
 			std::ostringstream ostrF;
 			ostrF << f;
 			painter.drawText(GlToScreenCoords(
-				tl2::create<t_vec_gl>({f,0.,0.,1.})), ostrF.str().c_str());
+				tl2::create<t_vec_gl>({f, 0., 0., 1.})), ostrF.str().c_str());
 			painter.drawText(GlToScreenCoords(
-				tl2::create<t_vec_gl>({0.,f,0.,1.})), ostrF.str().c_str());
+				tl2::create<t_vec_gl>({0., f, 0., 1.})), ostrF.str().c_str());
 			painter.drawText(GlToScreenCoords(
-				tl2::create<t_vec_gl>({0.,0.,f,1.})), ostrF.str().c_str());
+				tl2::create<t_vec_gl>({0., 0., f, 1.})), ostrF.str().c_str());
 		}
 
-		t_vec_gl x = tl2::create<t_vec_gl>({m_CoordMax*t_real_gl(1.2), 0., 0., 1.});
-		t_vec_gl y = tl2::create<t_vec_gl>({0., m_CoordMax*t_real_gl(1.2), 0., 1.});
-		t_vec_gl z = tl2::create<t_vec_gl>({0., 0., m_CoordMax*t_real_gl(1.2), 1.});
+		t_vec_gl x = tl2::create<t_vec_gl>({ m_CoordMax*t_real_gl(1.2), 0., 0., 1. });
+		t_vec_gl y = tl2::create<t_vec_gl>({ 0., m_CoordMax*t_real_gl(1.2), 0., 1. });
+		t_vec_gl z = tl2::create<t_vec_gl>({ 0., 0., m_CoordMax*t_real_gl(1.2), 1. });
 
-		painter.drawText(GlToScreenCoords(x), m_is_real_space ? "x" : "Qx");
-		painter.drawText(GlToScreenCoords(y), m_is_real_space ? "y" : "Qy");
-		painter.drawText(GlToScreenCoords(z), m_is_real_space ? "z" : "Qz");
+		painter.drawText(GlToScreenCoords(x), m_axisLabels[0].length()
+			? m_axisLabels[0].c_str()
+			: (m_is_real_space ? "x" : "Qx"));
+		painter.drawText(GlToScreenCoords(y), m_axisLabels[1].length()
+			? m_axisLabels[1].c_str()
+			: (m_is_real_space ? "y" : "Qy"));
+		painter.drawText(GlToScreenCoords(z), m_axisLabels[2].length()
+			? m_axisLabels[2].c_str()
+			: (m_is_real_space ? "z" : "Qz"));
 	}
+
+
+#ifdef USE_QHULL
+	// TODO: draw labels and ticks for coordinate cube
+	if(m_coordCubeLab.size() && GetObjectVisible(m_coordCubeLab[0]))
+	{
+		using namespace tl2_ops;
+		//const t_mat_gl& camtrafo = m_cam.GetTransformation();
+
+		// assumes that the matrix is the same for all six sides of the cube
+		const t_mat_gl& matScale = GetObjectMatrix(m_coordCubeLab[0]);
+		//tl2::niceprint(std::cout, matScale);
+		//std::cout << std::endl;
+
+		t_vec_gl centre = matScale * tl2::create<t_vec_gl>({ 0., 0., 0., 1. });
+		t_vec_gl corner_mmm = matScale * tl2::create<t_vec_gl>({ -1., -1., -1., 1. });
+		t_vec_gl corner_mmp = matScale * tl2::create<t_vec_gl>({ -1., -1., +1., 1. });
+		t_vec_gl corner_mpm = matScale * tl2::create<t_vec_gl>({ -1., +1., -1., 1. });
+		t_vec_gl corner_mpp = matScale * tl2::create<t_vec_gl>({ -1., +1., +1., 1. });
+		t_vec_gl corner_pmm = matScale * tl2::create<t_vec_gl>({ +1., -1., -1., 1. });
+		t_vec_gl corner_pmp = matScale * tl2::create<t_vec_gl>({ +1., -1., +1., 1. });
+		t_vec_gl corner_ppm = matScale * tl2::create<t_vec_gl>({ +1., +1., -1., 1. });
+		t_vec_gl corner_ppp = matScale * tl2::create<t_vec_gl>({ +1., +1., +1., 1. });
+
+		// calculate projected cube
+		std::vector<t_vec_gl> proj_cube;
+		proj_cube.reserve(8);
+		for(const t_vec_gl& vec : { corner_mmm, corner_mmp, corner_mpm, corner_mpp,
+			corner_pmm, corner_pmp, corner_ppm, corner_ppp })
+		{
+			QPointF pt = GlToScreenCoords(vec);
+			proj_cube.push_back(tl2::create<t_vec_gl>({
+				static_cast<t_real_gl>(pt.x()), static_cast<t_real_gl>(pt.y()) }));
+		}
+
+		// calculate the contour (hull) of the projected cube
+		auto [cube_hull_verts, cube_hull_triags, cuble_hull_neighbours] =
+			geo::calc_delaunay(2, proj_cube, true, false);
+
+		// draw edge labels and ticks
+		auto draw_edge = [this, &painter, &cube_hull_verts](
+		  const t_vec_gl& corner0, const t_vec_gl& corner1,
+		  const t_vec_gl& centre, std::size_t coord_idx)
+		{
+		  t_real_gl min = m_coordCubeRanges[coord_idx*2];
+		  t_real_gl max = m_coordCubeRanges[coord_idx*2 + 1];
+		  t_real_gl tick = m_coordCubeTicks[coord_idx];
+		  QString label = m_axisLabels[coord_idx].c_str();
+
+			bool swapped = false;
+			if(min > max)
+			{
+				std::swap(min, max);
+				swapped = true;
+			}
+
+			// only consider this edge if it's at the border of the projected coordinate cube
+			constexpr const t_real_gl eps_hull = 1e-1;
+			constexpr const t_real_gl label_offs = 0.25;
+			constexpr const t_real_gl tick_offs = 0.05;
+
+			t_vec_gl edge_mid = corner0 + 0.5*(corner1 - corner0);
+			QPointF proj = GlToScreenCoords(edge_mid);
+			QPointF proj_centre = GlToScreenCoords(centre);
+
+			t_vec_gl proj_vert = tl2::create<t_vec_gl>({
+				static_cast<t_real_gl>(proj.x()), static_cast<t_real_gl>(proj.y()) });
+			if(std::get<0>(geo::is_vert_in_hull<t_vec_gl>(cube_hull_verts, proj_vert, nullptr, true, eps_hull)))
+				return;
+
+			// axis label
+			bool is_on_left = false;
+			t_vec_gl offs = label_offs * (edge_mid - centre);
+			proj = GlToScreenCoords(edge_mid + offs);
+
+			// move text rendered on the left side further out
+			if(proj.x() < proj_centre.x())
+			{
+				is_on_left = true;
+				offs *= 1.25;
+				proj = GlToScreenCoords(edge_mid + offs);
+			}
+
+			if(label.length())
+				painter.drawText(proj, label);
+
+			// ticks
+			t_vec_gl centre_axis = centre;
+
+			t_real_gl tick_start = 0.;
+			std::tie(tick, tick_start) = CalcTickMarks(min, max, tick);
+
+			for(t_real_gl t = tick_start; t < max; t += tick)
+			{
+				t_real_gl t_img = TickTrafo(min, max, t);
+				t_vec_gl edge_pt = corner0 + t_img*(corner1 - corner0);
+
+				centre_axis[coord_idx] = edge_pt[coord_idx];
+				offs = tick_offs * (edge_pt - centre_axis);
+
+				// move text rendered on the left side further out
+				if(is_on_left)
+					offs *= 2.5;
+
+				proj = GlToScreenCoords(edge_pt + offs);
+
+				t_real_gl t_disp = t;
+				if(swapped)  // invert the range
+					t_disp = max - (t - tick_start);
+				tl2::set_eps_0(t_disp);
+				painter.drawText(proj, QString{"%1"}.arg(t_disp));
+			}
+		};
+
+		draw_edge(corner_mmm, corner_mmp, centre, 2);
+		draw_edge(corner_mpm, corner_mpp, centre, 2);
+		draw_edge(corner_pmm, corner_pmp, centre, 2);
+		draw_edge(corner_ppm, corner_ppp, centre, 2);
+
+		draw_edge(corner_mmm, corner_mpm, centre, 1);
+		draw_edge(corner_mmp, corner_mpp, centre, 1);
+		draw_edge(corner_pmm, corner_ppm, centre, 1);
+		draw_edge(corner_pmp, corner_ppp, centre, 1);
+
+		draw_edge(corner_mmm, corner_pmm, centre, 0);
+		draw_edge(corner_mmp, corner_pmp, centre, 0);
+		draw_edge(corner_mpm, corner_ppm, centre, 0);
+		draw_edge(corner_mpp, corner_ppp, centre, 0);
+	}
+#endif
 
 
 	// draw coordinate system in generally non-orthogonal crystal system in rlu
@@ -1502,7 +2066,7 @@ void GlPlotRenderer::DoPaintNonGL(QPainter &painter)
 	if(objCoordCross && GetObjectVisible(*objCoordCross))
 	{
 		// coordinate labels
-		painter.drawText(GlToScreenCoords(tl2::create<t_vec_gl>({0.,0.,0.,1.})), "0");
+		painter.drawText(GlToScreenCoords(tl2::create<t_vec_gl>({0., 0., 0., 1.})), "0");
 		for(t_real_gl f = -std::floor(m_CoordMax); f <= std::floor(m_CoordMax); f += 0.5)
 		{
 			if(tl2::equals<t_real_gl>(f, 0))
@@ -1511,11 +2075,11 @@ void GlPlotRenderer::DoPaintNonGL(QPainter &painter)
 			std::ostringstream ostrF;
 			ostrF << f;
 			painter.drawText(GlToScreenCoords(
-				tl2::create<t_vec_gl>({f,0.,0.,1.})), ostrF.str().c_str());
+				tl2::create<t_vec_gl>({f, 0., 0., 1.})), ostrF.str().c_str());
 			painter.drawText(GlToScreenCoords(
-				tl2::create<t_vec_gl>({0.,f,0.,1.})), ostrF.str().c_str());
+				tl2::create<t_vec_gl>({0., f, 0., 1.})), ostrF.str().c_str());
 			painter.drawText(GlToScreenCoords(
-				tl2::create<t_vec_gl>({0.,0.,f,1.})), ostrF.str().c_str());
+				tl2::create<t_vec_gl>({0., 0., f, 1.})), ostrF.str().c_str());
 		}
 
 		t_vec_gl h = tl2::create<t_vec_gl>({m_CoordMax*t_real_gl(1.2), 0., 0., 1.});
@@ -1555,15 +2119,13 @@ void GlPlotRenderer::DoPaintNonGL(QPainter &painter)
 			if(m_coordsys == 1 && !obj.m_invariant)
 				coordTrafo = &m_matA;
 
-			t_vec3_gl posLabel3d = (*coordTrafo) * obj.m_mat * obj.m_labelPos;
+			t_vec3_gl posLabel3d = tl2::prod_mv(tl2::prod((*coordTrafo), obj.m_mat), obj.m_label_pos);
 			auto posLabel2d = GlToScreenCoords(tl2::create<t_vec_gl>(
-				{posLabel3d[0], posLabel3d[1], posLabel3d[2], 1.}));
+				{ posLabel3d[0], posLabel3d[1], posLabel3d[2], 1. }), &obj);
 
-			QFont fontLabel = fontOrig;
+			QFont fontLabel = m_font;
 			QPen penLabel = penOrig;
 
-			fontLabel.setStyleStrategy(QFont::StyleStrategy(
-				QFont::PreferAntialias | QFont::PreferQuality));
 			fontLabel.setWeight(QFont::Medium);
 			penLabel.setColor(QColor(0,0,0,255));
 			painter.setFont(fontLabel);
@@ -1589,13 +2151,14 @@ void GlPlotRenderer::DoPaintNonGL(QPainter &painter)
 
 void GlPlotRenderer::paintGL()
 {
-	if(!m_platform_supported)
+	if(!m_initialised || !m_pPlot)
 		return;
+
 	QMutexLocker _locker{&m_mutexObj};
 
 	if constexpr(!m_isthreaded)
 	{
-		if(auto *pContext = m_pPlot->context(); !pContext)
+		if(auto *pContext = m_pPlot->context(); !pContext || !pContext->isValid())
 			return;
 		QPainter painter(m_pPlot);
 		painter.setRenderHint(QPainter::Antialiasing);
@@ -1621,7 +2184,7 @@ void GlPlotRenderer::paintGL()
 		if(!pThisThread->isRunning() || pThisThread->isInterruptionRequested())
 			return;
 
-		if(auto *pContext = m_pPlot->context(); !pContext)
+		if(auto *pContext = m_pPlot->context(); !pContext || !pContext->isValid())
 			return;
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
@@ -1633,7 +2196,7 @@ void GlPlotRenderer::paintGL()
 #endif
 		if(!m_pPlot->IsContextInThread())
 		{
-			std::cerr << __func__ << ": Context is not in thread!" << std::endl;
+			std::cerr << "GL error in " << __func__ << ": Context is not in thread!" << std::endl;
 			return;
 		}
 
@@ -1658,7 +2221,7 @@ void GlPlotRenderer::paintGL()
 			initialiseGL();
 		if(!m_initialised)
 		{
-			std::cerr << "Cannot initialise GL." << std::endl;
+			std::cerr << "GL error: Initialisation failed." << std::endl;
 			return;
 		}
 
@@ -1674,7 +2237,6 @@ void GlPlotRenderer::paintGL()
 
 
 
-
 // ----------------------------------------------------------------------------
 // GLPlot wrapper class
 // ----------------------------------------------------------------------------
@@ -1683,7 +2245,11 @@ GlPlot::GlPlot(QWidget *pParent) : QOpenGLWidget(pParent),
 	m_renderer(std::make_unique<GlPlotRenderer>(this)),
 	m_thread_impl(std::make_unique<QThread>(this))
 {
+#if defined(_GL_MAJ_VER) && defined(_GL_MIN_VER)
+	tl2::set_gl_format(true, _GL_MAJ_VER, _GL_MIN_VER);
+#endif
 	qRegisterMetaType<std::size_t>("std::size_t");
+	setAttribute(Qt::WA_DeleteOnClose);
 
 	if constexpr(m_isthreaded)
 	{

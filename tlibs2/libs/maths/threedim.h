@@ -251,7 +251,7 @@ requires is_vec<t_vec> && is_mat<t_mat>
 	t_mat mat = unit<t_mat>(N);
 
 	// equations (6) and (7) from (Zhelezov 2017)
-	for(t_size n=1; n<N; ++n)
+	for(t_size n = 1; n < N; ++n)
 	{
 		t_size i = N - n - 1;
 		t_size j = i + 1;
@@ -264,8 +264,8 @@ requires is_vec<t_vec> && is_mat<t_mat>
 			t_real c = vec[i] / len;
 
 			t_mat rot_ij = givens<t_mat, t_real>(N, i, j, s, c);
-			vec = rot_ij * vec;
-			mat = rot_ij * mat;
+			vec = tl2::prod_mv<t_mat, t_vec, true>(rot_ij, vec);
+			mat = tl2::prod(rot_ij, mat);
 		}
 	}
 
@@ -304,7 +304,7 @@ requires is_vec<t_vec>
 		// cross product gives sine and rotation axis
 		t_vec axis = cross<t_vec>({ vec0, vec1 });
 		t_real s = tl2::norm(axis);
-		if(rotaxis)
+		if(rotaxis && s > 0.)
 			*rotaxis = axis / s;
 
 		// dot product gives cosine
@@ -514,15 +514,20 @@ requires is_vec<t_vec> && is_mat<t_mat>
 {
 	// perspective trafo and divide
 	t_vec vecPersp = matProj * matModelView * vec4;
-	vecPersp /= vecPersp[3];
+
+	if(!tl2::equals_0(vecPersp[3]))
+		vecPersp /= vecPersp[3];
 
 	// viewport trafo
 	t_vec vec = matViewport * vecPersp;
 
 	// flip y coordinate
-	if(bFlipY) vec[1] = matViewport(1,1)*2 - vec[1];
+	if(bFlipY)
+		vec[1] = matViewport(1, 1)*2 - vec[1];
+
 	// flip x coordinate
-	if(bFlipX) vec[0] = matViewport(0,0)*2 - vec[0];
+	if(bFlipX)
+		vec[0] = matViewport(0, 0)*2 - vec[0];
 
 	return std::make_tuple(vecPersp, vec);
 }
@@ -543,13 +548,17 @@ requires is_vec<t_vec> && is_mat<t_mat>
 	t_vec vecScreen = create<t_vec>({xScreen, yScreen, zPlane, 1.});
 
 	// flip y coordinate
-	if(pmatViewport && bFlipY) vecScreen[1] = (*pmatViewport)(1,1)*2 - vecScreen[1];
+	if(pmatViewport && bFlipY)
+		vecScreen[1] = (*pmatViewport)(1,1)*2 - vecScreen[1];
+
 	// flip x coordinate
-	if(pmatViewport && bFlipX) vecScreen[0] = (*pmatViewport)(0,0)*2 - vecScreen[0];
+	if(pmatViewport && bFlipX)
+		vecScreen[0] = (*pmatViewport)(0,0)*2 - vecScreen[0];
 
 	t_vec vecWorld = matModelView_inv * matProj_inv * matViewport_inv * vecScreen;
 
-	vecWorld /= vecWorld[3];
+	if(!tl2::equals_0(vecWorld[3]))
+		vecWorld /= vecWorld[3];
 	return vecWorld;
 }
 
@@ -711,9 +720,9 @@ t_mat hom_translation(t_real x, t_real y, t_real z)
 requires is_mat<t_mat>
 {
 	return create<t_mat>({
-		1.,  0.,  0.,  x,
-		0.,  1.,  0.,  y,
-		0.,  0.,  1.,  z,
+		1.,  0.,  0.,  static_cast<typename t_mat::value_type>(x),
+		0.,  1.,  0.,  static_cast<typename t_mat::value_type>(y),
+		0.,  0.,  1.,  static_cast<typename t_mat::value_type>(z),
 		0.,  0.,  0.,  1.
 	});
 }
@@ -727,9 +736,9 @@ t_mat hom_scaling(t_real x, t_real y, t_real z)
 requires is_mat<t_mat>
 {
 	return create<t_mat>({
-		x,   0.,  0.,  0.,
-		0.,  y,   0.,  0.,
-		0.,  0.,  z,   0.,
+		static_cast<typename t_mat::value_type>(x),   0.,  0.,  0.,
+		0.,  static_cast<typename t_mat::value_type>(y),   0.,  0.,
+		0.,  0.,  static_cast<typename t_mat::value_type>(z),   0.,
 		0.,  0.,  0.,  1.
 	});
 }
@@ -926,6 +935,11 @@ requires is_mat<t_mat>
  * reciprocal crystallographic B matrix, B = 2pi * A^(-T)
  * Q [1/A] = B * Q [rlu]
  * @see https://en.wikipedia.org/wiki/Fractional_coordinates
+ *
+ * the metric G is the "square" of B, G = B^t B,
+ * e.g. 2-norm of reciprocal vector Q:
+ *   |Q| = sqrt( (B Q)^t (B Q) ) = sqrt( Q^t B^t B Q ) = sqrt( Q^t G Q )
+ * @see (Arens 2015), p. 808
  */
 template<class t_mat, class t_real = typename t_mat::value_type>
 t_mat B_matrix(t_real a, t_real b, t_real c, t_real _aa, t_real _bb, t_real _cc)
@@ -959,14 +973,12 @@ requires is_mat<t_mat> && is_vec<t_vec>
 	t_vec vec2_lab = B * vec2_rlu;
 	t_vec vec3_lab = B * vec3_rlu;
 
-	vec1_lab /= norm<t_vec>(vec1_lab);
-	vec2_lab /= norm<t_vec>(vec2_lab);
-	vec3_lab /= norm<t_vec>(vec3_lab);
-
 	t_mat U_lab = unit<t_mat>(B.size1(), B.size2());
 	set_row<t_mat, t_vec>(U_lab, vec1_lab, 0);
 	set_row<t_mat, t_vec>(U_lab, vec2_lab, 1);
 	set_row<t_mat, t_vec>(U_lab, vec3_lab, 2);
+
+	U_lab = tl2::orthonorm_sys<t_mat, t_vec>(U_lab, false);
 
 	return U_lab * B;
 }
@@ -1017,17 +1029,18 @@ requires is_mat<t_mat> && is_vec<t_vec>
  * wrap atom positions back to unit cell
  */
 template<class t_vec, class t_real = typename t_vec::value_type>
-t_vec keep_atom_in_uc(const t_vec& _atom, std::size_t dim = 3)
+t_vec keep_atom_in_uc(const t_vec& _atom, std::size_t dim = 3,
+	t_real uc_min = -0.5, t_real uc_max = 0.5)
 requires is_vec<t_vec>
 {
 	t_vec newatom = _atom;
 
-	for(std::size_t i=0; i</*newatom.size()*/ dim; ++i)
+	for(std::size_t i = 0; i < /*newatom.size()*/ dim; ++i)
 	{
-		newatom[i] = std::fmod(newatom[i], t_real{1});
-		if(newatom[i] <= t_real{-0.5})
+		newatom[i] = std::fmod(newatom[i], uc_max - uc_min);
+		if(newatom[i] <= uc_min)
 			newatom[i] += std::abs(std::floor(newatom[i]));
-		if(newatom[i] > t_real{0.5})
+		if(newatom[i] > uc_max)
 			newatom[i] -= std::abs(std::ceil(newatom[i]));
 	}
 
@@ -1041,14 +1054,15 @@ requires is_vec<t_vec>
  */
 template<class t_vec, class t_real = typename t_vec::value_type,
 	template<class...> class t_cont = std::vector>
-t_cont<t_vec> keep_atoms_in_uc(const t_cont<t_vec>& _atoms, std::size_t dim = 3)
+t_cont<t_vec> keep_atoms_in_uc(const t_cont<t_vec>& _atoms, std::size_t dim = 3,
+	t_real uc_min = -0.5, t_real uc_max = 0.5)
 requires is_vec<t_vec>
 {
 	t_cont<t_vec> newatoms;
 	newatoms.reserve(_atoms.size());
 
 	for(const auto& _atom : _atoms)
-		newatoms.emplace_back(keep_atom_in_uc<t_vec, t_real>(_atom, dim));
+		newatoms.emplace_back(keep_atom_in_uc<t_vec, t_real>(_atom, dim, uc_min, uc_max));
 
 	return newatoms;
 }
@@ -1062,14 +1076,16 @@ template<class t_vec, class t_real = typename t_vec::value_type,
 	template<class...> class t_cont = std::vector>
 std::tuple<bool, std::size_t, t_vec>
 get_supercell(const t_vec& sc_pos, const t_cont<t_vec>& _uc_sites,
-	std::size_t dim = 3,
+	std::size_t dim = 3, t_real uc_min = -0.5, t_real uc_max = 0.5,
 	t_real eps = std::numeric_limits<t_real>::eps())
 requires is_vec<t_vec>
 {
-	t_cont<t_vec> uc_sites = keep_atoms_in_uc<t_vec, t_real, t_cont>(_uc_sites, dim);
+	// ensure that sites are in unit cell
+	t_cont<t_vec> uc_sites = keep_atoms_in_uc<t_vec, t_real, t_cont>(
+		_uc_sites, dim, uc_min, uc_max);
 
 	// unit cell position corresponding to supercell position
-	t_vec uc_pos = keep_atom_in_uc<t_vec, t_real>(sc_pos, dim);
+	t_vec uc_pos = keep_atom_in_uc<t_vec, t_real>(sc_pos, dim, uc_min, uc_max);
 
 	// get corresponding unit cell index
 	bool found = false;
@@ -1077,9 +1093,9 @@ requires is_vec<t_vec>
 	t_vec sc_vec = sc_pos - uc_pos;
 
 	if(auto iter = std::find_if(uc_sites.begin(), uc_sites.end(),
-		[&uc_pos, &eps](const t_vec& vec) -> bool
+		[&uc_pos, &eps](const t_vec& site_vec) -> bool
 	{
-		return equals<t_vec>(uc_pos, vec, eps);
+		return equals<t_vec>(uc_pos, site_vec, eps);
 	}); iter != uc_sites.end())
 	{
 		found = true;
@@ -1098,8 +1114,9 @@ template<class t_vec, class t_mat, class t_real = typename t_vec::value_type,
 	template<class...> class t_cont = std::vector>
 t_cont<t_vec> apply_ops_hom(const t_vec& _vec, const t_cont<t_mat>& ops,
 	t_real eps = std::numeric_limits<t_real>::epsilon(),
-	bool keepInUnitCell = true, bool ignore_occupied = false,
-	bool ret_hom = false, bool is_pseudovector = false)
+	bool keep_in_unit_cell = true, bool ignore_occupied = false,
+	bool ret_hom = false, bool is_pseudovector = false,
+	t_real uc_min = -0.5, t_real uc_max = 0.5)
 requires is_vec<t_vec> && is_mat<t_mat>
 {
 	// convert vector to homogeneous coordinates
@@ -1126,8 +1143,8 @@ requires is_vec<t_vec> && is_mat<t_mat>
 		if(!ret_hom)
 			newvec = create<t_vec>({ newvec[0], newvec[1], newvec[2] });
 
-		if(keepInUnitCell)
-			newvec = keep_atom_in_uc<t_vec>(newvec, 3);
+		if(keep_in_unit_cell)
+			newvec = keep_atom_in_uc<t_vec>(newvec, 3, uc_min, uc_max);
 
 		// position already occupied?
 		if(ignore_occupied ||

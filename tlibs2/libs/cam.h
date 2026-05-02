@@ -238,12 +238,8 @@ public:
 	 */
 	void SetLookAt(const t_vec3& pos, const t_vec3& target, const t_vec3& up)
 	{
-		m_mat = tl2::hom_lookat<t_mat, t_vec3>(
-			pos, target, up);
-
-		std::tie(m_mat_inv, std::ignore)
-			= tl2::inv<t_mat>(m_mat);
-
+		m_mat = tl2::hom_lookat<t_mat, t_vec3>(pos, target, up);
+		std::tie(m_mat_inv, std::ignore) = tl2::inv<t_mat>(m_mat);
 		m_trafo_needs_update = false;
 
 		// TODO: extract position and angles corresponding to this matrix
@@ -328,6 +324,15 @@ public:
 	const t_mat& GetInverseTransformation() const
 	{
 		return m_mat_inv;
+	}
+
+
+	/**
+	 * get the camera's rotation matrix (without translation parts)
+	 */
+	const t_mat& GetRotationMatrix() const
+	{
+		return m_matRot;
 	}
 
 
@@ -458,12 +463,44 @@ public:
 	/**
 	 * convert a vector into screen coordinates
 	 */
-	t_vec ToScreenCoords(
-		const t_vec& vec4, bool *visible = nullptr) const
+	t_vec ToScreenCoords(const t_vec& vec4, bool *visible = nullptr) const
 	{
 		auto [ persp, vec ] =
 			tl2::hom_to_screen_coords<t_mat, t_vec>(
 				vec4, GetTransformation(), GetPerspective(),
+				GetViewport(), true);
+
+		// position not visible -> return a point outside the viewport
+		if(persp[2] > 1.)
+		{
+			if(visible)
+				*visible = false;
+
+			return tl2::create<t_vec>(
+			{
+				t_real(-1.) * GetScreenDimensions()[0],
+				t_real(-1.) * GetScreenDimensions()[1]
+			});
+		}
+
+		if(visible)
+			*visible = true;
+
+		return vec;
+	}
+
+
+	/**
+	 * convert a vector for a camera-invariant object into screen coordinates
+	 */
+	t_vec ToScreenCoordsInvar(const t_vec& vec4,
+	  const t_mat& after_cam, const t_mat& after_proj,
+		bool *visible = nullptr) const
+	{
+		auto [ persp, vec ] =
+			tl2::hom_to_screen_coords<t_mat, t_vec>(vec4,
+			  after_cam * GetRotationMatrix(),
+			  after_proj * GetPerspective(),
 				GetViewport(), true);
 
 		// position not visible -> return a point outside the viewport

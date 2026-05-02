@@ -38,12 +38,7 @@
 #ifndef __TLIBS2_MAGDYN_HAM_H__
 #define __TLIBS2_MAGDYN_HAM_H__
 
-#include <tuple>
-#include <string>
-#include <iostream>
-#include <iomanip>
 
-#include "../maths.h"
 #include "../units.h"
 
 #include "magdyn.h"
@@ -167,6 +162,33 @@ MAGDYN_INST::CalcReciprocalJs(const t_vec_real& Qvec) const
 
 
 /**
+ * get energy term for external field
+ * @note implements equation (28) from (Toth 2015)
+ */
+MAGDYN_TEMPL
+t_cplx MAGDYN_INST::CalcFieldEnergy(t_size site_idx) const
+{
+	bool use_field = !tl2::equals_0<t_real>(m_field.mag, m_eps) && m_field.dir.size() == 3;
+	if(!use_field)
+		return 0.;
+
+	const MagneticSite& s_i = GetMagneticSite(site_idx);
+
+	const t_vec& v_i  = s_i.trafo_z_calc;
+	const t_vec field = tl2::convert<t_vec>(-m_field.dir) * m_field.mag;
+	const t_vec gv    = s_i.g_e * v_i;
+	const t_cplx Bgv  = tl2::inner_noconj<t_vec>(field, gv);
+
+	// bohr magneton in [meV/T]
+	constexpr const t_real muB = tl2::mu_B<t_real>
+		/ tl2::meV<t_real> * tl2::tesla<t_real>;
+
+	return muB * Bgv;
+}
+
+
+
+/**
  * get the hamiltonian at the given momentum
  * @note implements the formalism given by (Toth 2015)
  * @note a first version for a simplified ferromagnetic dispersion was based on (Heinsdorf 2021)
@@ -184,9 +206,6 @@ t_mat MAGDYN_INST::CalcHamiltonian(const t_vec_real& Qvec) const
 
 	// create the hamiltonian of equation (25) and (26) from (Toth 2015)
 	t_mat H = tl2::create<t_mat>(2*N, 2*N);
-
-	bool use_field = !tl2::equals_0<t_real>(m_field.mag, m_eps)
-		&& m_field.dir.size() == 3;
 
 	// iterate magnetic sites
 	for(t_size i = 0; i < N; ++i)
@@ -221,9 +240,9 @@ t_mat MAGDYN_INST::CalcHamiltonian(const t_vec_real& Qvec) const
 				// equation (26) from (Toth 2015)
 				const t_real S_mag = 0.5 * std::sqrt(s_i.spin_mag_calc * s_j.spin_mag_calc);
 
-				H(    i,     j) += S_mag * tl2::inner<t_vec>(uc_i, (*J_Q33) * uc_j);
-				H(N + i, N + j) += S_mag * tl2::inner<t_vec>(u_i,  (*J_Q33) * u_j);
-				H(    i, N + j) += S_mag * tl2::inner<t_vec>(uc_i, (*J_Q33) * u_j);
+				H(    i,     j) += S_mag * tl2::inner<t_vec>(uc_i, (*J_Q33) * uc_j);  // b_i+ b_j terms
+				H(N + i, N + j) += S_mag * tl2::inner<t_vec>(u_i,  (*J_Q33) * u_j);   // b_i b_j+ terms
+				H(    i, N + j) += S_mag * tl2::inner<t_vec>(uc_i, (*J_Q33) * u_j);   // b_i+ b_j+ terms
 			}
 
 			if(J_Q033)
@@ -237,19 +256,9 @@ t_mat MAGDYN_INST::CalcHamiltonian(const t_vec_real& Qvec) const
 		}  // end of iteration over j sites
 
 		// include external field, equation (28) from (Toth 2015)
-		if(use_field)
-		{
-			const t_vec field = tl2::convert<t_vec>(-m_field.dir) * m_field.mag;
-			const t_vec gv    = s_i.g_e * v_i;
-			const t_cplx Bgv  = tl2::inner_noconj<t_vec>(field, gv);
-
-			// bohr magneton in [meV/T]
-			constexpr const t_real muB = tl2::mu_B<t_real>
-				/ tl2::meV<t_real> * tl2::tesla<t_real>;
-
-			H(    i,     i) -= muB * Bgv;
-			H(N + i, N + i) -= std::conj(muB * Bgv);
-		}
+		t_cplx field_energy = CalcFieldEnergy(i);
+		H(    i,     i) -= field_energy;
+		H(N + i, N + i) -= std::conj(field_energy);
 	}  // end of iteration over i sites
 
 	// equation (25) from (Toth 2015)
@@ -303,7 +312,7 @@ MAGDYN_TYPE::SofQE MAGDYN_INST::CalcEnergiesFromHamiltonian(
 
 		if(chol_try >= m_tries_chol - 1)
 		{
-			CERR_OPT << "Magdyn error: Cholesky decomposition failed"
+			TL2_CERR_OPT << "Magdyn error: Cholesky decomposition failed"
 				<< " at Q = " << Qvec << "." << std::endl;
 
 			S.H_chol = std::move(_C);
@@ -318,14 +327,14 @@ MAGDYN_TYPE::SofQE MAGDYN_INST::CalcEnergiesFromHamiltonian(
 
 	if(chol_failed || S.H_chol.size1() == 0 || S.H_chol.size2() == 0)
 	{
-		CERR_OPT << "Magdyn error: Invalid Cholesky decomposition"
+		TL2_CERR_OPT << "Magdyn error: Invalid Cholesky decomposition"
 			<< " at Q = " << Qvec << "." << std::endl;
 		return S;
 	}
 
 	if(m_perform_checks && chol_try > 0)
 	{
-		CERR_OPT << "Magdyn warning: Needed " << chol_try
+		TL2_CERR_OPT << "Magdyn warning: Needed " << chol_try
 			<< " correction(s) for Cholesky decomposition"
 			<< " at Q = " << Qvec << "." << std::endl;
 	}
@@ -336,7 +345,7 @@ MAGDYN_TYPE::SofQE MAGDYN_INST::CalcEnergiesFromHamiltonian(
 	const bool is_herm = tl2::is_symm_or_herm<t_mat, t_real>(S.H_comm, m_eps);
 	if(m_perform_checks && !is_herm)
 	{
-		CERR_OPT << "Magdyn warning: Hamiltonian is not hermitian"
+		TL2_CERR_OPT << "Magdyn warning: Hamiltonian is not hermitian"
 			<< " at Q = " << Qvec << "." << std::endl;
 	}
 
@@ -346,7 +355,7 @@ MAGDYN_TYPE::SofQE MAGDYN_INST::CalcEnergiesFromHamiltonian(
 			S.H_comm, only_energies, is_herm, true);
 	if(!evecs_ok)
 	{
-		CERR_OPT << "Magdyn error: Eigensystem calculation failed"
+		TL2_CERR_OPT << "Magdyn error: Eigensystem calculation failed"
 			<< " at Q = " << Qvec << "." << std::endl;
 		return S;
 	}
@@ -363,10 +372,19 @@ MAGDYN_TYPE::SofQE MAGDYN_INST::CalcEnergiesFromHamiltonian(
 
 		if(m_perform_checks && !tl2::equals_0(eval.imag(), m_eps))
 		{
-			CERR_OPT << "Magdyn warning: Remaining imaginary energy component at Q = "
+			TL2_CERR_OPT << "Magdyn warning: Remaining imaginary energy component at Q = "
 				<< Qvec << " and E = " << eval
 				<< "." << std::endl;
 		}
+
+		// limit energies?
+		/*if(m_E_minmax[1] >= m_E_minmax[0])
+		{
+			// filter out energies outside the limits
+			t_real E = eval.real();
+			if(E > m_E_minmax[1] || E < m_E_minmax[0])
+				continue;
+		}*/
 
 		EnergyAndWeight EandS
 		{
@@ -383,7 +401,7 @@ MAGDYN_TYPE::SofQE MAGDYN_INST::CalcEnergiesFromHamiltonian(
 		bool corr_ok = CalcCorrelationsFromHamiltonian(S);
 		if(!corr_ok)
 		{
-			CERR_OPT << "Magdyn warning: Invalid correlations"
+			TL2_CERR_OPT << "Magdyn warning: Invalid correlations"
 				<< " at Q = " << Qvec << "." << std::endl;
 		}
 	}
@@ -394,7 +412,7 @@ MAGDYN_TYPE::SofQE MAGDYN_INST::CalcEnergiesFromHamiltonian(
 
 
 /**
- * sort states by energies
+ * sort states by energies in descending order
  */
 MAGDYN_TEMPL
 void MAGDYN_INST::SortByEnergies(MAGDYN_TYPE::SofQE& S) const
